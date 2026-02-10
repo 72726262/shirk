@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
+import 'package:mmm/presentation/cubits/handover/handover_state.dart';
 import 'package:mmm/presentation/widgets/common/primary_button.dart';
 import 'package:mmm/presentation/widgets/custom/signature_pad.dart';
 import 'package:mmm/presentation/cubits/handover/handover_cubit.dart';
@@ -110,7 +111,7 @@ class _SignHandoverScreenState extends State<SignHandoverScreen> {
                   color: AppColors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.shadow.withOpacity(0.1),
+                      color: AppColors.shadow.withValues(alpha: 0.1),
                       blurRadius: 10,
                       offset: const Offset(0, -2),
                     ),
@@ -137,6 +138,7 @@ class _SignHandoverScreenState extends State<SignHandoverScreen> {
   Future<void> _submitSignature() async {
     final signatureData = await _signatureKey.currentState?.getSignature();
     if (signatureData == null) return;
+    if (!mounted) return;
 
     await context.read<HandoverCubit>().completeHandover(
       widget.unitId,

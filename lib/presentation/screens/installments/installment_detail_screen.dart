@@ -138,9 +138,9 @@ class InstallmentDetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(Dimensions.spaceL),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
+        color: statusColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(Dimensions.radiusL),
-        border: Border.all(color: statusColor.withOpacity(0.3)),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -186,7 +186,7 @@ class InstallmentDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(Dimensions.radiusL),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadow.withOpacity(0.05),
+            color: AppColors.shadow.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),

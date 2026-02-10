@@ -64,7 +64,7 @@ class ProjectService {
     try {
       return await _projectRepository.getProjectUnits(
         projectId: projectId,
-        status: UnitStatus.available,
+        status: UnitStatus.available.name,
       );
     } catch (e) {
       throw Exception('فشل تحميل الوحدات المتاحة: ${e.toString()}');
@@ -127,9 +127,9 @@ class ProjectService {
         // For now, using a timestamp based folder to avoid collisions before project creation
         final tempId = DateTime.now().millisecondsSinceEpoch.toString();
         heroImageUrl = await _projectRepository.uploadProjectImage(
-          projectId: 'new_$tempId',
-          filePath: heroImagePath,
-          imageType: 'hero',
+          'new_$tempId',
+          heroImagePath,
+          'hero_${DateTime.now().millisecondsSinceEpoch}.jpg',
         );
       }
 
@@ -139,30 +139,32 @@ class ProjectService {
         final tempId = DateTime.now().millisecondsSinceEpoch.toString();
         for (var path in renderImagePaths) {
           final url = await _projectRepository.uploadProjectImage(
-            projectId: 'new_$tempId',
-            filePath: path,
-            imageType: 'render',
+            'new_$tempId',
+            path,
+            'render_${DateTime.now().millisecondsSinceEpoch}.jpg',
           );
           renderImages.add(url);
         }
       }
 
-      return await _projectRepository.createProject(
-        name: name,
-        nameAr: nameAr,
-        description: description,
-        descriptionAr: descriptionAr,
-        locationName: locationName ?? '', // Required in repo
-        locationLat: locationLat,
-        locationLng: locationLng,
-        pricePerSqm: pricePerSqm,
-        minInvestment: minInvestment,
-        maxInvestment: maxInvestment,
-        startDate: startDate,
-        expectedCompletionDate: expectedCompletionDate,
-        heroImageUrl: heroImageUrl,
-        renderImages: renderImages,
-      );
+      return await _projectRepository.createProject({
+        'name': name,
+        'name_ar': nameAr,
+        'description': description,
+        'description_ar': descriptionAr,
+        'location_name': locationName ?? '',
+        'location_lat': locationLat,
+        'location_lng': locationLng,
+        'price_per_sqm': pricePerSqm,
+        'min_investment': minInvestment,
+        'max_investment': maxInvestment,
+        'start_date': startDate?.toIso8601String(),
+        'expected_completion_date': expectedCompletionDate?.toIso8601String(),
+        'hero_image_url': heroImageUrl,
+        'render_images': renderImages,
+        'total_units': totalUnits,
+        'status': status.name,
+      });
     } catch (e) {
       throw Exception('فشل إنشاء المشروع: ${e.toString()}');
     }
@@ -181,17 +183,17 @@ class ProjectService {
     bool? featured,
   }) async {
     try {
-      return await _projectRepository.updateProject(
-        projectId: projectId,
-        name: name,
-        nameAr: nameAr,
-        description: description,
-        descriptionAr: descriptionAr,
-        status: status,
-        completionPercentage: completionPercentage,
-        actualCompletionDate: actualCompletionDate,
-        featured: featured,
-      );
+      final updates = <String, dynamic>{};
+      if (name != null) updates['name'] = name;
+      if (nameAr != null) updates['name_ar'] = nameAr;
+      if (description != null) updates['description'] = description;
+      if (descriptionAr != null) updates['description_ar'] = descriptionAr;
+      if (status != null) updates['status'] = status.name;
+      if (completionPercentage != null) updates['completion_percentage'] = completionPercentage;
+      if (actualCompletionDate != null) updates['actual_completion_date'] = actualCompletionDate.toIso8601String();
+      if (featured != null) updates['featured'] = featured;
+      
+      return await _projectRepository.updateProject(projectId, updates);
     } catch (e) {
       throw Exception('فشل تحديث المشروع: ${e.toString()}');
     }

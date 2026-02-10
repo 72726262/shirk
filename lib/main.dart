@@ -35,14 +35,23 @@ import 'package:mmm/presentation/cubits/handover/handover_cubit.dart';
 import 'package:mmm/presentation/cubits/profile/profile_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/admin_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/admin_dashboard_cubit.dart';
+import 'package:mmm/core/services/network_service.dart';
+import 'package:mmm/core/services/cache_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Supabase
   await SupabaseService.initialize(
     url: SupabaseConfig.supabaseUrl,
     anonKey: SupabaseConfig.supabaseAnonKey,
   );
+
+  // Initialize Network Service for connectivity monitoring
+  await NetworkService().initialize();
+
+  // Initialize Cache Service for offline support
+  await CacheService().initialize();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

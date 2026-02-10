@@ -2,6 +2,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:mmm/data/repositories/project_repository.dart';
 import 'package:mmm/data/repositories/wallet_repository.dart';
+import 'package:mmm/core/services/cache_service.dart';
+import 'package:mmm/core/utils/error_handler.dart';
 
 // Models
 class AdminStats extends Equatable {
@@ -16,6 +18,20 @@ class AdminStats extends Equatable {
     required this.totalRevenue,
     required this.pendingPayments,
   });
+
+  Map<String, dynamic> toJson() => {
+    'totalClients': totalClients,
+    'activeProjects': activeProjects,
+    'totalRevenue': totalRevenue,
+    'pendingPayments': pendingPayments,
+  };
+
+  factory AdminStats.fromJson(Map<String, dynamic> json) => AdminStats(
+    totalClients: json['totalClients'] as int,
+    activeProjects: json['activeProjects'] as int,
+    totalRevenue: (json['totalRevenue'] as num).toDouble(),
+    pendingPayments: json['pendingPayments'] as int,
+  );
 
   @override
   List<Object?> get props => [totalClients, activeProjects, totalRevenue, pendingPayments];
@@ -68,7 +84,7 @@ class AdminDashboardCubit extends Cubit<AdminDashboardState> {
     try {
       // Fetch real data
       // final projects = await _projectRepository.getProjects();
-      // final activeProjects = projects.where((p) => p.status == ProjectStatus.active).length;
+      // final activeProjects = projects.where((p) => p.status == ProjectStatus.active).length();
       
       // Mock data for now until repositories support aggregation
       await Future.delayed(const Duration(seconds: 1));
@@ -80,9 +96,19 @@ class AdminDashboardCubit extends Cubit<AdminDashboardState> {
         pendingPayments: 5,
       );
 
+      // Cache dashboard stats for offline access
+      await CacheService().cacheDashboardStats(stats.toJson());
+
       emit(AdminDashboardLoaded(stats: stats));
     } catch (e) {
-      emit(AdminDashboardError(e.toString()));
+      // Try to load from cache when network fails
+      final cachedStats = CacheService().getCachedDashboardStats();
+      if (cachedStats != null) {
+        final stats = AdminStats.fromJson(cachedStats);
+        emit(AdminDashboardLoaded(stats: stats));
+      } else {
+        emit(AdminDashboardError(ErrorHandler.getErrorMessage(e)));
+      }
     }
   }
 

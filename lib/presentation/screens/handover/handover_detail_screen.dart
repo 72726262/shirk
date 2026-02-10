@@ -137,15 +137,17 @@ class _HandoverDetailView extends StatelessWidget {
         statusText = 'مجدولة';
         statusIcon = Icons.schedule;
         break;
-      case HandoverStatus.inProgress:
+      case HandoverStatus.inspectionPending:
+      case HandoverStatus.defectsSubmitted:
+      case HandoverStatus.defectsFixing:
         statusColor = AppColors.primary;
         statusText = 'جارية';
         statusIcon = Icons.timelapse;
         break;
-      case HandoverStatus.notStarted:
-        statusColor = AppColors.primary;
-        statusText = 'جارية';
-        statusIcon = Icons.timelapse;
+      case HandoverStatus.readyForHandover:
+        statusColor = AppColors.info;
+        statusText = 'جاهزة';
+        statusIcon = Icons.done_all;
         break;
       case HandoverStatus.completed:
         statusColor = AppColors.success;
@@ -153,28 +155,18 @@ class _HandoverDetailView extends StatelessWidget {
         statusIcon = Icons.check_circle;
         break;
       case HandoverStatus.appointmentBooked:
+        statusColor = AppColors.warning;
+        statusText = 'تم حجز الموعد';
+        statusIcon = Icons.event_available;
+        break;
+      case HandoverStatus.notStarted:
         statusColor = AppColors.success;
         statusText = 'مكتملة';
         statusIcon = Icons.check_circle;
         break;
-      case HandoverStatus.inspectionPending:
+      case HandoverStatus.inProgress:
         statusColor = AppColors.success;
-        statusText = 'مكتملة';
-        statusIcon = Icons.check_circle;
-        break;
-      case HandoverStatus.readyForHandover:
-        statusColor = AppColors.success;
-        statusText = 'مكتملة';
-        statusIcon = Icons.check_circle;
-        break;
-      case HandoverStatus.defectsSubmitted:
-        statusColor = AppColors.success;
-        statusText = 'مكتملة';
-        statusIcon = Icons.check_circle;
-        break;
-      case HandoverStatus.defectsFixing:
-        statusColor = AppColors.success;
-        statusText = 'مكتملة';
+        statusText = 'جاري';
         statusIcon = Icons.check_circle;
         break;
       case HandoverStatus.cancelled:

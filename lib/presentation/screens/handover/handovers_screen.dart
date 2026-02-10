@@ -1,513 +1,240 @@
+// lib/presentation/screens/handover/handovers_screen.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mmm/core/constants/colors.dart';
+import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/data/models/handover_model.dart';
-import 'package:mmm/data/models/defect_model.dart';
-import 'package:mmm/data/repositories/handover_repository.dart';
+import 'package:mmm/data/services/handover_service.dart';
+import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
+import 'package:mmm/presentation/cubits/handover/handover_cubit.dart';
+import 'package:mmm/presentation/cubits/handover/handover_state.dart';
+import 'package:mmm/presentation/screens/handover/handover_detail_screen.dart';
+import 'package:intl/intl.dart';
 
-/// Handover Service - Handles unit handover process business logic
-class HandoverService {
-  final HandoverRepository _handoverRepository;
+class HandoversScreen extends StatelessWidget {
+  const HandoversScreen({super.key});
 
-  HandoverService({HandoverRepository? handoverRepository})
-    : _handoverRepository = handoverRepository ?? HandoverRepository();
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) {
+        final cubit = HandoverCubit(handoverService: HandoverService());
+        final authState = context.read<AuthCubit>().state;
+        if (authState is Authenticated) {
+          cubit.loadUserHandovers(authState.user.id);
+        }
+        return cubit;
+      },
+      child: const _HandoversView(),
+    );
+  }
+}
 
-  // Get handover by subscription ID
-  Future<HandoverModel?> getHandoverBySubscription(
-    String subscriptionId,
-  ) async {
-    try {
-      return await _handoverRepository.getHandoverBySubscription(
-        subscriptionId,
-      );
-    } catch (e) {
-      return null;
-    }
+class _HandoversView extends StatelessWidget {
+  const _HandoversView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('التسليمات'),
+        backgroundColor: AppColors.primary,
+      ),
+      body: BlocBuilder<HandoverCubit, HandoverState>(
+        builder: (context, state) {
+          if (state is HandoverLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state is HandoverError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                  const SizedBox(height: Dimensions.spaceL),
+                  Text(state.message, textAlign: TextAlign.center),
+                ],
+              ),
+            );
+          }
+
+          if (state is HandoversListLoaded) {
+            if (state.handovers.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.home_work,
+                      size: 64,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(height: Dimensions.spaceL),
+                    const Text('لا توجد تسليمات'),
+                  ],
+                ),
+              );
+            }
+
+            return RefreshIndicator(
+              onRefresh: () async {
+                final authState = context.read<AuthCubit>().state;
+                if (authState is Authenticated) {
+                  await context.read<HandoverCubit>().loadUserHandovers(
+                    authState.user.id,
+                  );
+                }
+              },
+              child: ListView.builder(
+                padding: const EdgeInsets.all(Dimensions.spaceL),
+                itemCount: state.handovers.length,
+                itemBuilder: (context, index) {
+                  final handover = state.handovers[index];
+                  return _buildHandoverCard(context, handover);
+                },
+              ),
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
+      ),
+    );
   }
 
-  // Get all handovers for a user
-  Future<List<HandoverModel>> getUserHandovers(String userId) async {
-    try {
-      return await _handoverRepository.getUserHandovers(userId);
-    } catch (e) {
-      throw Exception('فشل تحميل التسليمات: ${e.toString()}');
-    }
-  }
+  Widget _buildHandoverCard(BuildContext context, HandoverModel handover) {
+    Color statusColor;
+    String statusText;
+    IconData statusIcon;
 
-  // Book appointment for handover
-  Future<HandoverModel> bookAppointment({
-    required String handoverId,
-    required DateTime appointmentDate,
-    required String location,
-    String? notes,
-  }) async {
-    try {
-      await _handoverRepository.bookAppointment(
-        handoverId: handoverId,
-        appointmentDate: appointmentDate,
-        location: location,
-        notes: notes,
-      );
-      return await _handoverRepository.getHandoverById(handoverId);
-    } catch (e) {
-      throw Exception('فشل حجز الموعد: ${e.toString()}');
-    }
-  }
-
-  // Get handover details with defects
-  Future<Map<String, dynamic>> getHandoverDetails(String handoverId) async {
-    try {
-      final handover = await _handoverRepository.getHandoverById(handoverId);
-      final defectsData = await _handoverRepository.getDefects(handoverId);
-      final defects = defectsData.map((d) => DefectModel.fromJson(d)).toList();
-
-      return {
-        'handover': handover,
-        'defects': defects,
-        'pending_defects': defects
-            .where((d) => d.status.name != 'fixed')
-            .length,
-        'fixed_defects': defects.where((d) => d.status.name == 'fixed').length,
-        'critical_defects': defects
-            .where((d) => d.severity == DefectSeverity.critical)
-            .length,
-        'completion_percentage': defects.isNotEmpty
-            ? (defects.where((d) => d.status.name == 'fixed').length /
-                      defects.length *
-                      100)
-                  .round()
-            : 100,
-      };
-    } catch (e) {
-      throw Exception('فشل تحميل تفاصيل التسليم: ${e.toString()}');
-    }
-  }
-
-  // Submit defect with photos
-  Future<void> submitDefect({
-    required String handoverId,
-    required String category,
-    required String description,
-    required String severity,
-    String? location,
-    List<String>? photosPaths,
-  }) async {
-    try {
-      await _handoverRepository.submitDefect(
-        handoverId: handoverId,
-        category: category,
-        description: description,
-        severity: severity,
-        location: location,
-        photosPaths: photosPaths,
-      );
-    } catch (e) {
-      throw Exception('فشل إضافة العيب: ${e.toString()}');
-    }
-  }
-
-  // Get all defects for a handover
-  Future<List<DefectModel>> getDefects(String handoverId) async {
-    try {
-      final defectsData = await _handoverRepository.getDefects(handoverId);
-      return defectsData.map((d) => DefectModel.fromJson(d)).toList();
-    } catch (e) {
-      throw Exception('فشل تحميل قائمة العيوب: ${e.toString()}');
-    }
-  }
-
-  // Admin: Update defect status
-  Future<void> updateDefectStatus({
-    required String defectId,
-    required String status,
-    String? adminComment,
-  }) async {
-    try {
-      await _handoverRepository.updateDefectStatus(
-        defectId: defectId,
-        status: status,
-        adminComment: adminComment,
-      );
-    } catch (e) {
-      throw Exception('فشل تحديث حالة العيب: ${e.toString()}');
-    }
-  }
-
-  // Sign handover with signature upload
-  Future<HandoverModel> signHandover({
-    required String handoverId,
-    required String signaturePath,
-  }) async {
-    try {
-      // Validate all defects are fixed before signing
-      final defects = await _handoverRepository.getDefects(handoverId);
-      final pendingDefects = defects
-          .where((d) => d.toString() != DefectStatus.fixed)
-          .length;
-
-      if (pendingDefects > 0) {
-        throw Exception(
-          'يجب إصلاح جميع العيوب قبل التوقيع ($pendingDefects عيب معلق)',
-        );
-      }
-
-      await _handoverRepository.signHandover(
-        handoverId: handoverId,
-        signatureData: signaturePath,
-      );
-
-      return await _handoverRepository.getHandoverById(handoverId);
-    } catch (e) {
-      throw Exception('فشل توقيع التسليم: ${e.toString()}');
-    }
-  }
-
-  // Generate handover certificate
-  Future<String> generateCertificate(String handoverId) async {
-    try {
-      return await _handoverRepository.generateCertificate(handoverId);
-    } catch (e) {
-      throw Exception('فشل إنشاء شهادة التسليم: ${e.toString()}');
-    }
-  }
-
-  // Get handover progress
-  Future<Map<String, dynamic>> getHandoverProgress(String handoverId) async {
-    try {
-      final handover = await _handoverRepository.getHandoverById(handoverId);
-
-      // Calculate progress based on status
-      int progressPercentage = 0;
-      switch (handover.status) {
-        case HandoverStatus.notStarted:
-          progressPercentage = 0;
-          break;
-        case HandoverStatus.inProgress:
-          progressPercentage = 0;
-          break;
-        case HandoverStatus.appointmentBooked:
-          progressPercentage = 20;
-          break;
-        case HandoverStatus.scheduled:
-          progressPercentage = 30;
-          break;
-        case HandoverStatus.inspectionPending:
-          progressPercentage = 40;
-          break;
-        case HandoverStatus.defectsSubmitted:
-          progressPercentage = 60;
-          break;
-        case HandoverStatus.defectsFixing:
-          progressPercentage = 80;
-          break;
-        case HandoverStatus.readyForHandover:
-          progressPercentage = 90;
-          break;
-        case HandoverStatus.completed:
-          progressPercentage = 100;
-          break;
-        case HandoverStatus.cancelled:
-          progressPercentage = 0;
-          break;
-      }
-
-      return {
-        'handover': handover,
-        'progress_percentage': progressPercentage,
-        'current_step': handover.status.name,
-        'is_completed': handover.status == HandoverStatus.completed,
-        'can_sign': handover.status == HandoverStatus.readyForHandover,
-      };
-    } catch (e) {
-      throw Exception('فشل تحميل تقدم التسليم: ${e.toString()}');
-    }
-  }
-
-  // --- Convenience methods for HandoverCubit (Unit ID based) ---
-
-  Future<Map<String, dynamic>> getHandoverStatus(String unitId) async {
-    try {
-      final handover = await _handoverRepository.getHandoverByUnit(unitId);
-      if (handover == null) {
-        return {'status': 'not_started', 'defects_count': 0};
-      }
-      return {
-        'status': handover.status.name,
-        'defects_count': handover.defectsCount,
-        'handover_id': handover.id,
-      };
-    } catch (e) {
-      throw Exception('فشل جلب حالة التسليم: ${e.toString()}');
-    }
-  }
-
-  Future<List<DefectModel>> getSnags(String unitId) async {
-    try {
-      final handover = await _handoverRepository.getHandoverByUnit(unitId);
-      if (handover == null) throw Exception('لا يوجد تسليم لهذه الوحدة');
-      return await getDefects(handover.id);
-    } catch (e) {
-      throw Exception('فشل جلب العيوب: ${e.toString()}');
-    }
-  }
-
-  Future<void> addSnag(String unitId, DefectModel snag) async {
-    try {
-      final handover = await _handoverRepository.getHandoverByUnit(unitId);
-      if (handover == null) throw Exception('لا يوجد تسليم لهذه الوحدة');
-
-      await submitDefect(
-        handoverId: handover.id,
-        category: snag.category.name,
-        description: snag.description,
-        severity: snag.severity.name,
-        location: snag.location,
-        photosPaths: snag.photos,
-      );
-    } catch (e) {
-      throw Exception('فشل إضافة العيب: ${e.toString()}');
-    }
-  }
-
-  Future<HandoverModel> completeHandover(
-    String unitId,
-    String signatureData,
-  ) async {
-    try {
-      final handover = await _handoverRepository.getHandoverByUnit(unitId);
-      if (handover == null) throw Exception('لا يوجد تسليم لهذه الوحدة');
-
-      return await signHandover(
-        handoverId: handover.id,
-        signaturePath: signatureData,
-      );
-    } catch (e) {
-      throw Exception('فشل إكمال التسليم: ${e.toString()}');
-    }
-  }
-
-  // ============ الدوال الجديدة المطلوبة ============
-
-  // تحديث صورة العيب
-  Future<void> updateDefectPhoto({
-    required String defectId,
-    required String photoPath,
-  }) async {
-    try {
-      await _handoverRepository.updateDefectPhoto(
-        defectId: defectId,
-        photoPath: photoPath,
-      );
-    } catch (e) {
-      throw Exception('فشل تحديث صورة العيب: ${e.toString()}');
-    }
-  }
-
-  // إضافة/تحديث تعليق إداري على العيب
-  Future<void> updateDefectComment({
-    required String defectId,
-    required String comment,
-  }) async {
-    try {
-      await _handoverRepository.updateDefectComment(
-        defectId: defectId,
-        comment: comment,
-      );
-    } catch (e) {
-      throw Exception('فشل تحديث تعليق العيب: ${e.toString()}');
-    }
-  }
-
-  // الحصول على إحصائيات التسليم
-  Future<Map<String, dynamic>> getHandoverStats(String handoverId) async {
-    try {
-      final handover = await _handoverRepository.getHandoverById(handoverId);
-      final defects = await getDefects(handoverId);
-
-      final totalDefects = defects.length;
-      final pendingDefects = defects.where((d) => d.isPending).length;
-      final fixedDefects = defects.where((d) => d.isFixed).length;
-      final criticalDefects = defects.where((d) => d.isCritical).length;
-      final inProgressDefects = defects.where((d) => d.isFixing).length;
-
-      final completionRate = totalDefects > 0
-          ? (fixedDefects / totalDefects) * 100
-          : 100.0;
-
-      return {
-        'handover_id': handoverId,
-        'total_defects': totalDefects,
-        'pending_defects': pendingDefects,
-        'fixed_defects': fixedDefects,
-        'critical_defects': criticalDefects,
-        'in_progress_defects': inProgressDefects,
-        'completion_rate': completionRate,
-        // 'overall_progress': handover.ov,
-        'status': handover.status.name,
-        'defects_by_category': _groupDefectsByCategory(defects),
-        'defects_by_severity': _groupDefectsBySeverity(defects),
-      };
-    } catch (e) {
-      throw Exception('فشل جلب إحصائيات التسليم: ${e.toString()}');
-    }
-  }
-
-  // الحصول على التسليم بواسطة الـ ID
-  Future<HandoverModel> getHandoverById(String handoverId) async {
-    try {
-      return await _handoverRepository.getHandoverById(handoverId);
-    } catch (e) {
-      throw Exception('فشل جلب بيانات التسليم: ${e.toString()}');
-    }
-  }
-
-  // الحصول على التسليم بواسطة الوحدة
-  Future<HandoverModel?> getHandoverByUnit(String unitId) async {
-    try {
-      return await _handoverRepository.getHandoverByUnit(unitId);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // إعادة جدولة موعد التسليم
-  Future<HandoverModel> rescheduleAppointment({
-    required String handoverId,
-    required DateTime newAppointmentDate,
-    String? reason,
-  }) async {
-    try {
-      await _handoverRepository.rescheduleAppointment(
-        handoverId: handoverId,
-        newAppointmentDate: newAppointmentDate,
-        reason: reason,
-      );
-      return await _handoverRepository.getHandoverById(handoverId);
-    } catch (e) {
-      throw Exception('فشل إعادة جدولة الموعد: ${e.toString()}');
-    }
-  }
-
-  // إلغاء التسليم
-  Future<HandoverModel> cancelHandover({
-    required String handoverId,
-    required String reason,
-  }) async {
-    try {
-      await _handoverRepository.cancelHandover(
-        handoverId: handoverId,
-        reason: reason,
-      );
-      return await _handoverRepository.getHandoverById(handoverId);
-    } catch (e) {
-      throw Exception('فشل إلغاء التسليم: ${e.toString()}');
-    }
-  }
-
-  // تحديث حالة العيب إلى "قيد الإصلاح"
-  Future<void> markDefectAsFixing({
-    required String defectId,
-    String? estimatedCompletionDate,
-  }) async {
-    try {
-      await _handoverRepository.markDefectAsFixing(
-        defectId: defectId,
-        estimatedCompletionDate: estimatedCompletionDate,
-      );
-    } catch (e) {
-      throw Exception('فشل تحديث حالة العيب: ${e.toString()}');
-    }
-  }
-
-  // تحديث حالة العيب إلى "مُصلح"
-  Future<void> markDefectAsFixed({
-    required String defectId,
-    String? fixNotes,
-    List<String>? afterPhotos,
-  }) async {
-    try {
-      await _handoverRepository.markDefectAsFixed(
-        defectId: defectId,
-        fixNotes: fixNotes,
-        afterPhotos: afterPhotos,
-      );
-    } catch (e) {
-      throw Exception('فشل تحديث حالة العيب: ${e.toString()}');
-    }
-  }
-
-  // ============ دوال مساعدة خاصة ============
-
-  // تجميع العيوب حسب الفئة
-  Map<String, int> _groupDefectsByCategory(List<DefectModel> defects) {
-    final Map<String, int> result = {};
-
-    for (final defect in defects) {
-      final category = defect.category.name;
-      result[category] = (result[category] ?? 0) + 1;
+    switch (handover.status) {
+      case HandoverStatus.scheduled:
+      case HandoverStatus.notStarted:
+      case HandoverStatus.appointmentBooked:
+        statusColor = AppColors.warning;
+        statusText = 'مجدولة';
+        statusIcon = Icons.schedule;
+        break;
+      case HandoverStatus.inspectionPending:
+      case HandoverStatus.defectsSubmitted:
+      case HandoverStatus.defectsFixing:
+        statusColor = AppColors.primary;
+        statusText = 'جارية';
+        statusIcon = Icons.timelapse;
+        break;
+      case HandoverStatus.readyForHandover:
+        statusColor = AppColors.info;
+        statusText = 'جاهزة';
+        statusIcon = Icons.done_all;
+        break;
+      case HandoverStatus.completed:
+        statusColor = AppColors.success;
+        statusText = 'مكتملة';
+        statusIcon = Icons.check_circle;
+        break;
+      case HandoverStatus.cancelled:
+        statusColor = AppColors.error;
+        statusText = 'ملغاة';
+        statusIcon = Icons.cancel;
+        break;
+      case HandoverStatus.inProgress:
+        statusColor = AppColors.primary;
+        statusText = 'قيد التنفيذ';
+        statusIcon = Icons.engineering;
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusText = handover.status.name;
+        statusIcon = Icons.help_outline;
     }
 
-    return result;
-  }
-
-  // تجميع العيوب حسب الخطورة
-  Map<String, int> _groupDefectsBySeverity(List<DefectModel> defects) {
-    final Map<String, int> result = {};
-
-    for (final defect in defects) {
-      final severity = defect.severity.name;
-      result[severity] = (result[severity] ?? 0) + 1;
-    }
-
-    return result;
-  }
-
-  // التحقق من جاهزية التسليم للتوقيع
-  Future<bool> isReadyForSigning(String handoverId) async {
-    try {
-      final defects = await getDefects(handoverId);
-      final pendingDefects = defects.where((d) => !d.isFixed).length;
-      return pendingDefects == 0;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // الحصول على العيوب المعلقة
-  Future<List<DefectModel>> getPendingDefects(String handoverId) async {
-    try {
-      final defects = await getDefects(handoverId);
-      return defects.where((d) => d.isPending).toList();
-    } catch (e) {
-      return [];
-    }
-  }
-
-  // الحصول على العيوب الحرجة
-  Future<List<DefectModel>> getCriticalDefects(String handoverId) async {
-    try {
-      final defects = await getDefects(handoverId);
-      return defects.where((d) => d.isCritical).toList();
-    } catch (e) {
-      return [];
-    }
-  }
-
-  // تحديث معلومات العيب
-  Future<void> updateDefect({
-    required String defectId,
-    String? description,
-    String? location,
-    DefectSeverity? severity,
-    DefectCategory? category,
-  }) async {
-    try {
-      await _handoverRepository.updateDefect(
-        defectId: defectId,
-        description: description,
-        location: location,
-        severity: severity?.name,
-        category: category?.name,
-      );
-    } catch (e) {
-      throw Exception('فشل تحديث العيب: ${e.toString()}');
-    }
+    return Card(
+      margin: const EdgeInsets.only(bottom: Dimensions.spaceL),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => HandoverDetailScreen(handover: handover),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(Dimensions.radiusM),
+        child: Padding(
+          padding: const EdgeInsets.all(Dimensions.spaceL),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(Dimensions.spaceS),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(Dimensions.radiusS),
+                    ),
+                    child: Icon(statusIcon, color: statusColor, size: 24),
+                  ),
+                  const SizedBox(width: Dimensions.spaceM),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'تسليم وحدة',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          statusText,
+                          style: TextStyle(fontSize: 13, color: statusColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios, size: 16),
+                ],
+              ),
+              const Divider(height: Dimensions.spaceL * 2),
+              if (handover.scheduledDate != null)
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: Dimensions.spaceS),
+                    Text(
+                      'الموعد: ${DateFormat('yyyy-MM-dd HH:mm').format(handover.scheduledDate!)}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              if (handover.actualDate != null) ...[
+                const SizedBox(height: Dimensions.spaceS),
+                Row(
+                  children: [
+                    Icon(Icons.check, size: 16, color: AppColors.success),
+                    const SizedBox(width: Dimensions.spaceS),
+                    Text(
+                      'تم التسليم: ${DateFormat('yyyy-MM-dd').format(handover.actualDate!)}',
+                      style: TextStyle(fontSize: 13, color: AppColors.success),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

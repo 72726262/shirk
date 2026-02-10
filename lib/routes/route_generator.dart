@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
 import 'package:mmm/presentation/screens/projects/join_project_flow/signature_screen.dart';
 import 'package:mmm/presentation/screens/projects/join_project_flow/signature_screen.dart'
-    as NewSignature;
+    as new_signature;
 import 'package:mmm/routes/route_names.dart';
 import 'package:mmm/data/models/project_model.dart';
 import 'package:mmm/data/models/installment_model.dart';
@@ -16,6 +18,7 @@ import 'package:mmm/presentation/screens/auth/kyc_verification_screen.dart';
 // Dashboard
 import 'package:mmm/presentation/screens/dashboard/client_dashboard.dart';
 import 'package:mmm/presentation/screens/admin/admin_dashboard_screen.dart';
+import 'package:mmm/presentation/screens/super_admin/super_admin_dashboard_screen.dart';
 
 // Projects
 import 'package:mmm/presentation/screens/projects/projects_list_screen.dart';
@@ -25,8 +28,6 @@ import 'package:mmm/presentation/screens/projects/project_detail_screen.dart';
 import 'package:mmm/presentation/screens/projects/join_project_flow/select_unit_screen.dart';
 import 'package:mmm/presentation/screens/projects/join_project_flow/contract_summary_screen.dart';
 import 'package:mmm/presentation/screens/projects/join_project_flow/payment_screen.dart';
-import 'package:mmm/presentation/screens/projects/join_project_flow/e_signature_screen.dart';
-import 'package:mmm/presentation/screens/projects/join_project_flow/confirmation_screen.dart';
 
 // Wallet
 import 'package:mmm/presentation/screens/wallet/wallet_screen.dart';
@@ -98,6 +99,34 @@ class RouteGenerator {
 
       // Dashboard
       case RouteNames.dashboard:
+        // Get current auth state to determine which dashboard to show
+        return MaterialPageRoute(
+          builder: (context) {
+            try {
+              final authCubit = BlocProvider.of<AuthCubit>(context);
+              final authState = authCubit.state;
+              
+              if (authState is Authenticated) {
+                // Route based on user role
+                switch (authState.user.role) {
+                  case 'super_admin':
+                    return const SuperAdminDashboardScreen();
+                  case 'admin':
+                    return const AdminDashboardScreen();
+                  case 'client':
+                  default:
+                    return const ClientDashboard();
+                }
+              }
+              // If not authenticated, redirect to login
+              return const LoginScreen();
+            } catch (e) {
+              // Fallback to client dashboard if there's any error
+              return const ClientDashboard();
+            }
+          },
+        );
+
       case RouteNames.clientDashboard:
         return _fadeRoute(const ClientDashboard());
 
@@ -146,7 +175,7 @@ class RouteGenerator {
       case RouteNames.signature:
         if (args is Map) {
           return _slideRoute(
-            NewSignature.SignatureScreen(
+            new_signature.SignatureScreen(
               // الملف الجديد
               subscriptionId: args['subscriptionId'],
             ),

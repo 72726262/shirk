@@ -1,4 +1,5 @@
 import 'package:mmm/data/models/user_model.dart';
+import 'package:mmm/data/models/admin_dashboard_stats.dart';
 import 'package:mmm/data/repositories/admin_repository.dart';
 
 /// Admin Service - Handles admin panel business logic
@@ -9,7 +10,7 @@ class AdminService {
       : _adminRepository = adminRepository ?? AdminRepository();
 
   // Get dashboard statistics
-  Future<Map<String, dynamic>> getDashboardStats() async {
+  Future<AdminDashboardStats> getDashboardStats() async {
     try {
       return await _adminRepository.getDashboardStats();
     } catch (e) {

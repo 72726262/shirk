@@ -186,7 +186,7 @@ class _InstallmentsView extends StatelessWidget {
         borderRadius: BorderRadius.circular(Dimensions.radiusM),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadow.withOpacity(0.05),
+            color: AppColors.shadow.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -257,7 +257,7 @@ class _InstallmentsView extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(Dimensions.spaceS),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(Dimensions.radiusS),
                     ),
                     child: Icon(statusIcon, color: statusColor, size: 20),
