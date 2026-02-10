@@ -7,7 +7,9 @@ class RouteNames {
   static const String kycVerification = '/kyc-verification';
 
   // Dashboard
-  static const String dashboard = '/dashboard';
+  static const String dashboard = '/dashboard'; // Legacy - redirects based on role
+  static const String clientDashboard = '/client/dashboard';
+  static const String adminDashboard = '/admin/dashboard';
 
   // Projects
   static const String projectsList = '/projects';
@@ -55,7 +57,6 @@ class RouteNames {
   static const String settings = '/settings';
 
   // Admin
-  static const String adminDashboard = '/admin/dashboard';
   static const String manageClients = '/admin/clients';
   static const String manageProjects = '/admin/projects';
   static const String managePayments = '/admin/payments';

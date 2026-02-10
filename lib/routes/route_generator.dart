@@ -86,6 +86,7 @@ class RouteGenerator {
 
       // Dashboard
       case RouteNames.dashboard:
+      case RouteNames.clientDashboard:
         return _fadeRoute(const ClientDashboard());
 
       case RouteNames.adminDashboard:

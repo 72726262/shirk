@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
+import 'package:mmm/core/utils/dashboard_router.dart';
 import 'package:mmm/presentation/widgets/common/custom_text_field.dart';
 import 'package:mmm/presentation/widgets/common/primary_button.dart';
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
@@ -432,16 +433,20 @@ class _LoginScreenState extends State<LoginScreen> {
         child: BlocConsumer<AuthCubit, AuthState>(
           listener: (context, state) {
             if (state is Authenticated) {
-              // التحقق من حالة الـ KYC
+              // Check KYC status first
               if (state.user.kycStatus == KYCStatus.approved) {
-                Navigator.pushReplacementNamed(context, RouteNames.dashboard);
+                // KYC approved - route to appropriate dashboard based on role
+                final dashboardRoute = DashboardRouter.getDashboardRoute(state.role);
+                Navigator.pushReplacementNamed(context, dashboardRoute);
               } else if (state.user.kycStatus == KYCStatus.pending ||
                   state.user.kycStatus == KYCStatus.underReview) {
+                // KYC pending - go to verification
                 Navigator.pushReplacementNamed(
                   context,
                   RouteNames.kycVerification,
                 );
               } else {
+                // KYC rejected or other - go to verification
                 Navigator.pushReplacementNamed(
                   context,
                   RouteNames.kycVerification,

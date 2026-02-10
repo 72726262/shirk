@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
+import 'package:mmm/core/enums/user_role.dart';
 import 'package:mmm/presentation/widgets/common/primary_button.dart';
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
 import 'package:mmm/routes/route_names.dart';
@@ -23,6 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _acceptTerms = false;
+  UserRole _selectedRole = UserRole.client; // Default to client
 
   @override
   void dispose() {
@@ -146,6 +148,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           hint: '01XXXXXXXXX',
                           icon: Icons.phone,
                           keyboardType: TextInputType.phone,
+                        ),
+
+                        const SizedBox(height: Dimensions.spaceL),
+
+                        // Role Selection
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'نوع الحساب',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: Dimensions.spaceXS),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.white,
+                                borderRadius: BorderRadius.circular(Dimensions.radiusM),
+                                border: Border.all(color: AppColors.border),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.shadow,
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: DropdownButtonFormField<UserRole>(
+                                value: _selectedRole,
+                                decoration: InputDecoration(
+                                  border: InputBorder.none,
+                                  prefixIcon: const Icon(
+                                    Icons.admin_panel_settings,
+                                    color: AppColors.primary,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: Dimensions.spaceL,
+                                    vertical: Dimensions.spaceM,
+                                  ),
+                                ),
+                                items: UserRole.values.map((role) {
+                                  return DropdownMenuItem(
+                                    value: role,
+                                    child: Text(role.displayName),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedRole = value!;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
                         ),
 
                         const SizedBox(height: Dimensions.spaceL),
@@ -592,6 +647,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordController.text,
         fullName: _nameController.text.trim(),
         phone: _phoneController.text.trim(),
+        role: _selectedRole.value,
       );
     }
   }

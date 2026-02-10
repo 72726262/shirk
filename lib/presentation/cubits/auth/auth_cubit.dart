@@ -20,8 +20,8 @@ class AuthCubit extends Cubit<AuthState> {
       emit(AuthLoading());
       final user = await authRepository.getCurrentUser();
       if (user != null) {
-        // استخدم role افتراضي 'client' للمستخدمين الجدد
-        emit(Authenticated(user: user, role: 'client'));
+        // Use the actual role from the user object
+        emit(Authenticated(user: user, role: user.role));
       } else {
         emit(Unauthenticated());
       }
@@ -34,8 +34,8 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       emit(AuthLoading());
       final user = await authRepository.signIn(email, password);
-      // استخدم role افتراضي 'client' للمستخدمين الجدد
-      emit(Authenticated(user: user, role: 'client'));
+      // Use the actual role from the user object
+      emit(Authenticated(user: user, role: user.role));
     } catch (e) {
       emit(AuthError(message: 'فشل تسجيل الدخول: ${e.toString()}'));
     }
@@ -46,6 +46,7 @@ class AuthCubit extends Cubit<AuthState> {
     required String password,
     required String fullName,
     String? phone,
+    String role = 'client',
   }) async {
     try {
       emit(AuthLoading());
@@ -54,9 +55,10 @@ class AuthCubit extends Cubit<AuthState> {
         password: password,
         fullName: fullName,
         phone: phone,
+        role: role,
       );
-      // استخدم role افتراضي 'client' للمستخدمين الجدد
-      emit(Authenticated(user: user, role: 'client'));
+      // Use the actual role from the user object
+      emit(Authenticated(user: user, role: user.role));
     } catch (e) {
       emit(AuthError(message: 'فشل إنشاء الحساب: ${e.toString()}'));
     }

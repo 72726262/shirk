@@ -92,6 +92,7 @@ class AuthRepository {
     required String password,
     required String fullName,
     String? phone,
+    String role = 'client', // Default role is client
   }) async {
     try {
       // التحقق من البيانات
@@ -123,6 +124,7 @@ class AuthRepository {
             email: email.trim(),
             fullName: fullName.trim(),
             phone: phone?.trim(),
+            role: role,
           );
           return profile;
         }
@@ -147,6 +149,7 @@ class AuthRepository {
           email: email.trim(),
           fullName: fullName.trim(),
           phone: phone?.trim(),
+          role: role,
         );
 
         print('✅ تم إنشاء/الحصول على الملف الشخصي: ${profile.id}');
@@ -174,6 +177,7 @@ class AuthRepository {
     required String email,
     required String fullName,
     String? phone,
+    String role = 'client',
   }) async {
     try {
       // أولاً: حاول الحصول على الملف الشخصي الموجود
@@ -194,7 +198,7 @@ class AuthRepository {
               'email': email,
               'full_name': fullName,
               'phone': phone,
-              'role': 'client',
+              'role': role,
               'kyc_status': 'pending',
               'created_at': DateTime.now().toIso8601String(),
               'updated_at': DateTime.now().toIso8601String(),
@@ -225,6 +229,7 @@ class AuthRepository {
             email: email,
             fullName: fullName,
             phone: phone,
+            role: role,
           );
         }
         rethrow;
@@ -241,6 +246,7 @@ class AuthRepository {
     required String email,
     required String fullName,
     String? phone,
+    String role = 'client',
   }) async {
     try {
       final newUserId =
@@ -255,7 +261,7 @@ class AuthRepository {
             'email': email,
             'full_name': fullName,
             'phone': phone,
-            'role': 'client',
+            'role': role,
             'kyc_status': 'pending',
             'created_at': DateTime.now().toIso8601String(),
             'updated_at': DateTime.now().toIso8601String(),
