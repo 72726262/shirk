@@ -94,7 +94,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
               controller: _amountController,
               label: 'المبلغ المطلوب إضافته',
               hint: 'أدخل المبلغ بالجنيه المصري',
-              prefixIcon: Icon(Icons.attach_money),
+              prefixIcon: Icons.attach_money,
               keyboardType: TextInputType.number,
             ),
 

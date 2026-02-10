@@ -156,15 +156,17 @@ class _ClientDashboardState extends State<ClientDashboard> {
   }
 
   Widget _buildLoadingState() {
-    return ListView(
+    return SingleChildScrollView(
       padding: Dimensions.screenPadding,
-      children: const [
-        SkeletonCard(height: 200),
-        SizedBox(height: Dimensions.spaceXXL),
-        SkeletonCard(height: 150),
-        SizedBox(height: Dimensions.spaceXXL),
-        SkeletonList(itemCount: 3),
-      ],
+      child: Column(
+        children: const [
+          SkeletonCard(height: 200),
+          SizedBox(height: Dimensions.spaceXXL),
+          SkeletonCard(height: 150),
+          SizedBox(height: Dimensions.spaceXXL),
+          SkeletonList(itemCount: 3),
+        ],
+      ),
     );
   }
 

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/presentation/widgets/common/primary_button.dart';
+import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
+import 'package:mmm/routes/route_names.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -34,299 +37,337 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.primaryDark, AppColors.primary],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(40),
-                  bottomRight: Radius.circular(40),
-                ),
+      body: BlocConsumer<AuthCubit, AuthState>(
+        listener: (context, state) {
+          if (state is Authenticated) {
+            // توجيه مباشر إلى التحقق من الهوية بعد التسجيل
+            Navigator.pushReplacementNamed(context, RouteNames.kycVerification);
+          }
+          if (state is AuthError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
               ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: AppColors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(40),
-                      ),
-                      child: const Icon(
-                        Icons.person_add,
-                        size: 40,
-                        color: AppColors.white,
-                      ),
+            );
+          }
+        },
+        builder: (context, state) {
+          final isLoading = state is AuthLoading;
+
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppColors.primaryDark, AppColors.primary],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    const SizedBox(height: Dimensions.spaceL),
-                    const Text(
-                      'إنشاء حساب جديد',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.white,
-                      ),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(40),
+                      bottomRight: Radius.circular(40),
                     ),
-                    const SizedBox(height: Dimensions.spaceS),
-                    Text(
-                      'انضم لرحلة الاستثمار العقاري الذكي',
-                      style: TextStyle(color: AppColors.white.withOpacity(0.9)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Form
-            Padding(
-              padding: const EdgeInsets.all(Dimensions.spaceXL),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Name Field
-                    _buildTextField(
-                      controller: _nameController,
-                      label: 'الاسم الكامل',
-                      hint: 'أدخل اسمك الثلاثي',
-                      icon: Icons.person,
-                    ),
-
-                    const SizedBox(height: Dimensions.spaceL),
-
-                    // Email Field
-                    _buildTextField(
-                      controller: _emailController,
-                      label: 'البريد الإلكتروني',
-                      hint: 'example@email.com',
-                      icon: Icons.email,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-
-                    const SizedBox(height: Dimensions.spaceL),
-
-                    // Phone Field
-                    _buildTextField(
-                      controller: _phoneController,
-                      label: 'رقم الهاتف',
-                      hint: '01XXXXXXXXX',
-                      icon: Icons.phone,
-                      keyboardType: TextInputType.phone,
-                    ),
-
-                    const SizedBox(height: Dimensions.spaceL),
-
-                    // Password Field
-                    _buildPasswordField(
-                      controller: _passwordController,
-                      label: 'كلمة المرور',
-                      hint: 'أدخل كلمة المرور',
-                      obscureText: _obscurePassword,
-                      onToggleVisibility: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
-                    ),
-
-                    const SizedBox(height: Dimensions.spaceS),
-
-                    // Password Strength
-                    _buildPasswordStrength(),
-
-                    const SizedBox(height: Dimensions.spaceL),
-
-                    // Confirm Password Field
-                    _buildPasswordField(
-                      controller: _confirmPasswordController,
-                      label: 'تأكيد كلمة المرور',
-                      hint: 'أعد إدخال كلمة المرور',
-                      obscureText: _obscureConfirmPassword,
-                      onToggleVisibility: () {
-                        setState(() {
-                          _obscureConfirmPassword = !_obscureConfirmPassword;
-                        });
-                      },
-                    ),
-
-                    const SizedBox(height: Dimensions.spaceL),
-
-                    // Terms Checkbox
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Checkbox(
-                          value: _acceptTerms,
-                          onChanged: (value) {
-                            setState(() {
-                              _acceptTerms = value!;
-                            });
-                          },
-                          activeColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              Dimensions.radiusS,
-                            ),
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: AppColors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(40),
+                          ),
+                          child: const Icon(
+                            Icons.person_add,
+                            size: 40,
+                            color: AppColors.white,
                           ),
                         ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'أوافق على الشروط والأحكام وسياسة الخصوصية',
-                                style: TextStyle(fontSize: 14),
+                        const SizedBox(height: Dimensions.spaceL),
+                        const Text(
+                          'إنشاء حساب جديد',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.white,
+                          ),
+                        ),
+                        const SizedBox(height: Dimensions.spaceS),
+                        Text(
+                          'انضم لرحلة الاستثمار العقاري الذكي',
+                          style: TextStyle(
+                            color: AppColors.white.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Form
+                Padding(
+                  padding: const EdgeInsets.all(Dimensions.spaceXL),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Name Field
+                        _buildTextField(
+                          controller: _nameController,
+                          label: 'الاسم الكامل',
+                          hint: 'أدخل اسمك الثلاثي',
+                          icon: Icons.person,
+                        ),
+
+                        const SizedBox(height: Dimensions.spaceL),
+
+                        // Email Field
+                        _buildTextField(
+                          controller: _emailController,
+                          label: 'البريد الإلكتروني',
+                          hint: 'example@email.com',
+                          icon: Icons.email,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+
+                        const SizedBox(height: Dimensions.spaceL),
+
+                        // Phone Field
+                        _buildTextField(
+                          controller: _phoneController,
+                          label: 'رقم الهاتف',
+                          hint: '01XXXXXXXXX',
+                          icon: Icons.phone,
+                          keyboardType: TextInputType.phone,
+                        ),
+
+                        const SizedBox(height: Dimensions.spaceL),
+
+                        // Password Field
+                        _buildPasswordField(
+                          controller: _passwordController,
+                          label: 'كلمة المرور',
+                          hint: 'أدخل كلمة المرور',
+                          obscureText: _obscurePassword,
+                          onToggleVisibility: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+
+                        const SizedBox(height: Dimensions.spaceS),
+
+                        // Password Strength
+                        _buildPasswordStrength(),
+
+                        const SizedBox(height: Dimensions.spaceL),
+
+                        // Confirm Password Field
+                        _buildPasswordField(
+                          controller: _confirmPasswordController,
+                          label: 'تأكيد كلمة المرور',
+                          hint: 'أعد إدخال كلمة المرور',
+                          obscureText: _obscureConfirmPassword,
+                          onToggleVisibility: () {
+                            setState(() {
+                              _obscureConfirmPassword =
+                                  !_obscureConfirmPassword;
+                            });
+                          },
+                        ),
+
+                        const SizedBox(height: Dimensions.spaceL),
+
+                        // Terms Checkbox
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Checkbox(
+                              value: _acceptTerms,
+                              onChanged: (value) {
+                                setState(() {
+                                  _acceptTerms = value!;
+                                });
+                              },
+                              activeColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  Dimensions.radiusS,
+                                ),
                               ),
-                              const SizedBox(height: Dimensions.spaceXS),
-                              Row(
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  TextButton(
-                                    onPressed: () {
-                                      // Show terms
-                                    },
-                                    style: TextButton.styleFrom(
-                                      padding: EdgeInsets.zero,
-                                      minimumSize: const Size(50, 30),
-                                    ),
-                                    child: const Text(
-                                      'قراءة الشروط',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
+                                  const Text(
+                                    'أوافق على الشروط والأحكام وسياسة الخصوصية',
+                                    style: TextStyle(fontSize: 14),
                                   ),
-                                  Text(
-                                    ' و ',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      // Show privacy policy
-                                    },
-                                    style: TextButton.styleFrom(
-                                      padding: EdgeInsets.zero,
-                                      minimumSize: const Size(50, 30),
-                                    ),
-                                    child: const Text(
-                                      'سياسة الخصوصية',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        decoration: TextDecoration.underline,
+                                  const SizedBox(height: Dimensions.spaceXS),
+                                  Row(
+                                    children: [
+                                      TextButton(
+                                        onPressed: () {
+                                          // Show terms
+                                        },
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          minimumSize: const Size(50, 30),
+                                        ),
+                                        child: const Text(
+                                          'قراءة الشروط',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            decoration:
+                                                TextDecoration.underline,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      Text(
+                                        ' و ',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          // Show privacy policy
+                                        },
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          minimumSize: const Size(50, 30),
+                                        ),
+                                        child: const Text(
+                                          'سياسة الخصوصية',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            decoration:
+                                                TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: Dimensions.spaceXL),
-
-                    // Register Button
-                    PrimaryButton(
-                      onPressed: _acceptTerms ? _register : null,
-                      text: 'إنشاء حساب',
-                    ),
-
-                    const SizedBox(height: Dimensions.spaceL),
-
-                    // Divider
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Divider(color: AppColors.border, thickness: 1),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: Dimensions.spaceL,
-                          ),
-                          child: Text(
-                            'أو',
-                            style: TextStyle(color: AppColors.textSecondary),
-                          ),
-                        ),
-                        Expanded(
-                          child: Divider(color: AppColors.border, thickness: 1),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: Dimensions.spaceL),
-
-                    // Social Login
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildSocialButton(
-                          icon: Icons.g_mobiledata,
-                          color: const Color(0xFFEA4335),
-                          onPressed: () {},
-                        ),
-                        const SizedBox(width: Dimensions.spaceL),
-                        _buildSocialButton(
-                          icon: Icons.facebook,
-                          color: const Color(0xFF1877F2),
-                          onPressed: () {},
-                        ),
-                        const SizedBox(width: Dimensions.spaceL),
-                        _buildSocialButton(
-                          icon: Icons.apple,
-                          color: AppColors.black,
-                          onPressed: () {},
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: Dimensions.spaceXL),
-
-                    // Login Link
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'لديك حساب بالفعل؟',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(width: Dimensions.spaceS),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                          child: const Text(
-                            'تسجيل الدخول',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
                             ),
-                          ),
+                          ],
+                        ),
+
+                        const SizedBox(height: Dimensions.spaceXL),
+
+                        // Register Button
+                        PrimaryButton(
+                          onPressed: _acceptTerms && !isLoading
+                              ? _register
+                              : null,
+                          text: 'إنشاء حساب',
+                          isLoading: isLoading,
+                        ),
+
+                        const SizedBox(height: Dimensions.spaceL),
+
+                        // Divider
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Divider(
+                                color: AppColors.border,
+                                thickness: 1,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: Dimensions.spaceL,
+                              ),
+                              child: Text(
+                                'أو',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Divider(
+                                color: AppColors.border,
+                                thickness: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: Dimensions.spaceL),
+
+                        // Social Login
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildSocialButton(
+                              icon: Icons.g_mobiledata,
+                              color: const Color(0xFFEA4335),
+                              onPressed: () {},
+                            ),
+                            const SizedBox(width: Dimensions.spaceL),
+                            _buildSocialButton(
+                              icon: Icons.facebook,
+                              color: const Color(0xFF1877F2),
+                              onPressed: () {},
+                            ),
+                            const SizedBox(width: Dimensions.spaceL),
+                            _buildSocialButton(
+                              icon: Icons.apple,
+                              color: AppColors.black,
+                              onPressed: () {},
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: Dimensions.spaceXL),
+
+                        // Login Link
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'لديك حساب بالفعل؟',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                            const SizedBox(width: Dimensions.spaceS),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                              ),
+                              child: const Text(
+                                'تسجيل الدخول',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -337,6 +378,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required String hint,
     required IconData icon,
     TextInputType? keyboardType,
+    String? Function(String?)? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,9 +398,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ],
           ),
-          child: TextField(
+          child: TextFormField(
             controller: controller,
             keyboardType: keyboardType,
+            validator: validator,
             decoration: InputDecoration(
               hintText: hint,
               border: InputBorder.none,
@@ -380,6 +423,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required String hint,
     required bool obscureText,
     required VoidCallback onToggleVisibility,
+    String? Function(String?)? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -399,9 +443,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ],
           ),
-          child: TextField(
+          child: TextFormField(
             controller: controller,
             obscureText: obscureText,
+            validator: validator,
             decoration: InputDecoration(
               hintText: hint,
               border: InputBorder.none,
@@ -520,8 +565,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() {
     if (_formKey.currentState!.validate() && _acceptTerms) {
-      // Register logic here
-      Navigator.pushReplacementNamed(context, '/dashboard');
+      // Validation logic
+      if (_passwordController.text != _confirmPasswordController.text) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('كلمة المرور وتأكيدها غير متطابقتين'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      if (_passwordController.text.length < 6) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Call AuthCubit for registration
+      context.read<AuthCubit>().signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        fullName: _nameController.text.trim(),
+        phone: _phoneController.text.trim(),
+      );
     }
   }
 }

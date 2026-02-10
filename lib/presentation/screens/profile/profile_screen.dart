@@ -19,8 +19,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     fullName: 'محمد أحمد',
     phone: '+966500000000',
     nationalId: '1234567890',
-    role: UserRole.client,
-    kycStatus: KycStatus.approved,
+
     createdAt: DateTime.now().subtract(const Duration(days: 365)),
     updatedAt: DateTime.now(),
   );
@@ -103,7 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(width: Dimensions.spaceS),
                             Text(
-                              _user.kycStatus.displayName,
+                              "لقثلقثلق",
                               style: const TextStyle(
                                 color: AppColors.white,
                                 fontSize: 12,

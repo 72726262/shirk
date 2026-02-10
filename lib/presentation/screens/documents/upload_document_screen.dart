@@ -136,7 +136,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                   CustomTextField(
                     controller: _nameController,
                     label: 'اسم المستند',
-                    prefixIcon: Icon(Icons.description),
+                    prefixIcon: Icons.description,
 
                     validator: (v) =>
                         v?.isEmpty ?? true ? 'الرجاء إدخال اسم المستند' : null,

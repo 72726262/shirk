@@ -59,23 +59,6 @@ class ProfileCubit extends Cubit<ProfileState> {
     : _authRepository = authRepository,
       super(ProfileInitial());
 
-  Future<void> loadProfile() async {
-    emit(ProfileLoading());
-    try {
-      // تم التعديل هنا: استخدام _authRepository مباشرة
-      final user = await _authRepository.getCurrentUser();
-
-      if (user == null) {
-        emit(const ProfileError('المستخدم غير موجود'));
-        return;
-      }
-
-      emit(ProfileLoaded(user));
-    } catch (e) {
-      emit(ProfileError(e.toString()));
-    }
-  }
-
   Future<void> updateProfile({
     String? fullName,
     String? phone,
@@ -95,10 +78,6 @@ class ProfileCubit extends Cubit<ProfileState> {
       phone: phone,
       avatarPath: avatarPath,
     );
-  }
-
-  Future<void> refreshProfile() async {
-    await loadProfile();
   }
 
   // دالة إضافية لتحديث الصورة فقط
@@ -124,31 +103,6 @@ class ProfileCubit extends Cubit<ProfileState> {
   }
 
   // دالة إضافية لتغيير كلمة المرور
-  Future<void> changePassword({
-    required String currentPassword,
-    required String newPassword,
-  }) async {
-    if (state is! ProfileLoaded) {
-      emit(const ProfileError('يجب تحميل الملف الشخصي أولاً'));
-      return;
-    }
-
-    final currentUser = (state as ProfileLoaded).user;
-    emit(const ProfileUpdating('جاري تغيير كلمة المرور...'));
-
-    try {
-      await _authRepository.changePassword(
-        userId: currentUser.id,
-        currentPassword: currentPassword,
-        newPassword: newPassword,
-      );
-
-      // إعادة تحميل البيانات بعد التحديث
-      await loadProfile();
-    } catch (e) {
-      emit(ProfileError(e.toString()));
-    }
-  }
 
   // دالة للحصول على بيانات المستخدم الحالي
   UserModel? getCurrentUserData() {

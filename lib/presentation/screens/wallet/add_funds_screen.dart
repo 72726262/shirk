@@ -130,7 +130,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                   hint: '0',
                   label: 'المبلغ',
                   enabled: !isProcessing,
-                  suffixIcon: Icon(Icons.money),
+                  suffixIcon: Icons.money,
                   validator: (value) {
                     final amount = double.tryParse(value ?? '');
                     if (amount == null || amount < 100) {

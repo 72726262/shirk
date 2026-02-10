@@ -1,9 +1,10 @@
+// lib/presentation/screens/auth/verify_phone_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/presentation/widgets/common/primary_button.dart';
-import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
+import 'package:mmm/presentation/cubits/auth/auth_cubit.dart'; // أضف هذا الاستيراد
 import 'package:mmm/routes/route_names.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'dart:async';
@@ -29,12 +30,12 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
   void initState() {
     super.initState();
     _startCountdown();
-    
+
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
@@ -65,7 +66,7 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
   }
 
   void _resendCode() {
-    context.read<AuthCubit>().resendPhoneVerificationCode(widget.phoneNumber);
+    context.read<AuthCubit>().resendPhoneVerificationCode();
     _startCountdown();
   }
 
@@ -145,8 +146,8 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
                 Text(
                   'أدخل رمز التأكيد',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: Dimensions.spaceL),
 
@@ -155,9 +156,9 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
                   textAlign: TextAlign.center,
                   text: TextSpan(
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                          height: 1.5,
-                        ),
+                      color: AppColors.textSecondary,
+                      height: 1.5,
+                    ),
                     children: [
                       const TextSpan(text: 'أرسلنا رمز مكون من 6 أرقام إلى\n'),
                       TextSpan(
@@ -222,8 +223,8 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
                       Text(
                         'إعادة الإرسال بعد $_countdown ثانية',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   )
@@ -245,7 +246,7 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
                       ? () => _verifyCode(_pinController.text)
                       : null,
                   isLoading: isLoading,
-                  icon: Icons.check_circle,
+                  leadingIcon: Icons.check_circle,
                 ),
                 const SizedBox(height: Dimensions.spaceL),
 
@@ -263,9 +264,7 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
                   decoration: BoxDecoration(
                     color: AppColors.info.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(Dimensions.radiusL),
-                    border: Border.all(
-                      color: AppColors.info.withOpacity(0.2),
-                    ),
+                    border: Border.all(color: AppColors.info.withOpacity(0.2)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,10 +278,8 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
                       Expanded(
                         child: Text(
                           'لم تستلم الرمز؟ تحقق من رسائلك أو اتصل بالدعم الفني',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.info,
-                                height: 1.4,
-                              ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppColors.info, height: 1.4),
                         ),
                       ),
                     ],

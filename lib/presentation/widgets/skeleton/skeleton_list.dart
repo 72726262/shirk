@@ -22,6 +22,8 @@ class SkeletonList extends StatelessWidget {
       baseColor: AppColors.gray200,
       highlightColor: AppColors.gray100,
       child: ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(Dimensions.spaceL),
         itemCount: itemCount,
         itemBuilder: (context, index) {

@@ -1,128 +1,62 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+// lib/presentation/cubits/kyc/kyc_cubit.dart
+import 'dart:io'; // أضف هذا
+import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:mmm/data/models/user_model.dart';
-import 'package:mmm/data/services/auth_service.dart';
+import 'package:mmm/data/repositories/kyc_repository.dart';
 
-// States
-abstract class KYCState extends Equatable {
-  const KYCState();
+part 'kyc_state.dart';
 
-  @override
-  List<Object?> get props => [];
-}
+class KycCubit extends Cubit<KycState> {
+  final KycRepository kycRepository;
 
-class KYCInitial extends KYCState {}
+  KycCubit({required this.kycRepository}) : super(KycInitial());
 
-class KYCLoading extends KYCState {}
-
-class KYCSubmitted extends KYCState {
-  final UserModel user;
-
-  const KYCSubmitted(this.user);
-
-  @override
-  List<Object?> get props => [user];
-}
-
-class KYCApproved extends KYCState {
-  final UserModel user;
-
-  const KYCApproved(this.user);
-
-  @override
-  List<Object?> get props => [user];
-}
-
-class KYCRejected extends KYCState {
-  final String reason;
-
-  const KYCRejected(this.reason);
-
-  @override
-  List<Object?> get props => [reason];
-}
-
-class KYCError extends KYCState {
-  final String message;
-
-  const KYCError(this.message);
-
-  @override
-  List<Object?> get props => [message];
-}
-
-// ALIASES FOR SCREEN COMPATIBILITY
-class KYCPending extends KYCState {}
-class KYCUnderReview extends KYCState {}
-class KYCSubmitting extends KYCState {}
-
-// Cubit
-class KYCCubit extends Cubit<KYCState> {
-  final AuthService _authService;
-
-  KYCCubit({AuthService? authService})
-      : _authService = authService ?? AuthService(),
-        super(KYCInitial());
-
-  // Alias for backward compatibility
-  Future<void> loadKYCStatus(String userId) => checkKYCStatus(userId);
-
-  Future<void> submitKYC({
+  // إرسال طلب التحقق من الهوية - الإصدار المصحح
+  Future<void> submitKyc({
     required String userId,
     required String nationalId,
     required DateTime dateOfBirth,
-    required String idFrontPath,
-    required String idBackPath,
-    required String selfiePath,
-    String? incomeProofPath,
+    required File idFrontFile, // تغيير من String إلى File
+    required File idBackFile, // تغيير من String إلى File
+    required File selfieFile, // تغيير من String إلى File
+    File? incomeProofFile, // تغيير من String? إلى File?
   }) async {
-    emit(KYCLoading());
     try {
-      await _authService.submitKYC(
+      emit(KycSubmitting());
+
+      await kycRepository.submitKyc(
         userId: userId,
         nationalId: nationalId,
         dateOfBirth: dateOfBirth,
-        idFrontPath: idFrontPath,
-        idBackPath: idBackPath,
-        selfiePath: selfiePath,
-        incomeProofPath: incomeProofPath,
+        idFrontFile: idFrontFile,
+        idBackFile: idBackFile,
+        selfieFile: selfieFile,
+        incomeProofFile: incomeProofFile,
       );
 
-      final user = await _authService.getCurrentUser();
-      if (user != null) {
-        emit(KYCSubmitted(user));
-      } else {
-        emit(KYCError('Failed to retrieve user after KYC submission'));
-      }
+      emit(KycSubmittedSuccessfully());
     } catch (e) {
-      emit(KYCError(e.toString()));
+      emit(KycError(message: e.toString()));
     }
   }
 
-  Future<void> checkKYCStatus(String userId) async {
-    emit(KYCLoading());
+  // الحصول على حالة التحقق
+  Future<void> getKycStatus(String userId) async {
     try {
-      final user = await _authService.getCurrentUser();
-      
-      if (user == null) {
-        emit(const KYCError('المستخدم غير موجود'));
-        return;
-      }
+      emit(KycLoading());
 
-      switch (user.kycStatus) {
-        case KycStatus.pending:
-        case KycStatus.underReview:
-          emit(KYCSubmitted(user));
-          break;
-        case KycStatus.approved:
-          emit(KYCApproved(user));
-          break;
-        case KycStatus.rejected:
-          emit(KYCRejected(user.kycRejectionReason ?? 'تم رفض الطلب'));
-          break;
-      }
+      final status = await kycRepository.getKycStatus(userId);
+
+      emit(
+        KycStatusLoaded(
+          status: status['status'] as String,
+          submittedAt: status['submittedAt'] as String?,
+          reviewedAt: status['reviewedAt'] as String?,
+          rejectionReason: status['rejectionReason'] as String?,
+        ),
+      );
     } catch (e) {
-      emit(KYCError(e.toString()));
+      emit(KycError(message: 'فشل الحصول على حالة التحقق'));
     }
   }
 }

@@ -10,7 +10,8 @@ class TransactionHistoryScreen extends StatefulWidget {
   const TransactionHistoryScreen({super.key});
 
   @override
-  State<TransactionHistoryScreen> createState() => _TransactionHistoryScreenState();
+  State<TransactionHistoryScreen> createState() =>
+      _TransactionHistoryScreenState();
 }
 
 class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
@@ -44,7 +45,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: ['All', 'Deposits', 'Withdrawals', 'Payments'].map((type) {
+                children: ['All', 'Deposits', 'Withdrawals', 'Payments'].map((
+                  type,
+                ) {
                   final isSelected = _filterType == type;
                   return Padding(
                     padding: const EdgeInsets.only(left: Dimensions.spaceM),
@@ -56,7 +59,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                       },
                       selectedColor: AppColors.primary,
                       labelStyle: TextStyle(
-                        color: isSelected ? AppColors.white : AppColors.textPrimary,
+                        color: isSelected
+                            ? AppColors.white
+                            : AppColors.textPrimary,
                       ),
                     ),
                   );
@@ -75,9 +80,14 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
                 if (state is WalletLoaded) {
                   var transactions = state.transactions;
-                  
+
                   if (_filterType != 'All') {
-                    transactions = transactions.where((t) => t.type.toLowerCase() == _filterType.toLowerCase()).toList();
+                    transactions = transactions
+                        .where(
+                          (t) =>
+                              t.type.toLowerCase() == _filterType.toLowerCase(),
+                        )
+                        .toList();
                   }
 
                   if (transactions.isEmpty) {
@@ -88,7 +98,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                     onRefresh: () async {
                       final authState = context.read<AuthCubit>().state;
                       if (authState is Authenticated) {
-                        await context.read<WalletCubit>().refreshTransactions(authState.user.id);
+                        await context.read<WalletCubit>().refreshTransactions(
+                          authState.user.id,
+                        );
                       }
                     },
                     child: ListView.builder(
@@ -96,24 +108,41 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                       itemCount: transactions.length,
                       itemBuilder: (context, index) {
                         final transaction = transactions[index];
-                        final isCredit = transaction.type.toLowerCase() == 'deposit';
+                        final isCredit =
+                            transaction.type.toLowerCase() == 'deposit';
 
                         return Card(
-                          margin: const EdgeInsets.only(bottom: Dimensions.spaceM),
+                          margin: const EdgeInsets.only(
+                            bottom: Dimensions.spaceM,
+                          ),
                           child: ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: (isCredit ? AppColors.success : AppColors.error).withOpacity(0.1),
+                              backgroundColor:
+                                  (isCredit
+                                          ? AppColors.success
+                                          : AppColors.error)
+                                      .withOpacity(0.1),
                               child: Icon(
-                                isCredit ? Icons.arrow_downward : Icons.arrow_upward,
-                                color: isCredit ? AppColors.success : AppColors.error,
+                                isCredit
+                                    ? Icons.arrow_downward
+                                    : Icons.arrow_upward,
+                                color: isCredit
+                                    ? AppColors.success
+                                    : AppColors.error,
                               ),
                             ),
-                            title: Text(transaction.description),
-                            subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(transaction.createdAt)),
+                            title: Text(transaction.description.toString()),
+                            subtitle: Text(
+                              DateFormat(
+                                'dd/MM/yyyy HH:mm',
+                              ).format(transaction.createdAt),
+                            ),
                             trailing: Text(
                               '${isCredit ? '+' : '-'}${currency.format(transaction.amount)}',
                               style: TextStyle(
-                                color: isCredit ? AppColors.success : AppColors.error,
+                                color: isCredit
+                                    ? AppColors.success
+                                    : AppColors.error,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
@@ -136,11 +165,16 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   String _getTypeLabel(String type) {
     switch (type) {
-      case 'All': return 'الكل';
-      case 'Deposits': return 'إيداعات';
-      case 'Withdrawals': return 'سحوبات';
-      case 'Payments': return 'مدفوعات';
-      default: return type;
+      case 'All':
+        return 'الكل';
+      case 'Deposits':
+        return 'إيداعات';
+      case 'Withdrawals':
+        return 'سحوبات';
+      case 'Payments':
+        return 'مدفوعات';
+      default:
+        return type;
     }
   }
 }

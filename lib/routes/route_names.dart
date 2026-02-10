@@ -1,6 +1,6 @@
 class RouteNames {
   // Auth Routes
-  static const String splash = '/';
+
   static const String login = '/login';
   static const String register = '/register';
   static const String verifyPhone = '/verify-phone';
@@ -35,7 +35,7 @@ class RouteNames {
   // Documents
   static const String documents = '/documents';
   static const String documentViewer = '/document-viewer';
-  static const String uploadDocument =  '/upload-document';
+  static const String uploadDocument = '/upload-document';
 
   // Handover
   static const String handoverStatus = '/handover-status';

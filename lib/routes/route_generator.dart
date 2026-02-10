@@ -13,6 +13,7 @@ import 'package:mmm/presentation/screens/auth/kyc_verification_screen.dart';
 
 // Dashboard
 import 'package:mmm/presentation/screens/dashboard/client_dashboard.dart';
+import 'package:mmm/presentation/screens/admin/admin_dashboard_screen.dart';
 
 // Projects
 import 'package:mmm/presentation/screens/projects/projects_list_screen.dart';
@@ -57,7 +58,6 @@ import 'package:mmm/presentation/screens/profile/edit_profile_screen.dart';
 import 'package:mmm/presentation/screens/profile/settings_screen.dart';
 
 // Admin
-import 'package:mmm/presentation/screens/admin/admin_dashboard_screen.dart';
 import 'package:mmm/presentation/screens/admin/manage_clients_screen.dart';
 import 'package:mmm/presentation/screens/admin/manage_projects_screen.dart';
 import 'package:mmm/presentation/screens/admin/manage_payments_screen.dart';
@@ -87,6 +87,9 @@ class RouteGenerator {
       // Dashboard
       case RouteNames.dashboard:
         return _fadeRoute(const ClientDashboard());
+
+      case RouteNames.adminDashboard:
+        return _fadeRoute(const AdminDashboardScreen());
 
       // Projects
       case RouteNames.projectsList:
@@ -137,14 +140,6 @@ class RouteGenerator {
           );
         }
         return _errorRoute('بيانات التوقيع مطلوبة');
-
-      case RouteNames.selectUnit:
-        if (args is ProjectModel) {
-          return _slideRoute(
-            SelectUnitScreen(project: args, projectId: args.id),
-          ); // ✅ ارسل project كامل
-        }
-        return _errorRoute('المشروع مطلوب');
 
       // Wallet
       case RouteNames.wallet:
@@ -241,9 +236,6 @@ class RouteGenerator {
         return _slideRoute(const SettingsScreen());
 
       // Admin
-      case RouteNames.adminDashboard:
-        return _fadeRoute(const AdminDashboardScreen());
-
       case RouteNames.manageClients:
         return _fadeRoute(const ManageClientsScreen());
 

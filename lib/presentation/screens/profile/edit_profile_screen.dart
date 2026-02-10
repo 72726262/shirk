@@ -24,7 +24,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.initState();
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
-      _nameController.text = authState.user.fullName;
+      _nameController.text = authState.user.fullName ?? '';
       _phoneController.text = authState.user.phone ?? '';
     }
   }
@@ -57,7 +57,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           }
           if (state is ProfileError) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+              ),
             );
           }
         },
@@ -77,8 +80,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         radius: 60,
                         backgroundColor: AppColors.primary,
                         child: Text(
-                          _nameController.text.isNotEmpty ? _nameController.text[0] : 'U',
-                          style: const TextStyle(fontSize: 40, color: Colors.white),
+                          _nameController.text.isNotEmpty
+                              ? _nameController.text[0]
+                              : 'U',
+                          style: const TextStyle(
+                            fontSize: 40,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                       Positioned(
@@ -90,7 +98,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             color: AppColors.primary,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ],
@@ -126,7 +138,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     text: 'حفظ التغييرات',
                     onPressed: isLoading ? null : _saveChanges,
                     isLoading: isLoading,
-                    icon: Icons.save,
+                    leadingIcon: Icons.save,
                   ),
                 ],
               ),

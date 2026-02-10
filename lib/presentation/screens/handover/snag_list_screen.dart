@@ -132,7 +132,7 @@ class _SnagListScreenState extends State<SnagListScreen> {
                             CustomTextField(
                               controller: _titleController,
                               label: 'العنوان',
-                              readOnly: !isLoading,
+                              enabled: !isLoading,
                               validator: (v) =>
                                   v?.isEmpty ?? true ? 'مطلوب' : null,
                             ),
@@ -141,7 +141,7 @@ class _SnagListScreenState extends State<SnagListScreen> {
                               controller: _descriptionController,
                               label: 'الوصف',
                               maxLines: 2,
-                              readOnly: !isLoading,
+                              enabled: !isLoading,
                             ),
                             const SizedBox(height: Dimensions.spaceM),
                             Row(

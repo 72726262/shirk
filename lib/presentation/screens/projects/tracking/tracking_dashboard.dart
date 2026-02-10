@@ -636,20 +636,29 @@ class _ConstructionTrackingScreenState
                             onTap: () {
                               _showFullScreenImage(index);
                             },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(
-                                  Dimensions.radiusM,
-                                ),
-                                image: DecorationImage(
-                                  image: NetworkImage(
-                                    'https://via.placeholder.com/150/102289/FFFFFF?text=Photo+${index + 1}',
-                                  ),
-                                  fit: BoxFit.cover,
-                                ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                Dimensions.radiusM,
                               ),
-                              child: index == 0
-                                  ? const Align(
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.network(
+                                    'https://via.placeholder.com/150/102289/FFFFFF?text=Photo+${index + 1}',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: AppColors.primary.withOpacity(0.1),
+                                        child: const Icon(
+                                          Icons.image,
+                                          color: AppColors.primary,
+                                          size: 40,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  if (index == 0)
+                                    const Align(
                                       alignment: Alignment.topRight,
                                       child: Padding(
                                         padding: EdgeInsets.all(
@@ -661,8 +670,9 @@ class _ConstructionTrackingScreenState
                                           size: 16,
                                         ),
                                       ),
-                                    )
-                                  : null,
+                                    ),
+                                ],
+                              ),
                             ),
                           );
                         },
@@ -706,29 +716,39 @@ class _ConstructionTrackingScreenState
                             ),
                         itemCount: 2,
                         itemBuilder: (context, index) {
-                          return Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(
-                                Dimensions.radiusM,
-                              ),
-                              color: AppColors.info.withOpacity(0.1),
-                              image: const DecorationImage(
-                                image: NetworkImage(
-                                  'https://via.placeholder.com/300/17A2B8/FFFFFF?text=Drone',
-                                ),
-                                fit: BoxFit.cover,
-                              ),
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              Dimensions.radiusM,
                             ),
-                            child: const Align(
-                              alignment: Alignment.bottomLeft,
-                              child: Padding(
-                                padding: EdgeInsets.all(Dimensions.spaceS),
-                                child: Icon(
-                                  Icons.airplanemode_active,
-                                  color: AppColors.white,
-                                  size: 16,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.network(
+                                  'https://via.placeholder.com/300/17A2B8/FFFFFF?text=Drone',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: AppColors.info.withOpacity(0.1),
+                                      child: const Icon(
+                                        Icons.airplanemode_active,
+                                        color: AppColors.info,
+                                        size: 40,
+                                      ),
+                                    );
+                                  },
                                 ),
-                              ),
+                                const Align(
+                                  alignment: Alignment.bottomLeft,
+                                  child: Padding(
+                                    padding: EdgeInsets.all(Dimensions.spaceS),
+                                    child: Icon(
+                                      Icons.airplanemode_active,
+                                      color: AppColors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         },
@@ -980,10 +1000,12 @@ class _ConstructionTrackingScreenState
               children: [
                 Row(
                   children: [
-                    const CircleAvatar(
+                    CircleAvatar(
                       radius: 24,
-                      backgroundImage: NetworkImage(
-                        'https://via.placeholder.com/100/102289/FFFFFF?text=ENG',
+                      backgroundColor: AppColors.primary.withOpacity(0.1),
+                      child: const Icon(
+                        Icons.engineering,
+                        color: AppColors.primary,
                       ),
                     ),
                     const SizedBox(width: Dimensions.spaceL),
@@ -1208,6 +1230,18 @@ class _ConstructionTrackingScreenState
                 child: Image.network(
                   'https://via.placeholder.com/800/102289/FFFFFF?text=Full+Image+${index + 1}',
                   fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.black87,
+                      child: const Center(
+                        child: Icon(
+                          Icons.broken_image,
+                          color: Colors.white54,
+                          size: 80,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
               Positioned(
@@ -1251,80 +1285,92 @@ class _ConstructionTrackingScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                height: 300,
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(Dimensions.radiusXL),
-                    topRight: Radius.circular(Dimensions.radiusXL),
-                  ),
-                  image: const DecorationImage(
-                    image: NetworkImage(
-                      'https://via.placeholder.com/400/000000/FFFFFF?text=LIVE',
-                    ),
-                    fit: BoxFit.cover,
-                  ),
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(Dimensions.radiusXL),
+                  topRight: Radius.circular(Dimensions.radiusXL),
                 ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: 20,
-                      left: 20,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: Dimensions.spaceM,
-                          vertical: Dimensions.spaceXS,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.error.withOpacity(0.8),
-                          borderRadius: BorderRadius.circular(
-                            Dimensions.radiusS,
-                          ),
-                        ),
-                        child: const Text(
-                          'LIVE',
-                          style: TextStyle(
-                            color: AppColors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 20,
-                      right: 20,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: Dimensions.spaceM,
-                          vertical: Dimensions.spaceXS,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(
-                            Dimensions.radiusS,
-                          ),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.location_on,
-                              size: 14,
-                              color: AppColors.white,
-                            ),
-                            SizedBox(width: Dimensions.spaceXS),
-                            Text(
-                              'الكاميرا الشمالية',
-                              style: TextStyle(
-                                color: AppColors.white,
-                                fontSize: 12,
+                child: Container(
+                  height: 300,
+                  color: Colors.black,
+                  child: Stack(
+                    children: [
+                      Image.network(
+                        'https://via.placeholder.com/400/000000/FFFFFF?text=LIVE',
+                        width: double.infinity,
+                        height: 300,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.black,
+                            child: const Center(
+                              child: Icon(
+                                Icons.videocam_off,
+                                color: Colors.white54,
+                                size: 60,
                               ),
                             ),
-                          ],
+                          );
+                        },
+                      ),
+                      Positioned(
+                        top: 20,
+                        left: 20,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Dimensions.spaceM,
+                            vertical: Dimensions.spaceXS,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(
+                              Dimensions.radiusS,
+                            ),
+                          ),
+                          child: const Text(
+                            '⬤ مباشر',
+                            style: TextStyle(
+                              color: AppColors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      Positioned(
+                        bottom: 20,
+                        right: 20,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Dimensions.spaceM,
+                            vertical: Dimensions.spaceXS,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(
+                              Dimensions.radiusS,
+                            ),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                size: 14,
+                                color: AppColors.white,
+                              ),
+                              SizedBox(width: Dimensions.spaceXS),
+                              Text(
+                                'الكاميرا الشمالية',
+                                style: TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               Container(

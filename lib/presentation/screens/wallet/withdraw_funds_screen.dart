@@ -136,7 +136,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
                     label: 'المبلغ',
                     hint: '0',
                     enabled: !isProcessing,
-                    prefixIcon: Icon(Icons.money),
+                    prefixIcon: Icons.money,
                     validator: (value) {
                       final amount = double.tryParse(value ?? '');
                       if (amount == null || amount < 100) {
@@ -156,7 +156,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
                     label: 'رقم الآيبان (IBAN)',
                     hint: 'SA00 0000 0000 0000 0000 0000',
                     enabled: !isProcessing,
-                    prefixIcon: Icon(Icons.account_balance),
+                    prefixIcon: Icons.account_balance,
                     textInputAction: TextInputAction.next,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -176,7 +176,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
                     label: 'اسم المستفيد',
                     hint: 'الاسم كما يظهر في الحساب البنكي',
                     enabled: !isProcessing,
-                    prefixIcon: Icon(Icons.person),
+                    prefixIcon: Icons.person,
                     textInputAction: TextInputAction.done,
                     validator: (value) {
                       if (value == null || value.isEmpty) {

@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/presentation/widgets/common/primary_button.dart';
-import 'package:mmm/presentation/cubits/kyc/kyc_cubit.dart';
+
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
 
 class KYCVerificationScreen extends StatefulWidget {
@@ -1127,15 +1127,6 @@ class _KYCVerificationScreenState extends State<KYCVerificationScreen>
   void _submitKYC() {
     final authState = context.read<AuthCubit>().state;
     if (authState is! Authenticated) return;
-
-    context.read<KYCCubit>().submitKYC(
-      userId: authState.user.id,
-      nationalId: '29901010101010', // Should be from input
-      dateOfBirth: DateTime(1990, 1, 1), // Should be from input
-      idFrontPath: 'dummy_path_front', // Should be actual path
-      idBackPath: 'dummy_path_back',
-      selfiePath: 'dummy_path_selfie',
-    );
 
     showDialog(
       context: context,

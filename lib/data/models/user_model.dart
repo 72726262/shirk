@@ -1,46 +1,25 @@
+// data/models/user_model.dart
 import 'package:equatable/equatable.dart';
 
-enum KycStatus {
+enum KYCStatus {
   pending,
   underReview,
   approved,
   rejected;
 
-  String toJson() => name;
-  
-  static KycStatus fromJson(String value) {
-    return KycStatus.values.firstWhere(
-      (e) => e.name == value,
-      orElse: () => KycStatus.pending,
-    );
-  }
-
-  String get displayName {
-    switch (this) {
-      case KycStatus.pending:
-        return 'قيد الانتظار';
-      case KycStatus.underReview:
-        return 'قيد المراجعة';
-      case KycStatus.approved:
-        return 'موافق عليه';
-      case KycStatus.rejected:
-        return 'مرفوض';
+  static KYCStatus fromString(String value) {
+    switch (value) {
+      case 'pending':
+        return KYCStatus.pending;
+      case 'under_review':
+        return KYCStatus.underReview;
+      case 'approved':
+        return KYCStatus.approved;
+      case 'rejected':
+        return KYCStatus.rejected;
+      default:
+        return KYCStatus.pending;
     }
-  }
-}
-
-enum UserRole {
-  client,
-  admin,
-  superAdmin;
-
-  String toJson() => name;
-  
-  static UserRole fromJson(String value) {
-    return UserRole.values.firstWhere(
-      (e) => e.name == value,
-      orElse: () => UserRole.client,
-    );
   }
 }
 
@@ -52,10 +31,8 @@ class UserModel extends Equatable {
   final String? nationalId;
   final DateTime? dateOfBirth;
   final String? avatarUrl;
-  final UserRole role;
-  
-  // KYC Fields
-  final KycStatus kycStatus;
+  final String role;
+  final KYCStatus kycStatus;
   final DateTime? kycSubmittedAt;
   final DateTime? kycReviewedAt;
   final String? kycRejectionReason;
@@ -63,8 +40,6 @@ class UserModel extends Equatable {
   final String? idBackUrl;
   final String? selfieUrl;
   final String? incomeProofUrl;
-  
-  // Timestamps
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -76,8 +51,8 @@ class UserModel extends Equatable {
     this.nationalId,
     this.dateOfBirth,
     this.avatarUrl,
-    this.role = UserRole.client,
-    this.kycStatus = KycStatus.pending,
+    this.role = 'client',
+    this.kycStatus = KYCStatus.pending,
     this.kycSubmittedAt,
     this.kycReviewedAt,
     this.kycRejectionReason,
@@ -100,12 +75,10 @@ class UserModel extends Equatable {
           ? DateTime.parse(json['date_of_birth'] as String)
           : null,
       avatarUrl: json['avatar_url'] as String?,
-      role: json['role'] != null
-          ? UserRole.fromJson(json['role'] as String)
-          : UserRole.client,
+      role: json['role'] as String? ?? 'client',
       kycStatus: json['kyc_status'] != null
-          ? KycStatus.fromJson(json['kyc_status'] as String)
-          : KycStatus.pending,
+          ? KYCStatus.fromString(json['kyc_status'] as String)
+          : KYCStatus.pending,
       kycSubmittedAt: json['kyc_submitted_at'] != null
           ? DateTime.parse(json['kyc_submitted_at'] as String)
           : null,
@@ -131,8 +104,8 @@ class UserModel extends Equatable {
       'national_id': nationalId,
       'date_of_birth': dateOfBirth?.toIso8601String(),
       'avatar_url': avatarUrl,
-      'role': role.toJson(),
-      'kyc_status': kycStatus.toJson(),
+      'role': role,
+      'kyc_status': kycStatus.toString().split('.').last,
       'kyc_submitted_at': kycSubmittedAt?.toIso8601String(),
       'kyc_reviewed_at': kycReviewedAt?.toIso8601String(),
       'kyc_rejection_reason': kycRejectionReason,
@@ -145,67 +118,25 @@ class UserModel extends Equatable {
     };
   }
 
-  UserModel copyWith({
-    String? id,
-    String? email,
-    String? fullName,
-    String? phone,
-    String? nationalId,
-    DateTime? dateOfBirth,
-    String? avatarUrl,
-    UserRole? role,
-    KycStatus? kycStatus,
-    DateTime? kycSubmittedAt,
-    DateTime? kycReviewedAt,
-    String? kycRejectionReason,
-    String? idFrontUrl,
-    String? idBackUrl,
-    String? selfieUrl,
-    String? incomeProofUrl,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return UserModel(
-      id: id ?? this.id,
-      email: email ?? this.email,
-      fullName: fullName ?? this.fullName,
-      phone: phone ?? this.phone,
-      nationalId: nationalId ?? this.nationalId,
-      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
-      avatarUrl: avatarUrl ?? this.avatarUrl,
-      role: role ?? this.role,
-      kycStatus: kycStatus ?? this.kycStatus,
-      kycSubmittedAt: kycSubmittedAt ?? this.kycSubmittedAt,
-      kycReviewedAt: kycReviewedAt ?? this.kycReviewedAt,
-      kycRejectionReason: kycRejectionReason ?? this.kycRejectionReason,
-      idFrontUrl: idFrontUrl ?? this.idFrontUrl,
-      idBackUrl: idBackUrl ?? this.idBackUrl,
-      selfieUrl: selfieUrl ?? this.selfieUrl,
-      incomeProofUrl: incomeProofUrl ?? this.incomeProofUrl,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
-
   @override
   List<Object?> get props => [
-        id,
-        email,
-        fullName,
-        phone,
-        nationalId,
-        dateOfBirth,
-        avatarUrl,
-        role,
-        kycStatus,
-        kycSubmittedAt,
-        kycReviewedAt,
-        kycRejectionReason,
-        idFrontUrl,
-        idBackUrl,
-        selfieUrl,
-        incomeProofUrl,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    email,
+    fullName,
+    phone,
+    nationalId,
+    dateOfBirth,
+    avatarUrl,
+    role,
+    kycStatus,
+    kycSubmittedAt,
+    kycReviewedAt,
+    kycRejectionReason,
+    idFrontUrl,
+    idBackUrl,
+    selfieUrl,
+    incomeProofUrl,
+    createdAt,
+    updatedAt,
+  ];
 }
