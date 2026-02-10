@@ -206,7 +206,7 @@ class TimelineCard extends StatelessWidget {
                         ],
 
                         // Report Link
-                        if (update.reportUrl != null) ...[
+                        if (update.photos != null) ...[
                           const SizedBox(height: Dimensions.spaceL),
                           InkWell(
                             onTap: () {

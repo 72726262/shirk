@@ -205,6 +205,11 @@ class DocumentsCubit extends Cubit<DocumentsState> {
     await loadDocuments(userId: userId);
   }
 
+  // Alias for backward compatibility
+  Future<void> loadUserDocuments(String userId) async {
+    await loadDocuments(userId: userId);
+  }
+
   Future<void> downloadDocument(String documentId) async {
     // Implement download logic
   }

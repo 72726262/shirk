@@ -38,11 +38,18 @@ class ConstructionUpdateModel extends Equatable {
   final String? descriptionAr;
   final UpdateType type;
   final double? progressPercentage;
+  final int? weekNumber;
   final List<String> photos;
   final List<String> videos;
-  final String? reportUrl;
-  final String? postedBy;
+  final String? engineeringReportUrl;
+  final String? financialReportUrl;
+  final String? supervisionReportUrl;
+  final bool isPublic;
+  final bool notifyClients;
+  final DateTime? updateDate;
+  final String? createdBy;
   final DateTime createdAt;
+  final DateTime updatedAt;
 
   const ConstructionUpdateModel({
     required this.id,
@@ -53,11 +60,18 @@ class ConstructionUpdateModel extends Equatable {
     this.descriptionAr,
     this.type = UpdateType.progress,
     this.progressPercentage,
+    this.weekNumber,
     this.photos = const [],
     this.videos = const [],
-    this.reportUrl,
-    this.postedBy,
+    this.engineeringReportUrl,
+    this.financialReportUrl,
+    this.supervisionReportUrl,
+    this.isPublic = true,
+    this.notifyClients = true,
+    this.updateDate,
+    this.createdBy,
     required this.createdAt,
+    required this.updatedAt,
   });
 
   String get displayTitle => titleAr ?? title;
@@ -84,9 +98,17 @@ class ConstructionUpdateModel extends Equatable {
       videos: json['videos'] != null
           ? List<String>.from(json['videos'] as List)
           : const [],
-      reportUrl: json['report_url'] as String?,
-      postedBy: json['posted_by'] as String?,
+      engineeringReportUrl: json['engineering_report_url'] as String?,
+      financialReportUrl: json['financial_report_url'] as String?,
+      supervisionReportUrl: json['supervision_report_url'] as String?,
+      isPublic: json['is_public'] as bool? ?? true,
+      notifyClients: json['notify_clients'] as bool? ?? true,
+      updateDate: json['update_date'] != null
+          ? DateTime.parse(json['update_date'] as String)
+          : null,
+      createdBy: json['created_by'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
     );
   }
 
@@ -102,9 +124,15 @@ class ConstructionUpdateModel extends Equatable {
       'progress_percentage': progressPercentage,
       'photos': photos,
       'videos': videos,
-      'report_url': reportUrl,
-      'posted_by': postedBy,
+      'engineering_report_url': engineeringReportUrl,
+      'financial_report_url': financialReportUrl,
+      'supervision_report_url': supervisionReportUrl,
+      'is_public': isPublic,
+      'notify_clients': notifyClients,
+      'update_date': updateDate?.toIso8601String(),
+      'created_by': createdBy,
       'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
   }
 
@@ -119,9 +147,16 @@ class ConstructionUpdateModel extends Equatable {
     double? progressPercentage,
     List<String>? photos,
     List<String>? videos,
-    String? reportUrl,
-    String? postedBy,
+    int? weekNumber,
+    String? engineeringReportUrl,
+    String? financialReportUrl,
+    String? supervisionReportUrl,
+    bool? isPublic,
+    bool? notifyClients,
+    DateTime? updateDate,
+    String? createdBy,
     DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return ConstructionUpdateModel(
       id: id ?? this.id,
@@ -134,9 +169,16 @@ class ConstructionUpdateModel extends Equatable {
       progressPercentage: progressPercentage ?? this.progressPercentage,
       photos: photos ?? this.photos,
       videos: videos ?? this.videos,
-      reportUrl: reportUrl ?? this.reportUrl,
-      postedBy: postedBy ?? this.postedBy,
+      weekNumber: weekNumber ?? this.weekNumber,
+      engineeringReportUrl: engineeringReportUrl ?? this.engineeringReportUrl,
+      financialReportUrl: financialReportUrl ?? this.financialReportUrl,
+      supervisionReportUrl: supervisionReportUrl ?? this.supervisionReportUrl,
+      isPublic: isPublic ?? this.isPublic,
+      notifyClients: notifyClients ?? this.notifyClients,
+      updateDate: updateDate ?? this.updateDate,
+      createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -152,8 +194,15 @@ class ConstructionUpdateModel extends Equatable {
         progressPercentage,
         photos,
         videos,
-        reportUrl,
-        postedBy,
+        weekNumber,
+        engineeringReportUrl,
+        financialReportUrl,
+        supervisionReportUrl,
+        isPublic,
+        notifyClients,
+        updateDate,
+        createdBy,
         createdAt,
+        updatedAt,
       ];
 }

@@ -31,8 +31,18 @@ class RouteNames {
   static const String withdrawFunds = '/withdraw-funds';
   static const String transactionHistory = '/transaction-history';
 
+  // Subscriptions & Installments
+  static const String subscriptions = '/subscriptions';
+  static const String installments = '/installments';
+  static const String installmentDetail = '/installment-detail';
+
+  // Units
+  static const String units = '/units';
+  static const String unitDetail = '/unit-detail';
+
   // Construction
   static const String constructionTracking = '/construction-tracking';
+  static const String constructionUpdates = '/construction-updates';
 
   // Documents
   static const String documents = '/documents';
@@ -60,5 +70,6 @@ class RouteNames {
   static const String manageClients = '/admin/clients';
   static const String manageProjects = '/admin/projects';
   static const String managePayments = '/admin/payments';
+  static const String activityLogs = '/admin/activity-logs';
   static const String reports = '/admin/reports';
 }

@@ -59,6 +59,10 @@ class DocumentModel extends Equatable {
   final int fileSize;
   final String mimeType;
   final String? uploadedBy;
+  final bool requiresSignature;
+  final bool isSigned;
+  final DateTime? signedAt;
+  final String? signatureUrl;
   final DateTime createdAt;
 
   const DocumentModel({
@@ -75,16 +79,22 @@ class DocumentModel extends Equatable {
     this.fileSize = 0,
     this.mimeType = 'application/pdf',
     this.uploadedBy,
+    this.requiresSignature = false,
+    this.isSigned = false,
+    this.signedAt,
+    this.signatureUrl,
     required this.createdAt,
     this.localPath,
   });
 
   final String? localPath;
 
+  // Computed properties
+  String get category => type.name;
+  DateTime get uploadedAt => createdAt;
   String get displayTitle => titleAr ?? title;
   bool get isPdf => mimeType.contains('pdf');
   bool get isImage => mimeType.contains('image');
-  String? get signatureUrl => null; // Placeholder for legacy compatibility
 
   factory DocumentModel.fromJson(Map<String, dynamic> json) {
     return DocumentModel(
@@ -103,6 +113,12 @@ class DocumentModel extends Equatable {
       fileSize: (json['file_size'] as num?)?.toInt() ?? 0,
       mimeType: json['mime_type'] as String? ?? 'application/pdf',
       uploadedBy: json['uploaded_by'] as String?,
+      requiresSignature: json['requires_signature'] as bool? ?? false,
+      isSigned: json['is_signed'] as bool? ?? false,
+      signedAt: json['signed_at'] != null
+          ? DateTime.parse(json['signed_at'] as String)
+          : null,
+      signatureUrl: json['signature_url'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -122,6 +138,10 @@ class DocumentModel extends Equatable {
       'file_size': fileSize,
       'mime_type': mimeType,
       'uploaded_by': uploadedBy,
+      'requires_signature': requiresSignature,
+      'is_signed': isSigned,
+      'signed_at': signedAt?.toIso8601String(),
+      'signature_url': signatureUrl,
       'created_at': createdAt.toIso8601String(),
     };
   }

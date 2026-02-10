@@ -28,6 +28,10 @@ class SubscriptionRepository {
     }
   }
 
+  // Alias for backward compatibility
+  Future<List<SubscriptionModel>> getSubscriptionsByUser(String userId) =>
+      getUserSubscriptions(userId);
+
   // Get subscription by ID
   Future<SubscriptionModel> getSubscriptionById(String subscriptionId) async {
     try {

@@ -4,6 +4,8 @@ import 'package:mmm/presentation/screens/projects/join_project_flow/signature_sc
     as NewSignature;
 import 'package:mmm/routes/route_names.dart';
 import 'package:mmm/data/models/project_model.dart';
+import 'package:mmm/data/models/installment_model.dart';
+import 'package:mmm/data/models/unit_model.dart';
 
 // Auth Screens
 import 'package:mmm/presentation/screens/auth/login_screen.dart';
@@ -34,6 +36,16 @@ import 'package:mmm/presentation/screens/wallet/transaction_history_screen.dart'
 
 // Construction
 import 'package:mmm/presentation/screens/construction/construction_tracking_screen.dart';
+import 'package:mmm/presentation/screens/construction/construction_updates_screen.dart';
+
+// Subscriptions & Installments
+import 'package:mmm/presentation/screens/subscriptions/subscriptions_screen.dart';
+import 'package:mmm/presentation/screens/installments/installments_screen.dart';
+import 'package:mmm/presentation/screens/installments/installment_detail_screen.dart';
+
+// Units
+import 'package:mmm/presentation/screens/units/units_screen.dart';
+import 'package:mmm/presentation/screens/units/unit_detail_screen.dart';
 
 // Documents
 import 'package:mmm/presentation/screens/documents/documents_screen.dart';
@@ -155,10 +167,45 @@ class RouteGenerator {
       case RouteNames.transactionHistory:
         return _slideRoute(const TransactionHistoryScreen());
 
+      // Subscriptions & Installments
+      case RouteNames.subscriptions:
+        return _fadeRoute(const SubscriptionsScreen());
+
+      case RouteNames.installments:
+        if (args is String?) {
+          return _fadeRoute(InstallmentsScreen(subscriptionId: args));
+        }
+        return _fadeRoute(const InstallmentsScreen());
+
+      case RouteNames.installmentDetail:
+        if (args is InstallmentModel) {
+          return _slideRoute(InstallmentDetailScreen(installment: args));
+        }
+        return _errorRoute('تفاصيل القسط مطلوبة');
+
+      // Units
+      case RouteNames.units:
+        if (args is String) {
+          return _fadeRoute(UnitsScreen(projectId: args));
+        }
+        return _errorRoute('معرف المشروع مطلوب');
+
+      case RouteNames.unitDetail:
+        if (args is UnitModel) {
+          return _slideRoute(UnitDetailScreen(unit: args));
+        }
+        return _errorRoute('تفاصيل الوحدة مطلوبة');
+
       // Construction
       case RouteNames.constructionTracking:
         if (args is String) {
           return _fadeRoute(ConstructionTrackingScreen(projectId: args));
+        }
+        return _errorRoute('معرف المشروع مطلوب');
+
+      case RouteNames.constructionUpdates:
+        if (args is String) {
+          return _fadeRoute(ConstructionUpdatesScreen(projectId: args));
         }
         return _errorRoute('معرف المشروع مطلوب');
 

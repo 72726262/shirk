@@ -9,27 +9,31 @@ enum HandoverStatus {
   defectsFixing,
   readyForHandover,
   completed,
+  inProgress,
   cancelled;
 
   String toJson() => name;
-  
+
   static HandoverStatus fromJson(String value) {
-    if (value == 'scheduled') return HandoverStatus.appointmentBooked; // Backwards compatibility
+    if (value == 'scheduled')
+      return HandoverStatus.appointmentBooked; // Backwards compatibility
     if (value == 'in_progress') return HandoverStatus.inspectionPending;
     if (value == 'snag_list_submitted') return HandoverStatus.defectsSubmitted;
     if (value == 'defects_fixed') return HandoverStatus.defectsFixing;
-    
+
     return HandoverStatus.values.firstWhere(
       (e) => e.name == value || e.name == value.replaceAll('_', ''),
       orElse: () => HandoverStatus.notStarted,
     );
   }
-  
+
   String get displayName {
     switch (this) {
       case HandoverStatus.scheduled:
         return 'مجدول';
       case HandoverStatus.notStarted:
+        return 'لم يبدأ';
+      case HandoverStatus.inProgress:
         return 'لم يبدأ';
       case HandoverStatus.appointmentBooked:
         return 'تم حجز الموعد';
@@ -43,6 +47,7 @@ enum HandoverStatus {
         return 'جاهز للتسليم';
       case HandoverStatus.completed:
         return 'مكتمل';
+
       case HandoverStatus.cancelled:
         return 'ملغي';
     }
@@ -57,7 +62,9 @@ class DefectItem extends Equatable {
   final bool isFixed;
   final DateTime? fixedAt;
 
-  String get title => description.length > 20 ? '${description.substring(0, 20)}...' : description;
+  String get title => description.length > 20
+      ? '${description.substring(0, 20)}...'
+      : description;
 
   const DefectItem({
     required this.id,
@@ -95,7 +102,14 @@ class DefectItem extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, description, location, photos, isFixed, fixedAt];
+  List<Object?> get props => [
+    id,
+    description,
+    location,
+    photos,
+    isFixed,
+    fixedAt,
+  ];
 }
 
 class HandoverModel extends Equatable {
@@ -106,11 +120,14 @@ class HandoverModel extends Equatable {
   final String unitId;
   final HandoverStatus status;
   final DateTime? scheduledDate;
+  final DateTime? actualDate;
+  final String? inspectionNotes;
   final List<DefectItem> defects;
   final String? clientSignatureUrl;
   final String? adminSignatureUrl;
   final List<String> photos;
   final String? notes;
+  final DateTime? inProgress;
   final DateTime? completedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -123,19 +140,22 @@ class HandoverModel extends Equatable {
     required this.unitId,
     this.status = HandoverStatus.scheduled,
     this.scheduledDate,
+    this.actualDate,
+    this.inspectionNotes,
     this.defects = const [],
     this.clientSignatureUrl,
     this.adminSignatureUrl,
     this.photos = const [],
     this.notes,
     this.completedAt,
+    this.inProgress,
     required this.createdAt,
     required this.updatedAt,
   });
 
   int get totalDefects => defects.length;
   // Use defects.length as default for defectsCount if not tracked separately
-  int get defectsCount => defects.length; 
+  int get defectsCount => defects.length;
   int get defectsFixed => defects.where((d) => d.isFixed).length;
   int get pendingDefects => totalDefects - defectsFixed;
 
@@ -152,10 +172,14 @@ class HandoverModel extends Equatable {
       scheduledDate: json['scheduled_date'] != null
           ? DateTime.parse(json['scheduled_date'] as String)
           : null,
+      actualDate: json['actual_date'] != null
+          ? DateTime.parse(json['actual_date'] as String)
+          : null,
+      inspectionNotes: json['inspection_notes'] as String?,
       defects: json['defects'] != null
           ? (json['defects'] as List)
-              .map((e) => DefectItem.fromJson(e as Map<String, dynamic>))
-              .toList()
+                .map((e) => DefectItem.fromJson(e as Map<String, dynamic>))
+                .toList()
           : const [],
       clientSignatureUrl: json['client_signature_url'] as String?,
       adminSignatureUrl: json['admin_signature_url'] as String?,
@@ -229,20 +253,20 @@ class HandoverModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        subscriptionId,
-        userId,
-        projectId,
-        unitId,
-        status,
-        scheduledDate,
-        defects,
-        clientSignatureUrl,
-        adminSignatureUrl,
-        photos,
-        notes,
-        completedAt,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    subscriptionId,
+    userId,
+    projectId,
+    unitId,
+    status,
+    scheduledDate,
+    defects,
+    clientSignatureUrl,
+    adminSignatureUrl,
+    photos,
+    notes,
+    completedAt,
+    createdAt,
+    updatedAt,
+  ];
 }

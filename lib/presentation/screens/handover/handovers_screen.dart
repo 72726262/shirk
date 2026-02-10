@@ -179,10 +179,10 @@ class HandoverService {
         case HandoverStatus.notStarted:
           progressPercentage = 0;
           break;
-        case HandoverStatus.appointmentBooked:
-          progressPercentage = 20;
-          break;
         case HandoverStatus.inProgress:
+          progressPercentage = 0;
+          break;
+        case HandoverStatus.appointmentBooked:
           progressPercentage = 20;
           break;
         case HandoverStatus.scheduled:

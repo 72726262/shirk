@@ -208,6 +208,41 @@ class HandoverRepository {
     }
   }
 
+  // Alias for backward compatibility
+  Future<List<DefectModel>> getDefectsByHandover(String handoverId) async {
+    try {
+      final response = await _client
+          .from('defects')
+          .select()
+          .eq('handover_id', handoverId)
+          .order('reported_at', ascending: false);
+
+      return (response as List)
+          .map((json) => DefectModel.fromJson(json))
+          .toList();
+    } catch (e) {
+      throw Exception('خطأ في تحميل العيوب: ${e.toString()}');
+    }
+  }
+
+  // Alias for backward compatibility
+  Future<void> reportDefect({
+    required String handoverId,
+    required String category,
+    required String description,
+    String? location,
+    String? severity,
+    List<String>? photosPaths,
+  }) =>
+      submitDefect(
+        handoverId: handoverId,
+        category: category,
+        description: description,
+        location: location,
+        severity: severity,
+        photosPaths: photosPaths,
+      );
+
   // Update defect status (Admin)
   Future<void> updateDefectStatus({
     required String defectId,
