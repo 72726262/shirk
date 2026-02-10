@@ -137,7 +137,11 @@ class AuthRepository {
       final response = await _client.auth.signUp(
         email: email.trim(),
         password: password,
-        data: {'full_name': fullName.trim(), 'phone': phone?.trim()},
+        data: {
+          'full_name': fullName.trim(),
+          'phone': phone?.trim(),
+          'role': role,
+        },
       );
 
       print('✅ استجابة إنشاء الحساب: ${response.user?.id}');
@@ -145,7 +149,7 @@ class AuthRepository {
       if (response.user != null) {
         // 3. انتظار إنشاء الملف الشخصي من الـ trigger
         print('⏳ انتظار إنشاء الملف الشخصي التلقائي...');
-        
+
         final profile = await _getOrCreateProfile(
           userId: response.user!.id,
           email: email.trim(),
@@ -186,7 +190,7 @@ class AuthRepository {
 
       // الـ trigger يقوم بإنشاء Profile تلقائياً بعد signup
       // لكن قد يحتاج وقت بسيط، لذا نحاول عدة مرات
-      
+
       for (int attempt = 1; attempt <= 5; attempt++) {
         try {
           final profile = await getUserProfile(userId);
