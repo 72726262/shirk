@@ -143,7 +143,9 @@ class AuthRepository {
       print('✅ استجابة إنشاء الحساب: ${response.user?.id}');
 
       if (response.user != null) {
-        // 3. إنشاء أو الحصول على الملف الشخصي
+        // 3. انتظار إنشاء الملف الشخصي من الـ trigger
+        print('⏳ انتظار إنشاء الملف الشخصي التلقائي...');
+        
         final profile = await _getOrCreateProfile(
           userId: response.user!.id,
           email: email.trim(),
@@ -152,7 +154,7 @@ class AuthRepository {
           role: role,
         );
 
-        print('✅ تم إنشاء/الحصول على الملف الشخصي: ${profile.id}');
+        print('🎉 تم إنشاء الحساب بنجاح! الرجاء تسجيل الدخول.');
         return profile;
       }
 
@@ -171,7 +173,7 @@ class AuthRepository {
     }
   }
 
-  // دالة مساعدة: احصل على الملف الشخصي أو أنشئه
+  // دالة مساعدة: احصل على الملف الشخصي (ينشئه الـ trigger تلقائياً)
   Future<UserModel> _getOrCreateProfile({
     required String userId,
     required String email,
@@ -180,99 +182,40 @@ class AuthRepository {
     String role = 'client',
   }) async {
     try {
-      // أولاً: حاول الحصول على الملف الشخصي الموجود
-      final existingProfile = await getUserProfile(userId);
-      if (existingProfile != null) {
-        print('✅ الملف الشخصي موجود بالفعل: $userId');
-        return existingProfile;
-      }
+      print('🔍 البحث عن الملف الشخصي للمستخدم: $userId');
 
-      print('📝 جاري إنشاء ملف شخصي جديد للمستخدم: $userId');
-
-      // حاول إنشاء الملف الشخصي
-      try {
-        final data = await _client
-            .from('profiles')
-            .insert({
-              'id': userId,
-              'email': email,
-              'full_name': fullName,
-              'phone': phone,
-              'role': role,
-              'kyc_status': 'pending',
-              'created_at': DateTime.now().toIso8601String(),
-              'updated_at': DateTime.now().toIso8601String(),
-            })
-            .select()
-            .single();
-
-        print('✅ تم إنشاء الملف الشخصي بنجاح');
-        return UserModel.fromJson(data);
-      } on PostgrestException catch (e) {
-        // إذا كان الملف موجوداً بالفعل (مفتاح مكرر)
-        if (e.code == '23505') {
-          print(
-            '⚠️ الملف الشخصي موجود ولكن فشل الوصول، جاري المحاولة مرة أخرى...',
-          );
-
-          // انتظر قليلاً ثم حاول مرة أخرى
-          await Future.delayed(const Duration(seconds: 1));
-
-          final retryProfile = await getUserProfile(userId);
-          if (retryProfile != null) {
-            return retryProfile;
+      // الـ trigger يقوم بإنشاء Profile تلقائياً بعد signup
+      // لكن قد يحتاج وقت بسيط، لذا نحاول عدة مرات
+      
+      for (int attempt = 1; attempt <= 5; attempt++) {
+        try {
+          final profile = await getUserProfile(userId);
+          if (profile != null) {
+            print('✅ تم العثور على الملف الشخصي بنجاح');
+            return profile;
           }
-
-          // إذا فشل، أنشئ ملفاً جديداً بمعرف مختلف
-          return await _createProfileWithNewId(
-            originalUserId: userId,
-            email: email,
-            fullName: fullName,
-            phone: phone,
-            role: role,
-          );
+        } catch (e) {
+          print('⚠️ المحاولة $attempt: لم يتم العثور على الملف بعد...');
         }
-        rethrow;
+
+        // انتظر قبل المحاولة التالية (exponential backoff)
+        if (attempt < 5) {
+          await Future.delayed(Duration(milliseconds: 200 * attempt));
+        }
       }
+
+      // إذا فشلت جميع المحاولات
+      throw Exception(
+        'لم يتم العثور على الملف الشخصي.\n\n'
+        '⚠️ تأكد من تطبيق SQL Trigger في Supabase Dashboard:\n'
+        '1. افتح Supabase Dashboard\n'
+        '2. اذهب لـ SQL Editor\n'
+        '3. طبّق ملف 002_fix_profile_creation.sql\n\n'
+        'بعد ذلك جرب التسجيل مرة أخرى.',
+      );
     } catch (e) {
       print('❌ خطأ في _getOrCreateProfile: $e');
-      throw Exception('فشل إنشاء الملف الشخصي: ${e.toString()}');
-    }
-  }
-
-  // إنشاء ملف شخصي بمعرف جديد
-  Future<UserModel> _createProfileWithNewId({
-    required String originalUserId,
-    required String email,
-    required String fullName,
-    String? phone,
-    String role = 'client',
-  }) async {
-    try {
-      final newUserId =
-          '${originalUserId}_${DateTime.now().millisecondsSinceEpoch}';
-
-      print('🔄 إنشاء ملف شخصي جديد بالمعرف: $newUserId');
-
-      final data = await _client
-          .from('profiles')
-          .insert({
-            'id': newUserId,
-            'email': email,
-            'full_name': fullName,
-            'phone': phone,
-            'role': role,
-            'kyc_status': 'pending',
-            'created_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .select()
-          .single();
-
-      return UserModel.fromJson(data);
-    } catch (e) {
-      print('❌ فشل إنشاء ملف شخصي جديد: $e');
-      throw Exception('فشل إنشاء الملف الشخصي');
+      rethrow;
     }
   }
 
