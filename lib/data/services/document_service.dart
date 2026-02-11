@@ -1,12 +1,17 @@
 import 'package:mmm/data/models/document_model.dart';
 import 'package:mmm/data/repositories/document_repository.dart';
+import 'package:mmm/data/services/storage_service.dart';
 
 /// Document Service - Handles document management business logic
 class DocumentService {
   final DocumentRepository _documentRepository;
+  final StorageService _storageService;
 
-  DocumentService({DocumentRepository? documentRepository})
-      : _documentRepository = documentRepository ?? DocumentRepository();
+  DocumentService({
+    DocumentRepository? documentRepository,
+    StorageService? storageService,
+  })  : _documentRepository = documentRepository ?? DocumentRepository(),
+        _storageService = storageService ?? StorageService();
 
   // Get user documents with optional filters
   Future<List<DocumentModel>> getUserDocuments({
@@ -46,12 +51,27 @@ class DocumentService {
     List<String>? tags,
   }) async {
     try {
-      // Validate file exists and size
-      // TODO: Add file validation logic
+      // Upload file to appropriate bucket based on type
+      String fileUrl;
+      if (type == DocumentType.kyc) {
+        // Upload to kyc-documents bucket
+        fileUrl = await _storageService.uploadKYCDocument(
+          filePath,
+          userId,
+          'kyc',
+        );
+      } else {
+        // Upload to documents bucket
+        fileUrl = await _storageService.uploadDocument(
+          filePath,
+          userId,
+          type.name,
+        );
+      }
 
       return await _documentRepository.uploadDocument(
         userId: userId,
-        filePath: filePath,
+        filePath: fileUrl,
         type: type,
         title: title,
         projectId: projectId,

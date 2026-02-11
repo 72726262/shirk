@@ -49,6 +49,9 @@ class RouteNames {
   static const String documentViewer = '/document-viewer';
   static const String uploadDocument = '/upload-document';
 
+  // Transactions
+  static const String transactions = '/transactions';
+
   // Handover
   static const String handoverStatus = '/handover-status';
   static const String bookAppointment = '/book-appointment';

@@ -25,6 +25,7 @@ class OverviewTab extends StatelessWidget {
               padding: const EdgeInsets.all(Dimensions.spaceXXL),
               mainAxisSpacing: Dimensions.spaceL,
               crossAxisSpacing: Dimensions.spaceL,
+              childAspectRatio: 1.3,
               children: [
                 _buildStatCard(
                   'إجمالي العملاء',

@@ -13,7 +13,7 @@ import 'package:mmm/data/models/unit_model.dart';
 import 'package:mmm/presentation/screens/auth/login_screen.dart';
 import 'package:mmm/presentation/screens/auth/register_screen.dart';
 import 'package:mmm/presentation/screens/auth/verify_phone_screen.dart';
-import 'package:mmm/presentation/screens/auth/kyc_verification_screen.dart';
+import 'package:mmm/presentation/screens/kyc/kyc_verification_screen.dart'; // ✅ المسار الصحيح
 
 // Dashboard
 import 'package:mmm/presentation/screens/dashboard/client_dashboard.dart';
@@ -95,7 +95,7 @@ class RouteGenerator {
         return _errorRoute('رقم الهاتف مطلوب');
 
       case RouteNames.kycVerification:
-        return _slideRoute(const KYCVerificationScreen());
+        return _slideRoute(const KycVerificationScreen()); // ✅ الاسم الصحيح
 
       // Dashboard
       case RouteNames.dashboard:

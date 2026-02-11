@@ -110,6 +110,23 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  // Refresh user data from database
+  Future<void> refreshUser() async {
+    try {
+      if (state is! Authenticated) return;
+
+      final currentUser = (state as Authenticated).user;
+      final user = await authRepository.getUserProfile(currentUser.id);
+      
+      if (user != null) {
+        emit(Authenticated(user: user, role: user.role));
+      }
+    } catch (e) {
+      // Don't emit error, just keep current state
+      print('Failed to refresh user: $e');
+    }
+  }
+
   Future<void> resendPhoneVerificationCode() async {
     try {
       emit(AuthLoading());

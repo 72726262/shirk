@@ -1,4 +1,5 @@
 // lib/data/repositories/auth_repository.dart
+import 'dart:io'; // ✅ Add for File
 import 'package:mmm/data/models/user_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -326,4 +327,89 @@ class AuthRepository {
   // الحصول على حالة المصادقة
   bool get isAuthenticated => _client.auth.currentSession != null;
   String? get currentUserId => _client.auth.currentUser?.id;
+
+  // إنشاء مستخدم جديد بواسطة الـ Admin
+  Future<UserModel> createUserByAdmin({
+    required String email,
+    required String password,
+    required String fullName,
+    required String phone,
+    String role = 'client',
+  }) async {
+    try {
+      // التحقق من البيانات
+      if (!_isValidEmail(email)) {
+        throw Exception('البريد الإلكتروني غير صالح');
+      }
+
+      if (password.length < 6) {
+        throw Exception('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      }
+
+      if (fullName.trim().isEmpty) {
+        throw Exception('الاسم الكامل مطلوب');
+      }
+
+      print('👤 Admin: إنشاء مستخدم جديد: ${email.trim()}');
+
+      // إنشاء حساب جديد في auth
+      final response = await _client.auth.admin.createUser(
+        AdminUserAttributes(
+          email: email.trim(),
+          password: password,
+          emailConfirm: true, // تأكيد البريد تلقائياً
+          userMetadata: {
+            'full_name': fullName.trim(),
+            'phone': phone.trim(),
+            'role': role,
+          },
+        ),
+      );
+
+      if (response.user != null) {
+        print('✅ تم إنشاء الحساب في Auth');
+
+        // الانتظار قليلاً لـ trigger
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // التأكد من إنشاء الملف الشخصي
+        final profile = await _getOrCreateProfile(
+          userId: response.user!.id,
+          email: email.trim(),
+          fullName: fullName.trim(),
+          phone: phone.trim(),
+          role: role,
+        );
+
+        // إنشاء محفظة للمستخدم الجديد
+        try {
+          await _client.from('wallets').insert({
+            'user_id': response.user!.id,
+            'balance': 0.0,
+            'reserved_amount': 0.0,
+          });
+          print('✅ تم إنشاء المحفظة');
+        } catch (e) {
+          print('⚠️ خطأ في إنشاء المحفظة (قد تكون موجودة): $e');
+        }
+
+        print('🎉 تم إنشاء المستخدم بنجاح (Admin)');
+        return profile;
+      }
+
+      throw Exception('حدث خطأ أثناء إنشاء ملف المستخدم');
+    } on AuthException catch (e) {
+      print('❌ خطأ مصادقة في إنشاء المستخدم: ${e.message}');
+
+      if (e.message.contains('already registered') ||
+          e.message.contains('User already registered')) {
+        throw Exception('البريد الإلكتروني مسجل مسبقاً');
+      }
+
+      throw Exception('فشل إنشاء المستخدم: ${e.message}');
+    } catch (e) {
+      print('❌ خطأ غير متوقع في إنشاء المستخدم: $e');
+      throw Exception('حدث خطأ غير متوقع: ${e.toString()}');
+    }
+  }
 }

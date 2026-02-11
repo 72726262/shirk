@@ -64,20 +64,27 @@ class ProfileCubit extends Cubit<ProfileState> {
     String? phone,
     String? avatarPath,
   }) async {
-    if (state is! ProfileLoaded) {
-      emit(const ProfileError('يجب تحميل الملف الشخصي أولاً'));
-      return;
+    try {
+      emit(const ProfileUpdating('جاري تحديث الملف الشخصي...'));
+
+      final authState = await _authRepository.getCurrentUser();
+      if (authState == null) {
+        emit(const ProfileError('يجب تسجيل الدخول أولاً'));
+        return;
+      }
+
+      final updatedUser = await _authRepository.updateProfile(
+        userId: authState.id,
+        fullName: fullName,
+        phone: phone,
+        avatarPath: avatarPath,
+      );
+
+      emit(ProfileUpdated(user: updatedUser));
+    } catch (e) {
+      print('❌ خطأ في updateProfile: $e');
+      emit(ProfileError(e.toString()));
     }
-
-    final currentUser =
-        (state as ProfileLoaded).user; // ← يحصل على userId من state
-
-    await _authRepository.updateProfile(
-      userId: currentUser.id, // ← هنا يستخدم userId من currentUser
-      fullName: fullName,
-      phone: phone,
-      avatarPath: avatarPath,
-    );
   }
 
   // دالة إضافية لتحديث الصورة فقط

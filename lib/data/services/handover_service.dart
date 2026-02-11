@@ -1,13 +1,18 @@
 import 'package:mmm/data/models/handover_model.dart';
 import 'package:mmm/data/models/defect_model.dart';
 import 'package:mmm/data/repositories/handover_repository.dart';
+import 'package:mmm/data/services/storage_service.dart';
 
 /// Handover Service - Handles unit handover process business logic
 class HandoverService {
   final HandoverRepository _handoverRepository;
+  final StorageService _storageService;
 
-  HandoverService({HandoverRepository? handoverRepository})
-    : _handoverRepository = handoverRepository ?? HandoverRepository();
+  HandoverService({
+    HandoverRepository? handoverRepository,
+    StorageService? storageService,
+  })  : _handoverRepository = handoverRepository ?? HandoverRepository(),
+        _storageService = storageService ?? StorageService();
 
   // Get handover by subscription ID
   Future<HandoverModel?> getHandoverBySubscription(
@@ -90,18 +95,38 @@ class HandoverService {
     List<String>? photosPaths,
   }) async {
     try {
+      // Upload defect photos to construction-media bucket
+      List<String>? photoUrls;
+      if (photosPaths != null && photosPaths.isNotEmpty) {
+        photoUrls = [];
+        for (final photoPath in photosPaths) {
+          // Get project ID from handover (assuming we have it in context)
+          final handover = await _handoverRepository.getHandoverById(handoverId);
+          final projectId = handover.projectId ?? 'unknown';
+          
+          final url = await _storageService.uploadConstructionMedia(
+            photoPath,
+            projectId,
+            isVideo: false,
+          );
+          photoUrls.add(url);
+        }
+      }
+
+
       await _handoverRepository.submitDefect(
         handoverId: handoverId,
         category: category,
         description: description,
         severity: severity,
         location: location,
-        photosPaths: photosPaths,
+        photosPaths: photoUrls,
       );
     } catch (e) {
-      throw Exception('فشل إضافة العيب: ${e.toString()}');
+      throw Exception('فشل إرسال العيب: ${e.toString()}');
     }
   }
+
 
   // Get all defects for a handover
   Future<List<DefectModel>> getDefects(String handoverId) async {

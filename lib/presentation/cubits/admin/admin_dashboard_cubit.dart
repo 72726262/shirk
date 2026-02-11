@@ -1,7 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:mmm/data/repositories/project_repository.dart';
-import 'package:mmm/data/repositories/wallet_repository.dart';
+import 'package:mmm/data/repositories/admin_repository.dart'; // ✅ استخدام AdminRepository
 import 'package:mmm/core/services/cache_service.dart';
 import 'package:mmm/core/utils/error_handler.dart';
 
@@ -69,38 +68,41 @@ class AdminDashboardError extends AdminDashboardState {
 
 // Cubit
 class AdminDashboardCubit extends Cubit<AdminDashboardState> {
-  final ProjectRepository _projectRepository;
-  final WalletRepository _walletRepository;
+  final AdminRepository _adminRepository; // ✅ استخدام AdminRepository
 
   AdminDashboardCubit({
-    ProjectRepository? projectRepository,
-    WalletRepository? walletRepository,
-  })  : _projectRepository = projectRepository ?? ProjectRepository(),
-        _walletRepository = walletRepository ?? WalletRepository(),
+    AdminRepository? adminRepository,
+  })  : _adminRepository = adminRepository ?? AdminRepository(),
         super(AdminDashboardInitial());
 
   Future<void> loadDashboard() async {
     emit(AdminDashboardLoading());
     try {
-      // Fetch real data
-      // final projects = await _projectRepository.getProjects();
-      // final activeProjects = projects.where((p) => p.status == ProjectStatus.active).length();
+      print('📊 جلب إحصائيات Dashboard من Supabase...');
       
-      // Mock data for now until repositories support aggregation
-      await Future.delayed(const Duration(seconds: 1));
+      // ✅ جلب البيانات الحقيقية من Supabase
+      final dashboardStats = await _adminRepository.getDashboardStats();
       
-      final stats = const AdminStats(
-        totalClients: 150,
-        activeProjects: 12,
-        totalRevenue: 5000000.0,
-        pendingPayments: 5,
+      final stats = AdminStats(
+        totalClients: dashboardStats.totalClients,
+        activeProjects: dashboardStats.activeProjects,
+        totalRevenue: dashboardStats.totalRevenue,
+        pendingPayments: dashboardStats.pendingPayments,
       );
+
+      print('✅ تم جلب الإحصائيات:');
+      print('   العملاء: ${stats.totalClients}');
+      print('   المشاريع النشطة: ${stats.activeProjects}');
+      print('   الإيرادات: ${stats.totalRevenue}');
+      print('   المدفوعات المعلقة: ${stats.pendingPayments}');
 
       // Cache dashboard stats for offline access
       await CacheService().cacheDashboardStats(stats.toJson());
 
       emit(AdminDashboardLoaded(stats: stats));
     } catch (e) {
+      print('❌ خطأ في loadDashboard: $e');
+      
       // Try to load from cache when network fails
       final cachedStats = CacheService().getCachedDashboardStats();
       if (cachedStats != null) {

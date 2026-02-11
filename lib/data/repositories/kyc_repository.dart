@@ -1,22 +1,38 @@
 // lib/data/repositories/kyc_repository.dart
-import 'dart:io'; // أضف هذا
+import 'dart:typed_data'; // ✅ للويب
+import 'package:image_picker/image_picker.dart'; // ✅ XFile
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class KycRepository {
   final SupabaseClient _client = Supabase.instance.client;
 
-  // رفع ملف KYC - الإصدار المصحح
+  // رفع ملف KYC - الإصدار المصحح للويب والموبايل
   Future<void> submitKyc({
     required String userId,
     required String nationalId,
     required DateTime dateOfBirth,
-    required File idFrontFile, // تغيير من String إلى File
-    required File idBackFile, // تغيير من String إلى File
-    required File selfieFile, // تغيير من String إلى File
-    File? incomeProofFile, // تغيير من String? إلى File?
+    required XFile idFrontFile, // ✅ XFile للويب والموبايل
+    required XFile idBackFile,
+    required XFile selfieFile,
+    XFile? incomeProofFile,
   }) async {
     try {
       print('📤 بدء رفع ملفات التحقق من الهوية للمستخدم: $userId');
+
+      // ✅ فحص حالة KYC الحالية
+      final kycStatus = await getKycStatus(userId);
+      final currentStatus = kycStatus['status'] as String?;
+
+      // منع الرفع إذا كان تم الإرسال ولم يتم الرفض
+      if (currentStatus == 'under_review') {
+        throw Exception('طلب التحقق قيد المراجعة حالياً. يرجى الانتظار.');
+      }
+
+      if (currentStatus == 'approved') {
+        throw Exception('تم الموافقة على طلبك. لا حاجة لإرسال مستندات جديدة.');
+      }
+
+      print('✅ يمكن إرسال المستندات (الحالة: $currentStatus)');
 
       // 1. رفع الصور إلى التخزين
       final idFrontUrl = await _uploadKycDocument(
@@ -85,30 +101,52 @@ class KycRepository {
     }
   }
 
-  // رفع ملف KYC إلى التخزين - الإصدار المصحح
+  // رفع ملف KYC إلى التخزين - الإصدار المصحح للويب
   Future<String> _uploadKycDocument({
     required String userId,
-    required File file, // تغيير من String إلى File
+    required XFile file, // ✅ XFile
     required String documentType,
   }) async {
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      // استخدم امتداد الملف الصحيح بناءً على نوع الملف
-      final fileExtension = file.path.split('.').last;
-      final fileName = 'kyc/$userId/$documentType/$timestamp.$fileExtension';
+      
+      // ✅ استخدام file.name بدلاً من file.path للويب
+      // على الويب، file.path = "blob:http://..." ولكن file.name = "image.jpg"
+      final fileExtension = file.name.split('.').last;
+      final fileName = '$userId/${documentType}_$timestamp.$fileExtension';
 
       print('📁 رفع ملف $documentType: $fileName');
 
-      // قراءة الملف كـ bytes
+      // ✅ قراءة bytes - يعمل على الويب والموبايل
       final fileBytes = await file.readAsBytes();
 
-      final response = await _client.storage
-          .from('user-files')
-          .uploadBinary(fileName, fileBytes);
+      // ✅ تحديد MIME type بناءً على امتداد الملف
+      String contentType = 'image/jpeg'; // default
+      if (fileExtension.toLowerCase() == 'png') {
+        contentType = 'image/png';
+      } else if (fileExtension.toLowerCase() == 'jpg' || 
+                 fileExtension.toLowerCase() == 'jpeg') {
+        contentType = 'image/jpeg';
+      } else if (fileExtension.toLowerCase() == 'pdf') {
+        contentType = 'application/pdf';
+      }
 
-      final publicUrl = _client.storage
-          .from('user-files')
-          .getPublicUrl(fileName);
+      print('📤 رفع الملف مع contentType: $contentType');
+
+      // ✅ رفع الملف مع MIME type الصحيح
+      final response = await _client.storage.from('kyc-documents').uploadBinary(
+        fileName,
+        fileBytes,
+        fileOptions: FileOptions(
+          contentType: contentType, // ✅ Fix MIME type error
+          upsert: false,
+        ),
+      );
+
+      print('✅ تم رفع $documentType بنجاح: $response');
+
+      // الحصول على URL العام
+      final publicUrl = _client.storage.from('kyc-documents').getPublicUrl(fileName);
 
       print('✅ تم رفع الملف بنجاح: $publicUrl');
       return publicUrl;

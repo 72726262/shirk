@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
+import 'package:mmm/data/models/user_model.dart';
 import 'package:mmm/presentation/widgets/custom/wallet_card.dart';
 import 'package:mmm/presentation/widgets/custom/project_card.dart';
 import 'package:mmm/presentation/widgets/skeleton/skeleton_card.dart';
@@ -13,7 +14,9 @@ import 'package:mmm/data/models/project_model.dart';
 import 'package:mmm/data/models/notification_model.dart';
 import 'package:mmm/presentation/cubits/dashboard/dashboard_cubit.dart';
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
+import 'package:mmm/presentation/widgets/dialogs/kyc_approval_dialog.dart';
 import 'package:mmm/routes/route_names.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ClientDashboard extends StatefulWidget {
   const ClientDashboard({super.key});
@@ -29,6 +32,25 @@ class _ClientDashboardState extends State<ClientDashboard> {
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
       context.read<DashboardCubit>().loadDashboard(authState.user.id);
+      _checkKycApprovalStatus(authState.user);
+    }
+  }
+
+  // ✅ Check if KYC was just approved
+  Future<void> _checkKycApprovalStatus(UserModel user) async {
+    if (user.kycStatus == KYCStatus.approved) {
+      final prefs = await SharedPreferences.getInstance();
+      final hasShownApproval = prefs.getBool('kyc_approval_shown_${user.id}') ?? false;
+      
+      if (!hasShownApproval) {
+        // Show approval dialog after a short delay
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            showKycApprovalDialog(context);
+            prefs.setBool('kyc_approval_shown_${user.id}', true);
+          }
+        });
+      }
     }
   }
 
@@ -188,6 +210,17 @@ class _ClientDashboardState extends State<ClientDashboard> {
           ),
           const SizedBox(height: Dimensions.spaceXXL),
 
+          // ✅ KYC Status Card
+          BlocBuilder<AuthCubit, AuthState>(
+            builder: (context, authState) {
+              if (authState is Authenticated) {
+                return _buildKycStatusCard(authState.user.kycStatus);
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+          const SizedBox(height: Dimensions.spaceXXL),
+
           // My Projects Section
           _buildSectionHeader('مشاريعي', () {
             Navigator.pushNamed(context, RouteNames.projectsList);
@@ -204,6 +237,12 @@ class _ClientDashboardState extends State<ClientDashboard> {
           ),
           const SizedBox(height: Dimensions.spaceXXL),
 
+          // Quick Access to New Sections
+          _buildSectionHeader('الأقسام', () {}),
+          const SizedBox(height: Dimensions.spaceL),
+          _buildQuickAccessGrid(),
+          const SizedBox(height: Dimensions.spaceXXL),
+
           // Recent Notifications
           _buildSectionHeader('الإشعارات', () {
             Navigator.pushNamed(context, RouteNames.notifications);
@@ -218,6 +257,90 @@ class _ClientDashboardState extends State<ClientDashboard> {
     );
   }
 
+  Widget _buildQuickAccessGrid() {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: Dimensions.spaceM,
+      crossAxisSpacing: Dimensions.spaceM,
+      childAspectRatio: 1.5,
+      children: [
+        _buildQuickAccessCard(
+          icon: Icons.business_center,
+          title: 'اشتراكاتي',
+          color: AppColors.primary,
+          onTap: () {
+            Navigator.pushNamed(context, RouteNames.subscriptions);
+          },
+        ),
+        _buildQuickAccessCard(
+          icon: Icons.description,
+          title: 'المستندات',
+          color: AppColors.warning,
+          onTap: () {
+            Navigator.pushNamed(context, RouteNames.documents);
+          },
+        ),
+        _buildQuickAccessCard(
+          icon: Icons.construction,
+          title: 'تحديثات البناء',
+          color: AppColors.success,
+          onTap: () {
+            Navigator.pushNamed(context, RouteNames.constructionUpdates);
+          },
+        ),
+        _buildQuickAccessCard(
+          icon: Icons.receipt_long,
+          title: 'المعاملات',
+          color: AppColors.info,
+          onTap: () {
+            Navigator.pushNamed(context, RouteNames.transactions);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickAccessCard({
+    required IconData icon,
+    required String title,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(Dimensions.radiusL),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(Dimensions.radiusL),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 40),
+            const SizedBox(height: Dimensions.spaceS),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSectionHeader(String title, VoidCallback onViewAll) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -226,7 +349,8 @@ class _ClientDashboardState extends State<ClientDashboard> {
           title,
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        TextButton(onPressed: onViewAll, child: const Text('عرض الكل')),
+        if (onViewAll != null)
+          TextButton(onPressed: onViewAll, child: const Text('عرض الكل')),
       ],
     );
   }
@@ -494,5 +618,115 @@ class _ClientDashboardState extends State<ClientDashboard> {
       default:
         return 'غير معروف';
     }
+  }
+
+  // ✅ KYC Status Card
+  Widget _buildKycStatusCard(KYCStatus kycStatus) {
+    Color cardColor;
+    Color statusColor;
+    IconData icon;
+    String title;
+    String message;
+    String actionText;
+    bool showAction;
+
+    switch (kycStatus) {
+      case KYCStatus.pending:
+        cardColor = AppColors.warning.withOpacity(0.1);
+        statusColor = AppColors.warning;
+        icon = Icons.pending_outlined;
+        title = 'التحقق من الهوية مطلوب';
+        message = 'يرجى إكمال عملية KYC للاستفادة من جميع الميزات';
+        actionText = 'ابدأ التحقق';
+        showAction = true;
+        break;
+      case KYCStatus.underReview:
+        cardColor = AppColors.info.withOpacity(0.1);
+        statusColor = AppColors.info;
+        icon = Icons.schedule;
+        title = 'طلبك قيد المراجعة';
+        message = 'نقوم حالياً بمراجعة مستنداتك';
+        actionText = 'عرض الطلب';
+        showAction = true;
+        break;
+      case KYCStatus.approved:
+        cardColor = AppColors.success.withOpacity(0.1);
+        statusColor = AppColors.success;
+        icon = Icons.verified_user;
+        title = 'حسابك موثّق ✓';
+        message = 'تم التحقق من هويتك بنجاح';
+        actionText = '';
+        showAction = false;
+        break;
+      case KYCStatus.rejected:
+        cardColor = AppColors.error.withOpacity(0.1);
+        statusColor = AppColors.error;
+        icon = Icons.error_outline;
+        title = 'تم رفض طلبك';
+        message = 'يرجى إعادة المحاولة مع تصحيح البيانات';
+        actionText = 'إعادة المحاولة';
+        showAction = true;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(Dimensions.spaceL),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(Dimensions.radiusL),
+        border: Border.all(color: statusColor.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(Dimensions.spaceM),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: statusColor, size: 32),
+          ),
+          const SizedBox(width: Dimensions.spaceM),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: statusColor,
+                  ),
+                ),
+                const SizedBox(height: Dimensions.spaceXS),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (showAction)
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, RouteNames.kycVerification);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: statusColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Dimensions.spaceM,
+                  vertical: Dimensions.spaceS,
+                ),
+              ),
+              child: Text(actionText),
+            ),
+        ],
+      ),
+    );
   }
 }

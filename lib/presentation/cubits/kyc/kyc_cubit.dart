@@ -1,7 +1,7 @@
 // lib/presentation/cubits/kyc/kyc_cubit.dart
-import 'dart:io'; // أضف هذا
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:image_picker/image_picker.dart'; // ✅ XFile
 import 'package:mmm/data/repositories/kyc_repository.dart';
 
 part 'kyc_state.dart';
@@ -11,15 +11,15 @@ class KycCubit extends Cubit<KycState> {
 
   KycCubit({required this.kycRepository}) : super(KycInitial());
 
-  // إرسال طلب التحقق من الهوية - الإصدار المصحح
+  // إرسال طلب التحقق من الهوية - الإصدار المصحح للويب
   Future<void> submitKyc({
     required String userId,
     required String nationalId,
     required DateTime dateOfBirth,
-    required File idFrontFile, // تغيير من String إلى File
-    required File idBackFile, // تغيير من String إلى File
-    required File selfieFile, // تغيير من String إلى File
-    File? incomeProofFile, // تغيير من String? إلى File?
+    required XFile idFrontFile, // ✅ XFile للويب والموبايل
+    required XFile idBackFile,
+    required XFile selfieFile,
+    XFile? incomeProofFile,
   }) async {
     try {
       emit(KycSubmitting());

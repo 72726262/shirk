@@ -9,6 +9,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:mmm/core/config/supabase_config.dart';
 import 'package:mmm/core/theme/app_theme.dart';
 import 'package:mmm/data/repositories/kyc_repository.dart';
+import 'package:mmm/presentation/cubits/admin/client_management_cubit.dart';
 import 'package:mmm/presentation/cubits/kyc/kyc_cubit.dart';
 import 'package:mmm/routes/route_names.dart';
 import 'package:mmm/routes/route_generator.dart';
@@ -137,12 +138,8 @@ class SharikApp extends StatelessWidget {
           BlocProvider(create: (_) => ConstructionCubit()),
           BlocProvider(create: (_) => HandoverCubit()),
           BlocProvider(create: (_) => AdminCubit()),
-          BlocProvider(
-            create: (context) => AdminDashboardCubit(
-              projectRepository: context.read<ProjectRepository>(),
-              walletRepository: context.read<WalletRepository>(),
-            ),
-          ),
+          BlocProvider(create: (_) => AdminDashboardCubit()), // ✅ Fix
+          BlocProvider(create: (_) => ClientManagementCubit()), // ✅ Add
         ],
         child: MaterialApp(
           title: 'شريك - منصة الاستثمار العقاري',

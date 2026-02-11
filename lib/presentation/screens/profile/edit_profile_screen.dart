@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart'; // ✅ Add
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/presentation/widgets/common/primary_button.dart';
@@ -18,6 +19,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  String? _selectedImagePath; // ✅ Add
 
   @override
   void initState() {
@@ -34,6 +36,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     super.dispose();
+  }
+
+  // ✅ اختيار صورة
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _selectedImagePath = image.path;
+      });
+    }
   }
 
   @override
@@ -92,16 +105,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       Positioned(
                         bottom: 0,
                         right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(Dimensions.spaceS),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 20,
+                        child: GestureDetector(
+                          onTap: _pickImage, // ✅ Add
+                          child: Container(
+                            padding: const EdgeInsets.all(Dimensions.spaceS),
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
                         ),
                       ),
@@ -158,6 +174,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     await context.read<ProfileCubit>().updateProfile(
       fullName: _nameController.text.trim(),
       phone: _phoneController.text.trim(),
+      avatarPath: _selectedImagePath, // ✅ Add
     );
   }
 }

@@ -1,13 +1,18 @@
 import 'package:mmm/data/models/construction_update_model.dart';
 import 'package:mmm/data/repositories/construction_repository.dart';
+import 'package:mmm/data/services/storage_service.dart';
 
 /// Construction Service - Handles construction tracking business logic
 class ConstructionService {
   final ConstructionRepository _constructionRepository;
+  final StorageService _storageService;
 
-  ConstructionService({ConstructionRepository? constructionRepository})
-      : _constructionRepository =
-            constructionRepository ?? ConstructionRepository();
+  ConstructionService({
+    ConstructionRepository? constructionRepository,
+    StorageService? storageService,
+  })  : _constructionRepository =
+            constructionRepository ?? ConstructionRepository(),
+        _storageService = storageService ?? StorageService();
 
   // Get all construction updates for a project
   Future<List<ConstructionUpdateModel>> getConstructionUpdates(
@@ -74,6 +79,62 @@ class ConstructionService {
     bool notifyClients = true,
   }) async {
     try {
+      // Upload photos to construction-media bucket
+      List<String>? photoUrls;
+      if (photosPaths != null && photosPaths.isNotEmpty) {
+        photoUrls = [];
+        for (final photoPath in photosPaths) {
+          final url = await _storageService.uploadConstructionMedia(
+            photoPath,
+            projectId,
+            isVideo: false,
+          );
+          photoUrls.add(url);
+        }
+      }
+
+      // Upload videos to construction-media bucket
+      List<String>? videoUrls;
+      if (videosPaths != null && videosPaths.isNotEmpty) {
+        videoUrls = [];
+        for (final videoPath in videosPaths) {
+          final url = await _storageService.uploadConstructionMedia(
+            videoPath,
+            projectId,
+            isVideo: true,
+          );
+          videoUrls.add(url);
+        }
+      }
+
+      // Upload reports to reports bucket
+      String? engineeringReportUrl;
+      if (engineeringReportPath != null) {
+        engineeringReportUrl = await _storageService.uploadReport(
+          engineeringReportPath,
+          projectId,
+          'engineering',
+        );
+      }
+
+      String? financialReportUrl;
+      if (financialReportPath != null) {
+        financialReportUrl = await _storageService.uploadReport(
+          financialReportPath,
+          projectId,
+          'financial',
+        );
+      }
+
+      String? supervisionReportUrl;
+      if (supervisionReportPath != null) {
+        supervisionReportUrl = await _storageService.uploadReport(
+          supervisionReportPath,
+          projectId,
+          'supervision',
+        );
+      }
+
       return await _constructionRepository.createUpdate(
         projectId: projectId,
         title: title,
@@ -83,11 +144,27 @@ class ConstructionService {
         type: type,
         completionPercentage: completionPercentage,
         weekNumber: weekNumber,
+        photos: photoUrls,
+        videos: videoUrls,
+        engineeringReportUrl: engineeringReportUrl,
+        financialReportUrl: financialReportUrl,
+        supervisionReportUrl: supervisionReportUrl,
         isPublic: isPublic,
         notifyClients: notifyClients,
       );
     } catch (e) {
       throw Exception('فشل إنشاء التحديث: ${e.toString()}');
+    }
+  }
+  
+  // Get updates for specific user's projects
+  Future<List<ConstructionUpdateModel>> getUserProjectUpdates(String userId) async {
+    try {
+      // This would need to get user's subscriptions first then fetch updates
+      // For now, return empty list - implement properly when needed
+      return [];
+    } catch (e) {
+      throw Exception('فشل تحميل تحديثات المستخدم: ${e.toString()}');
     }
   }
 
