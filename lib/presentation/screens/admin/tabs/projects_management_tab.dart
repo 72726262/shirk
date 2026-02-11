@@ -88,23 +88,26 @@ class _ProjectsManagementTabState extends State<ProjectsManagementTab> {
           ),
         ),
         const SizedBox(width: Dimensions.spaceM),
-        ElevatedButton.icon(
-          icon: const Icon(Icons.add),
-          label: const Text('مشروع جديد'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(
-              horizontal: Dimensions.spaceL,
-              vertical: Dimensions.spaceM,
+        SizedBox(
+          width: 160,
+          child: ElevatedButton.icon(
+            icon: const Icon(Icons.add),
+            label: const Text('مشروع جديد'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(
+                horizontal: Dimensions.spaceM,
+                vertical: Dimensions.spaceM,
+              ),
             ),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => const AddProjectDialog(),
+              );
+            },
           ),
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (_) => const AddProjectDialog(),
-            );
-          },
         ),
       ],
     );

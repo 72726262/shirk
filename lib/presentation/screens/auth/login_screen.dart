@@ -433,25 +433,9 @@ class _LoginScreenState extends State<LoginScreen> {
         child: BlocConsumer<AuthCubit, AuthState>(
           listener: (context, state) {
             if (state is Authenticated) {
-              // Check KYC status first
-              if (state.user.kycStatus == KYCStatus.approved) {
-                // KYC approved - route to appropriate dashboard based on role
-                final dashboardRoute = DashboardRouter.getDashboardRoute(state.role);
-                Navigator.pushReplacementNamed(context, dashboardRoute);
-              } else if (state.user.kycStatus == KYCStatus.pending ||
-                  state.user.kycStatus == KYCStatus.underReview) {
-                // KYC pending - go to verification
-                Navigator.pushReplacementNamed(
-                  context,
-                  RouteNames.kycVerification,
-                );
-              } else {
-                // KYC rejected or other - go to verification
-                Navigator.pushReplacementNamed(
-                  context,
-                  RouteNames.kycVerification,
-                );
-              }
+              // ✅ Always go to dashboard - let dashboard show approval dialog
+              final dashboardRoute = DashboardRouter.getDashboardRoute(state.role);
+              Navigator.pushReplacementNamed(context, dashboardRoute);
             }
             if (state is AuthError) {
               ScaffoldMessenger.of(context).showSnackBar(

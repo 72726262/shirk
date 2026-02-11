@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart'; // ✅ Add
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/presentation/widgets/custom/progress_timeline.dart';
-import 'package:mmm/core/utils/kyc_guard.dart'; // ✅ Add
-import 'package:mmm/presentation/cubits/auth/auth_cubit.dart'; // ✅ Add
+import 'package:mmm/core/utils/kyc_guard.dart';
+import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
+import 'package:mmm/presentation/widgets/common/location_button.dart';
+import 'package:mmm/presentation/cubits/location/location_cubit.dart';
+import 'package:mmm/data/repositories/maps_repository.dart';
+import 'package:mmm/domain/usecases/open_project_location_usecase.dart';
+import 'package:mmm/data/repositories/project_repository.dart'; // ✅ Add
+import 'package:mmm/data/models/project_model.dart'; // ✅ Add
+import 'package:supabase_flutter/supabase_flutter.dart'; // ✅ Add
 
 class ProjectDetailScreen extends StatefulWidget {
   final String projectId;
@@ -19,6 +26,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _selectedImageIndex = 0;
+  final _projectRepository = ProjectRepository(); // ✅ Add
 
   @override
   void initState() {
@@ -34,218 +42,280 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 5,
-      child: Scaffold(
-        body: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) {
-            return [
-              // Project Header
-              SliverAppBar(
-                expandedHeight: 300,
-                floating: true,
-                pinned: true,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      // Project Images
-                      PageView.builder(
-                        itemCount: 5,
-                        onPageChanged: (index) {
-                          setState(() {
-                            _selectedImageIndex = index;
-                          });
-                        },
-                        itemBuilder: (context, index) {
-                          return Image.network(
-                            'https://via.placeholder.com/800x600/102289/FFFFFF?text=Project+Image+${index + 1}',
-                            fit: BoxFit.cover,
-                          );
-                        },
-                      ),
+    return BlocProvider(
+      create: (context) =>
+          LocationCubit(OpenProjectLocationUseCase(MapsRepository())),
+      child: FutureBuilder<ProjectModel>(
+        future: _projectRepository.getProjectById(widget.projectId),
+        builder: (context, snapshot) {
+          // Loading state
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('تحميل...')),
+              body: const Center(child: CircularProgressIndicator()),
+            );
+          }
 
-                      // Gradient Overlay
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.black.withOpacity(0.7),
-                              Colors.transparent,
-                              Colors.transparent,
-                              Colors.black.withOpacity(0.7),
-                            ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                        ),
-                      ),
+          // Error state
+          if (snapshot.hasError || !snapshot.hasData) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('خطأ')),
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                    const SizedBox(height: Dimensions.spaceL),
+                    Text(
+                      'حدث خطأ في تحميل المشروع',
+                      style: TextStyle(color: AppColors.error),
+                    ),
+                    const SizedBox(height: Dimensions.spaceL),
+                    ElevatedButton(
+                      onPressed: () => setState(() {}),
+                      child: const Text('إعادة المحاولة'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
 
-                      // Project Info Overlay
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(Dimensions.spaceL),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'برج النخيل السكني الفاخر',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.white,
+          // ✅ Success - Real project data
+          final project = snapshot.data!;
+
+          return DefaultTabController(
+            length: 5,
+            child: Scaffold(
+              body: NestedScrollView(
+                headerSliverBuilder: (context, innerBoxIsScrolled) {
+                  return [
+                    // Project Header
+                    SliverAppBar(
+                      expandedHeight: 300,
+                      floating: true,
+                      pinned: true,
+                      flexibleSpace: FlexibleSpaceBar(
+                        background: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            // ✅ Real Project Images from Supabase
+                            if (project.heroImageUrl != null)
+                              Image.network(
+                                project.heroImageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: AppColors.gray200,
+                                  child: const Icon(Icons.image, size: 64),
                                 ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                              )
+                            else
+                              Container(
+                                color: AppColors.gray200,
+                                child: const Icon(Icons.image, size: 64),
                               ),
-                              const SizedBox(height: Dimensions.spaceS),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.location_on,
-                                    size: 16,
-                                    color: AppColors.white,
-                                  ),
-                                  const SizedBox(width: Dimensions.spaceXS),
-                                  Text(
-                                    'حي النخيل، القاهرة الجديدة',
-                                    style: const TextStyle(
-                                      color: AppColors.white,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: Dimensions.spaceM),
-                              Row(
-                                children: [
-                                  _buildInfoItem(
-                                    icon: Icons.timeline,
-                                    value: '75%',
-                                    label: 'الإنجاز',
-                                  ),
-                                  const SizedBox(width: Dimensions.spaceL),
-                                  _buildInfoItem(
-                                    icon: Icons.apartment,
-                                    value: '12',
-                                    label: 'المتاحة',
-                                  ),
-                                  const SizedBox(width: Dimensions.spaceL),
-                                  _buildInfoItem(
-                                    icon: Icons.attach_money,
-                                    value: '1.2M',
-                                    label: 'ج.م',
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
 
-                      // Image Indicator
-                      Positioned(
-                        bottom: 120,
-                        left: 0,
-                        right: 0,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(5, (index) {
-                            return Container(
-                              width: 8,
-                              height: 8,
-                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                            // Gradient Overlay
+                            Container(
                               decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: _selectedImageIndex == index
-                                    ? AppColors.accent
-                                    : AppColors.white.withOpacity(0.5),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.black.withOpacity(0.7),
+                                    Colors.transparent,
+                                    Colors.transparent,
+                                    Colors.black.withOpacity(0.7),
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
                               ),
-                            );
-                          }),
+                            ),
+
+                            // Project Info Overlay
+                            Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(
+                                  Dimensions.spaceL,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // ✅ Real Project Name
+                                    Text(
+                                      project.nameAr,
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.white,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: Dimensions.spaceS),
+                                    // ✅ Real Location Name
+                                    if (project.locationName != null)
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.location_on,
+                                            size: 16,
+                                            color: AppColors.white,
+                                          ),
+                                          const SizedBox(
+                                            width: Dimensions.spaceXS,
+                                          ),
+                                          Text(
+                                            'حي النخيل، القاهرة الجديدة',
+                                            style: const TextStyle(
+                                              color: AppColors.white,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    const SizedBox(height: Dimensions.spaceM),
+                                    Row(
+                                      children: [
+                                        _buildInfoItem(
+                                          icon: Icons.timeline,
+                                          value: '75%',
+                                          label: 'الإنجاز',
+                                        ),
+                                        const SizedBox(
+                                          width: Dimensions.spaceL,
+                                        ),
+                                        _buildInfoItem(
+                                          icon: Icons.apartment,
+                                          value: '12',
+                                          label: 'المتاحة',
+                                        ),
+                                        const SizedBox(
+                                          width: Dimensions.spaceL,
+                                        ),
+                                        _buildInfoItem(
+                                          icon: Icons.attach_money,
+                                          value: '1.2M',
+                                          label: 'ج.م',
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // Image Indicator
+                            Positioned(
+                              bottom: 120,
+                              left: 0,
+                              right: 0,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(5, (index) {
+                                  return Container(
+                                    width: 8,
+                                    height: 8,
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: _selectedImageIndex == index
+                                          ? AppColors.accent
+                                          : AppColors.white.withOpacity(0.5),
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                      actions: [
+                        IconButton(
+                          icon: const Icon(Icons.share),
+                          onPressed: () {},
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.bookmark_border),
+                          onPressed: () {},
+                        ),
+                      ],
+                    ),
+
+                    // Tab Bar
+                    SliverPersistentHeader(
+                      delegate: _StickyTabBarDelegate(
+                        TabBar(
+                          controller: _tabController,
+                          isScrollable: true,
+                          labelColor: AppColors.primary,
+                          unselectedLabelColor: AppColors.textSecondary,
+                          indicatorColor: AppColors.primary,
+                          tabs: const [
+                            Tab(text: 'التقدم'),
+                            Tab(text: 'الوسائط'),
+                            Tab(text: 'التقارير'),
+                            Tab(text: 'المدفوعات'),
+                            Tab(text: 'المستندات'),
+                          ],
+                        ),
+                      ),
+                      pinned: true,
+                    ),
+                  ];
+                },
+                body: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildProgressTab(),
+                    _buildMediaTab(),
+                    _buildReportsTab(),
+                    _buildPaymentsTab(),
+                    _buildDocumentsTab(),
+                  ],
                 ),
-                actions: [
-                  IconButton(icon: const Icon(Icons.share), onPressed: () {}),
-                  IconButton(
-                    icon: const Icon(Icons.bookmark_border),
-                    onPressed: () {},
-                  ),
-                ],
               ),
 
-              // Tab Bar
-              SliverPersistentHeader(
-                delegate: _StickyTabBarDelegate(
-                  TabBar(
-                    controller: _tabController,
-                    isScrollable: true,
-                    labelColor: AppColors.primary,
-                    unselectedLabelColor: AppColors.textSecondary,
-                    indicatorColor: AppColors.primary,
-                    tabs: const [
-                      Tab(text: 'التقدم'),
-                      Tab(text: 'الوسائط'),
-                      Tab(text: 'التقارير'),
-                      Tab(text: 'المدفوعات'),
-                      Tab(text: 'المستندات'),
-                    ],
-                  ),
-                ),
-                pinned: true,
+              // Join Project Button - Protected by KYC
+              floatingActionButton: FloatingActionButton.extended(
+                onPressed: () async {
+                  final authState = context.read<AuthCubit>().state;
+                  if (authState is! Authenticated) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('يجب تسجيل الدخول أولاً')),
+                    );
+                    return;
+                  }
+
+                  // ✅ KYC Protection - Prevent subscription until verified
+                  final canProceed = await KycGuard.requireKycApproval(
+                    context,
+                    authState.user,
+                    customMessage:
+                        'للانضمام إلى المشروع، يجب أن يكون حسابك موثّقاً.',
+                  );
+
+                  if (!canProceed) return; // ❌ Blocked if not approved
+
+                  // ✅ Proceed only if KYC approved
+                  Navigator.pushNamed(
+                    context,
+                    '/join-project',
+                    arguments: {'projectId': widget.projectId},
+                  );
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('انضم للمشروع'),
+                backgroundColor: AppColors.accent,
+                foregroundColor: AppColors.black,
               ),
-            ];
-          },
-          body: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildProgressTab(),
-              _buildMediaTab(),
-              _buildReportsTab(),
-              _buildPaymentsTab(),
-              _buildDocumentsTab(),
-            ],
-          ),
-        ),
-
-        // Join Project Button - Protected by KYC
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () async {
-            final authState = context.read<AuthCubit>().state;
-            if (authState is! Authenticated) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('يجب تسجيل الدخول أولاً')),
-              );
-              return;
-            }
-
-            // ✅ KYC Protection - Prevent subscription until verified
-            final canProceed = await KycGuard.requireKycApproval(
-              context,
-              authState.user,
-              customMessage: 'للانضمام إلى المشروع، يجب أن يكون حسابك موثّقاً.',
-            );
-
-            if (!canProceed) return; // ❌ Blocked if not approved
-
-            // ✅ Proceed only if KYC approved
-            Navigator.pushNamed(
-              context,
-              '/join-project',
-              arguments: {'projectId': widget.projectId},
-            );
-          },
-          icon: const Icon(Icons.add),
-          label: const Text('انضم للمشروع'),
-          backgroundColor: AppColors.accent,
-          foregroundColor: AppColors.black,
-        ),
+            ),
+          );
+        },
       ),
     );
   }
