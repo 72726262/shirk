@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart'; // ✅ Add
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/presentation/widgets/custom/progress_timeline.dart';
+import 'package:mmm/core/utils/kyc_guard.dart'; // ✅ Add
+import 'package:mmm/presentation/cubits/auth/auth_cubit.dart'; // ✅ Add
 
 class ProjectDetailScreen extends StatefulWidget {
   final String projectId;
@@ -211,9 +214,27 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
           ),
         ),
 
-        // Join Project Button
+        // Join Project Button - Protected by KYC
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {
+          onPressed: () async {
+            final authState = context.read<AuthCubit>().state;
+            if (authState is! Authenticated) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('يجب تسجيل الدخول أولاً')),
+              );
+              return;
+            }
+
+            // ✅ KYC Protection - Prevent subscription until verified
+            final canProceed = await KycGuard.requireKycApproval(
+              context,
+              authState.user,
+              customMessage: 'للانضمام إلى المشروع، يجب أن يكون حسابك موثّقاً.',
+            );
+
+            if (!canProceed) return; // ❌ Blocked if not approved
+
+            // ✅ Proceed only if KYC approved
             Navigator.pushNamed(
               context,
               '/join-project',
@@ -647,7 +668,20 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () async {
+                      // ✅ KYC Protection for payments\r
+                      final authState = context.read<AuthCubit>().state;
+                      if (authState is! Authenticated) return;
+
+                      final canProceed = await KycGuard.requireKycApproval(
+                        context,
+                        authState.user,
+                        customMessage:
+                            'لإتمام الدفع، يجب أن يكون حسابك موثّقاً.',
+                      );
+
+                      if (!canProceed) return;
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: AppColors.white,
