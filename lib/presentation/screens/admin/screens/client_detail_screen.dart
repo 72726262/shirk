@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/data/models/user_model.dart';
+import 'package:mmm/presentation/cubits/admin/client_management_cubit.dart';
+import 'package:mmm/presentation/screens/admin/edit_client_screen.dart';
 
 class ClientDetailScreen extends StatelessWidget {
   final UserModel client;
@@ -294,10 +297,20 @@ class ClientDetailScreen extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('صفحة التعديل قيد التطوير')),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => BlocProvider.value(
+                    value: context.read<ClientManagementCubit>(),
+                    child: EditClientScreen(client: client),
+                  ),
+                ),
               );
+              // Refresh list if changes were saved
+              if (result == true && context.mounted) {
+                context.read<ClientManagementCubit>().loadClients();
+              }
             },
             icon: const Icon(Icons.edit),
             label: const Text('تعديل بيانات العميل'),

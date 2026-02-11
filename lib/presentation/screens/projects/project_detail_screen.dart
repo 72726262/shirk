@@ -119,15 +119,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> with SingleTi
         children: [
           Text('الوصف', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: Dimensions.spaceM),
-          Text(project.description, style: const TextStyle(height: 1.6)),
+          Text(
+            project.description ?? 'لا يوجد وصف متاح',
+            style: const TextStyle(height: 1.6),
+          ),
           const SizedBox(height: Dimensions.spaceXL),
 
           _buildInfoCard('معلومات المشروع', [
-            _buildInfoRow('الموقع', project.location),
-            _buildInfoRow('المطور', project.developer),
-            _buildInfoRow('القيمة الإجمالية', currency.format(project.totalValue)),
-            _buildInfoRow('تاريخ البدء', DateFormat('dd/MM/yyyy').format(project.startDate)),
-            _buildInfoRow('تاريخ الانتهاء المتوقع', DateFormat('dd/MM/yyyy').format(project.expectedEndDate)),
+            _buildInfoRow('الموقع', project.location ?? '-'),
+            _buildInfoRow('المطور', project.developer ?? '-'),
+            _buildInfoRow('القيمة الإجمالية', currency.format(project.totalValue ?? 0)),
+            _buildInfoRow('تاريخ البدء', project.startDate != null ? DateFormat('dd/MM/yyyy').format(project.startDate) : '-'),
+            _buildInfoRow('تاريخ الانتهاء المتوقع', project.expectedEndDate != null ? DateFormat('dd/MM/yyyy').format(project.expectedEndDate) : '-'),
           ]),
         ],
       ),

@@ -19,26 +19,35 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late NotificationsCubit _notificationsCubit;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _notificationsCubit = context.read<NotificationsCubit>();
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
-      context.read<NotificationsCubit>().loadNotifications(
+      _notificationsCubit.loadNotifications(
         authState.user.id,
         isRead: null,
       );
-      context.read<NotificationsCubit>().subscribeToNotifications(authState.user.id);
+      // Only subscribe if not already subscribed
+      // This check might be internal to the cubit or handled by a flag
+      // Assuming the cubit handles multiple subscriptions gracefully or has an internal flag
+      _notificationsCubit.subscribeToNotifications(authState.user.id);
     }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    context.read<NotificationsCubit>().unsubscribeFromNotifications();
+    _notificationsCubit.unsubscribeFromNotifications();
     super.dispose();
   }
 

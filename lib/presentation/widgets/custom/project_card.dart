@@ -81,10 +81,12 @@ class ProjectCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Project Image
+        child: SizedBox(
+          height: 400,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Project Image
             Container(
               height: 160,
               width: double.infinity,
@@ -93,181 +95,205 @@ class ProjectCard extends StatelessWidget {
                   topLeft: Radius.circular(Dimensions.radiusL),
                   topRight: Radius.circular(Dimensions.radiusL),
                 ),
-                image: DecorationImage(
-                  image: NetworkImage(imageUrl),
-                  fit: BoxFit.cover,
-                ),
+                color: AppColors.gray200,
+                image: imageUrl.isNotEmpty && imageUrl != 'file:///'
+                    ? DecorationImage(
+                        image: NetworkImage(imageUrl),
+                        fit: BoxFit.cover,
+                        onError: (exception, stackTrace) {
+                          // Handle image load error silently
+                        },
+                      )
+                    : null,
               ),
               child: Stack(
-                children: [
-                  // Status Badge
-                  Positioned(
-                    top: Dimensions.spaceM,
-                    left: Dimensions.spaceM,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Dimensions.spaceM,
-                        vertical: Dimensions.spaceXS,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(status),
-                        borderRadius: BorderRadius.circular(Dimensions.radiusS),
-                      ),
-                      child: Text(
-                        status,
-                        style: const TextStyle(
-                          color: AppColors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                  children: [
+                    // Status Badge
+                    Positioned(
+                      top: Dimensions.spaceM,
+                      left: Dimensions.spaceM,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Dimensions.spaceM,
+                          vertical: Dimensions.spaceXS,
                         ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Project Details
-            Padding(
-              padding: const EdgeInsets.all(Dimensions.spaceL),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const SizedBox(height: Dimensions.spaceS),
-
-                  // Location
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on_outlined,
-                        size: 16,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: Dimensions.spaceXS),
-                      Expanded(
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(status),
+                          borderRadius: BorderRadius.circular(
+                            Dimensions.radiusS,
+                          ),
+                        ),
                         child: Text(
-                          location,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppColors.textSecondary),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          status,
+                          style: const TextStyle(
+                            color: AppColors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
+              ),
 
-                  const SizedBox(height: Dimensions.spaceL),
-
-                  // Progress Bar
-                  Column(
+              // Project Details
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(Dimensions.spaceL),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Title
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                      const SizedBox(height: Dimensions.spaceS),
+
+                      // Location
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'التقدم',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 16,
+                            color: AppColors.textSecondary,
                           ),
-                          Text(
-                            '${progress.toStringAsFixed(0)}%',
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
+                          const SizedBox(width: Dimensions.spaceXS),
+                          Expanded(
+                            child: Text(
+                              location,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: AppColors.textSecondary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: Dimensions.spaceS),
-                      LinearProgressIndicator(
-                        value: progress / 100,
-                        backgroundColor: AppColors.gray200,
-                        color: AppColors.primary,
-                        minHeight: 6,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ],
-                  ),
 
-                  const SizedBox(height: Dimensions.spaceL),
+                      const SizedBox(height: Dimensions.spaceL),
 
-                  // Price and Units
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
+                      // Progress Bar
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'السعر',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: AppColors.textSecondary),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'التقدم',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: AppColors.textSecondary),
+                              ),
+                              Text(
+                                '${progress.toStringAsFixed(0)}%',
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            price,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
+                          const SizedBox(height: Dimensions.spaceS),
+                          LinearProgressIndicator(
+                            value: progress / 100,
+                            backgroundColor: AppColors.gray200,
+                            color: AppColors.primary,
+                            minHeight: 6,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: Dimensions.spaceL),
+
+                      // Price and Units
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'السعر',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                ),
+                                Text(
+                                  price,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: Dimensions.spaceS),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  'الوحدات المتاحة',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                ),
+                                Text(
+                                  '$availableUnits وحدة',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.accent,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            'الوحدات المتاحة',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: AppColors.textSecondary),
-                          ),
-                          Text(
-                            '$availableUnits وحدة',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.accent,
+
+                      const SizedBox(height: Dimensions.spaceM),
+
+                      // View Details Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: onTap,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            side: const BorderSide(color: AppColors.primary),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                Dimensions.radiusM,
+                              ),
                             ),
                           ),
-                        ],
+                          child: const Text('عرض التفاصيل'),
+                        ),
                       ),
                     ],
                   ),
-
-                  const SizedBox(height: Dimensions.spaceM),
-
-                  // View Details Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: onTap,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            Dimensions.radiusM,
-                          ),
-                        ),
-                      ),
-                      child: const Text('عرض التفاصيل'),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

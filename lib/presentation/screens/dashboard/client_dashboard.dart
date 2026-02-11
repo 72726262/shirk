@@ -711,19 +711,21 @@ class _ClientDashboardState extends State<ClientDashboard> {
             ),
           ),
           if (showAction)
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, RouteNames.kycVerification);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: statusColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Dimensions.spaceM,
-                  vertical: Dimensions.spaceS,
+            Flexible(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, RouteNames.kycVerification);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: statusColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Dimensions.spaceM,
+                    vertical: Dimensions.spaceS,
+                  ),
                 ),
+                child: Text(actionText),
               ),
-              child: Text(actionText),
             ),
         ],
       ),

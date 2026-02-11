@@ -23,6 +23,8 @@ import 'package:mmm/presentation/screens/super_admin/super_admin_dashboard_scree
 // Projects
 import 'package:mmm/presentation/screens/projects/projects_list_screen.dart';
 import 'package:mmm/presentation/screens/projects/project_detail_screen.dart';
+import 'package:mmm/presentation/screens/projects/project_location_map_screen.dart';
+import 'package:latlong2/latlong.dart';
 
 // Join Flow
 import 'package:mmm/presentation/screens/projects/join_project_flow/select_unit_screen.dart';
@@ -142,6 +144,17 @@ class RouteGenerator {
           return _slideRoute(ProjectDetailScreen(projectId: args));
         }
         return _errorRoute('معرف المشروع مطلوب');
+
+      case RouteNames.projectLocationMap:
+        if (args is Map<String, dynamic>) {
+          return _slideRoute(
+            ProjectLocationMapScreen(
+              projectName: args['projectName'] as String,
+              projectLocation: args['projectLocation'] as LatLng,
+            ),
+          );
+        }
+        return _errorRoute('بيانات الموقع مطلوبة');
 
       // Join Flow
       case RouteNames.selectUnit:

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
+import 'package:mmm/routes/route_names.dart';
+import 'package:latlong2/latlong.dart';
 
 class ConstructionTrackingScreen extends StatefulWidget {
   final String projectId;
@@ -1480,69 +1482,15 @@ class _ConstructionTrackingScreenState
   }
 
   void _scheduleVisit() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('جدولة زيارة موقع'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('اختر تاريخ ووقت الزيارة:'),
-              const SizedBox(height: Dimensions.spaceL),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'التاريخ',
-                  prefixIcon: Icon(Icons.calendar_today),
-                ),
-                onTap: () {
-                  // Show date picker
-                },
-              ),
-              const SizedBox(height: Dimensions.spaceL),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'الوقت',
-                  prefixIcon: Icon(Icons.access_time),
-                ),
-                onTap: () {
-                  // Show time picker
-                },
-              ),
-              const SizedBox(height: Dimensions.spaceL),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'عدد الأشخاص',
-                  prefixIcon: Icon(Icons.people),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('إلغاء'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('تم جدولة الزيارة بنجاح'),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-              ),
-              child: const Text('تأكيد'),
-            ),
-          ],
-        );
+    // Navigate to map screen with project location
+    // TODO: Get actual project coordinates from project data
+    // For now using Riyadh center as placeholder
+    Navigator.pushNamed(
+      context,
+      RouteNames.projectLocationMap,
+      arguments: {
+        'projectName': 'مشروع تجريبي', // TODO: Get from project data
+        'projectLocation': LatLng(24.7136, 46.6753), // Riyadh center coordinates
       },
     );
   }

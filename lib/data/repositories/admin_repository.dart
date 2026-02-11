@@ -69,7 +69,7 @@ class AdminRepository {
     String? kycStatus,
     String? role, // Added role parameter
     String? searchQuery,
-    int limit = 50,
+    int limit = 200, // Increased from 50 to 200
   }) async {
     try {
       var query = _client.from('profiles').select();

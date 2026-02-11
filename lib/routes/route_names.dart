@@ -14,6 +14,7 @@ class RouteNames {
   // Projects
   static const String projectsList = '/projects';
   static const String projectDetail = '/project-detail';
+  static const String projectLocationMap = '/project-location-map';
   static const String createProject = '/create-project';
   static const String editProject = '/edit-project';
 
