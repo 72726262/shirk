@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/presentation/cubits/admin/contracts_management_cubit.dart';
+import 'package:mmm/presentation/screens/admin/screens/contract_detail_screen.dart';
 import 'package:mmm/data/models/contract_model.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 
 class ContractsManagementTab extends StatefulWidget {
   const ContractsManagementTab({super.key});
@@ -24,56 +26,78 @@ class _ContractsManagementTabState extends State<ContractsManagementTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildFilters(),
-        Expanded(
-          child: BlocConsumer<ContractsManagementCubit, ContractsManagementState>(
-            listener: (context, state) {
-              if (state is ContractsManagementError) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.message),
-                    backgroundColor: AppColors.error,
-                  ),
-                );
-              } else if (state is ContractCreatedSuccessfully) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('تم إنشاء العقد بنجاح'),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
-              }
-            },
-            builder: (context, state) {
-              if (state is ContractsManagementLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
+    return Padding(
+      padding: const EdgeInsets.all(Dimensions.spaceL),
+      child: Column(
+        children: [
+          _buildFiltersAndAction(),
+          const SizedBox(height: Dimensions.spaceL),
+          Expanded(
+            child:
+                BlocConsumer<
+                  ContractsManagementCubit,
+                  ContractsManagementState
+                >(
+                  listener: (context, state) {
+                    if (state is ContractsManagementError) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(state.message),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                    } else if (state is ContractCreatedSuccessfully) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('تم إنشاء العقد بنجاح'),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
+                    }
+                  },
+                  builder: (context, state) {
+                    if (state is ContractsManagementLoading) {
+                      return _buildSkeletonLoader();
+                    }
 
-              if (state is ContractsManagementLoaded) {
-                return _buildContractsTable(state.contracts);
-              }
+                    if (state is ContractsManagementLoaded) {
+                      if (state.contracts.isEmpty) {
+                        return const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.description_outlined,
+                                size: 64,
+                                color: AppColors.gray400,
+                              ),
+                              SizedBox(height: Dimensions.spaceL),
+                              Text('لا توجد عقود'),
+                            ],
+                          ),
+                        );
+                      }
+                      return _buildContractsList(state.contracts);
+                    }
 
-              return const Center(child: Text('لا توجد عقود'));
-            },
+                    return const Center(child: Text('لا توجد عقود'));
+                  },
+                ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildFilters() {
-    return Container(
-      padding: const EdgeInsets.all(Dimensions.spaceL),
-      color: AppColors.surface,
-      child: Row(
-        children: [
-          Expanded(
-            child: Wrap(
-              spacing: Dimensions.spaceM,
+  Widget _buildFiltersAndAction() {
+    return Row(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
               children: [
-                ChoiceChip(
+                FilterChip(
                   label: const Text('الكل'),
                   selected: _selectedStatus == null,
                   onSelected: (selected) {
@@ -83,272 +107,330 @@ class _ContractsManagementTabState extends State<ContractsManagementTab> {
                     }
                   },
                 ),
-                ChoiceChip(
-                  label: const Text('مسودة'),
-                  selected: _selectedStatus == 'draft',
+                const SizedBox(width: Dimensions.spaceS),
+                FilterChip(
+                  label: const Text('معلق'),
+                  selected: _selectedStatus == 'pending',
+                  backgroundColor: AppColors.warning.withOpacity(0.1),
+                  selectedColor: AppColors.warning.withOpacity(0.3),
                   onSelected: (selected) {
                     if (selected) {
-                      setState(() => _selectedStatus = 'draft');
-                      context
-                          .read<ContractsManagementCubit>()
-                          .loadContracts(status: 'draft');
+                      setState(() => _selectedStatus = 'pending');
+                      context.read<ContractsManagementCubit>().loadContracts(
+                        status: 'pending',
+                      );
                     }
                   },
                 ),
-                ChoiceChip(
-                  label: const Text('قيد التوقيع'),
-                  selected: _selectedStatus == 'pending_signature',
+                const SizedBox(width: Dimensions.spaceS),
+                FilterChip(
+                  label: const Text('ساري'),
+                  selected: _selectedStatus == 'active',
+                  backgroundColor: AppColors.success.withOpacity(0.1),
+                  selectedColor: AppColors.success.withOpacity(0.3),
                   onSelected: (selected) {
                     if (selected) {
-                      setState(() => _selectedStatus = 'pending_signature');
-                      context
-                          .read<ContractsManagementCubit>()
-                          .loadContracts(status: 'pending_signature');
+                      setState(() => _selectedStatus = 'active');
+                      context.read<ContractsManagementCubit>().loadContracts(
+                        status: 'active',
+                      );
                     }
                   },
                 ),
-                ChoiceChip(
-                  label: const Text('موقع'),
-                  selected: _selectedStatus == 'signed',
-                  onSelected: (selected) {
-                    if (selected) {
-                      setState(() => _selectedStatus = 'signed');
-                      context
-                          .read<ContractsManagementCubit>()
-                          .loadContracts(status: 'signed');
-                    }
-                  },
-                ),
-                ChoiceChip(
+                const SizedBox(width: Dimensions.spaceS),
+                FilterChip(
                   label: const Text('منفذ'),
                   selected: _selectedStatus == 'executed',
+                  backgroundColor: AppColors.info.withOpacity(0.1),
+                  selectedColor: AppColors.info.withOpacity(0.3),
                   onSelected: (selected) {
                     if (selected) {
                       setState(() => _selectedStatus = 'executed');
-                      context
-                          .read<ContractsManagementCubit>()
-                          .loadContracts(status: 'executed');
+                      context.read<ContractsManagementCubit>().loadContracts(
+                        status: 'executed',
+                      );
                     }
                   },
                 ),
               ],
             ),
           ),
-          const SizedBox(width: Dimensions.spaceL),
-          ElevatedButton.icon(
-            onPressed: _showCreateContractDialog,
-            icon: const Icon(Icons.add),
+        ),
+        const SizedBox(width: Dimensions.spaceL),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              // TODO: Show create contract dialog
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('قيد التطوير')));
+            },
+            icon: const Icon(Icons.add, size: 18),
             label: const Text('إنشاء عقد'),
             style: ElevatedButton.styleFrom(
+              minimumSize: const Size(120, 40),
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(
+                horizontal: Dimensions.spaceM,
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildContractsTable(List<ContractModel> contracts) {
-    if (contracts.isEmpty) {
-      return const Center(
-        child: Text('لا توجد عقود'),
-      );
-    }
+  Widget _buildContractsList(List<ContractModel> contracts) {
+    return ListView.builder(
+      itemCount: contracts.length,
+      itemBuilder: (context, index) {
+        final contract = contracts[index];
+        return _ContractCard(contract: contract);
+      },
+    );
+  }
 
-    return SingleChildScrollView(
+  Widget _buildSkeletonLoader() {
+    return ListView.builder(
       padding: const EdgeInsets.all(Dimensions.spaceL),
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text('رقم العقد')),
-          DataColumn(label: Text('العنوان')),
-          DataColumn(label: Text('المستخدم')),
-          DataColumn(label: Text('المشروع')),
-          DataColumn(label: Text('الحالة')),
-          DataColumn(label: Text('تاريخ الإنشاء')),
-          DataColumn(label: Text('الإجراءات')),
-        ],
-        rows: contracts.map((contract) {
-          return DataRow(cells: [
-            DataCell(Text(contract.contractNumber)),
-            DataCell(Text(contract.title)),
-            DataCell(Text(contract.userId)), // يمكن تحسينها لعرض اسم المستخدم
-            DataCell(Text(contract.projectId ?? '-')),
-            DataCell(_buildStatusChip(contract.status)),
-            DataCell(Text(DateFormat('dd/MM/yyyy').format(contract.createdAt))),
-            DataCell(
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.visibility, size: 20),
-                    tooltip: 'عرض',
-                    onPressed: () => _viewContract(contract),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    tooltip: 'تعديل',
-                    onPressed: () => _editContract(contract),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, size: 20, color: AppColors.error),
-                    tooltip: 'حذف',
-                    onPressed: () => _deleteContract(contract.id),
-                  ),
-                ],
-              ),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: AppColors.gray200,
+          highlightColor: AppColors.gray100,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: Dimensions.spaceL),
+            padding: const EdgeInsets.all(Dimensions.spaceL),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(Dimensions.radiusL),
+              border: Border.all(color: AppColors.border),
             ),
-          ]);
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildStatusChip(ContractStatus status) {
-    Color color;
-    String label;
-
-    switch (status) {
-      case ContractStatus.draft:
-        color = AppColors.textSecondary;
-        label = 'مسودة';
-        break;
-      case ContractStatus.pendingSignature:
-        color = AppColors.warning;
-        label = 'قيد التوقيع';
-        break;
-      case ContractStatus.signed:
-        color = AppColors.success;
-        label = 'موقع';
-        break;
-      case ContractStatus.executed:
-        color = AppColors.primary;
-        label = 'منفذ';
-        break;
-      case ContractStatus.terminated:
-        color = AppColors.error;
-        label = 'ملغي';
-        break;
-      case ContractStatus.expired:
-        color = Colors.grey;
-        label = 'منتهي';
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Dimensions.spaceS,
-        vertical: Dimensions.spaceXS,
-      ),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(Dimensions.radiusS),
-        border: Border.all(color: color),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(color: color, fontSize: 12),
-      ),
-    );
-  }
-
-  void _showCreateContractDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('إنشاء عقد جديد'),
-        content: const Text('هذه الميزة ستكون متاحة قريباً'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إغلاق'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _viewContract(ContractModel contract) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(contract.title),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('رقم العقد: ${contract.contractNumber}'),
-              const SizedBox(height: Dimensions.spaceS),
-              Text('الحالة: ${_getStatusLabel(contract.status)}'),
-              const SizedBox(height: Dimensions.spaceS),
-              Text(
-                'تاريخ الإنشاء: ${DateFormat('dd/MM/yyyy').format(contract.createdAt)}',
-              ),
-              if (contract.clientSignedAt != null) ...[
-                const SizedBox(height: Dimensions.spaceS),
-                Text(
-                  'تاريخ التوقيع: ${DateFormat('dd/MM/yyyy').format(contract.clientSignedAt!)}',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: AppColors.gray300,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: Dimensions.spaceM),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            height: 16,
+                            width: 200,
+                            color: AppColors.gray300,
+                          ),
+                          const SizedBox(height: Dimensions.spaceS),
+                          Container(
+                            height: 14,
+                            width: 150,
+                            color: AppColors.gray300,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Dimensions.spaceM),
+                Container(
+                  height: 14,
+                  width: double.infinity,
+                  color: AppColors.gray300,
                 ),
               ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ContractCard extends StatelessWidget {
+  final ContractModel contract;
+
+  const _ContractCard({required this.contract});
+
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'active':
+        return AppColors.success;
+      case 'pending':
+        return AppColors.warning;
+      case 'executed':
+        return AppColors.info;
+      case 'expired':
+        return AppColors.error;
+      default:
+        return AppColors.gray400;
+    }
+  }
+
+  String _getStatusText(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'active':
+        return 'ساري';
+      case 'pending':
+        return 'معلق';
+      case 'executed':
+        return 'منفذ';
+      case 'expired':
+        return 'منتهي';
+      default:
+        return 'غير معروف';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final formattedDate = contract.expiryDate != null
+        ? DateFormat('yyyy-MM-dd').format(contract.createdAt!)
+        : 'غير محدد';
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ContractDetailScreen(contract: contract),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: Dimensions.spaceL),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(Dimensions.radiusL),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(Dimensions.spaceL),
+          child: Row(
+            children: [
+              // Icon
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: _getStatusColor(
+                    contract.status.toString(),
+                  ).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(Dimensions.radiusM),
+                ),
+                child: Icon(
+                  Icons.description,
+                  color: _getStatusColor(contract.status.toString()),
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: Dimensions.spaceL),
+
+              // Contract Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      contract.userId ?? 'عقد #${contract.id}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: Dimensions.spaceXS),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.person,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: Dimensions.spaceXS),
+                        Expanded(
+                          child: Text(
+                            contract.title ?? 'غير محدد',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Dimensions.spaceXS),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Dimensions.spaceS,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(contract.status.toString()),
+                            borderRadius: BorderRadius.circular(
+                              Dimensions.radiusS,
+                            ),
+                          ),
+                          child: Text(
+                            _getStatusText(contract.status.toString()),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: Dimensions.spaceS),
+                        const Icon(
+                          Icons.calendar_today,
+                          size: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: Dimensions.spaceXS),
+                        Text(
+                          formattedDate,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Arrow
+              const Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إغلاق'),
-          ),
-        ],
       ),
     );
-  }
-
-  void _editContract(ContractModel contract) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('ميزة التعديل قيد التطوير')),
-    );
-  }
-
-  void _deleteContract(String id) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('تأكيد الحذف'),
-        content: const Text('هل أنت متأكد من حذف هذا العقد؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
-          ),
-          TextButton(
-            onPressed: () {
-              context.read<ContractsManagementCubit>().deleteContract(id);
-              Navigator.pop(context);
-            },
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('حذف'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getStatusLabel(ContractStatus status) {
-    switch (status) {
-      case ContractStatus.draft:
-        return 'مسودة';
-      case ContractStatus.pendingSignature:
-        return 'قيد التوقيع';
-      case ContractStatus.signed:
-        return 'موقع';
-      case ContractStatus.executed:
-        return 'منفذ';
-      case ContractStatus.terminated:
-        return 'ملغي';
-      case ContractStatus.expired:
-        return 'منتهي';
-    }
   }
 }

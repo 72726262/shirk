@@ -66,15 +66,7 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  const bool isDevicePreviewEnabled = true;
-
-  if (isDevicePreviewEnabled) {
-    runApp(
-      DevicePreview(enabled: true, builder: (context) => const SharikApp()),
-    );
-  } else {
-    runApp(const SharikApp());
-  }
+  runApp(DevicePreview(enabled: true, builder: (context) => const SharikApp()));
 }
 
 class SharikApp extends StatelessWidget {

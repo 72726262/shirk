@@ -13,14 +13,7 @@ class ContractRepository {
     try {
       var query = _supabase
           .from('contracts')
-          .select('''
-            *,
-            subscription:subscriptions(
-              *,
-              project:projects(*),
-              user:profiles(*)
-            )
-          ''');
+          .select('*');
 
       if (status != null) {
         query = query.eq('status', status);
@@ -47,14 +40,7 @@ class ContractRepository {
     try {
       final data = await _supabase
           .from('contracts')
-          .select('''
-            *,
-            subscription:subscriptions(
-              *,
-              project:projects(*),
-              user:profiles(*)
-            )
-          ''')
+          .select('*')
           .eq('id', id)
           .single();
 
@@ -109,14 +95,7 @@ class ContractRepository {
         'terms': template['terms'],
         'status': 'draft',
         'custom_fields': customFields,
-      }).select('''
-        *,
-        subscription:subscriptions(
-          *,
-          project:projects(*),
-          user:profiles(*)
-        )
-      ''').single();
+      }).select('*').single();
 
       return ContractModel.fromJson(data);
     } catch (e) {

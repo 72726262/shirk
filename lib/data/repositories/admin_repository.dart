@@ -121,7 +121,7 @@ class AdminRepository {
     try {
       var query = _client
           .from('transactions')
-          .select('*, profiles(full_name, email), projects(name_ar)');
+          .select('*, profiles!user_id(full_name, email), wallets(user_id)');
 
       if (status != null) {
         query = query.eq('status', status);

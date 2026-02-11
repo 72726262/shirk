@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
-import 'package:mmm/core/constants/dimensions.dart';
+
 import 'package:mmm/presentation/cubits/admin/admin_dashboard_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/clients_management_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/payments_management_cubit.dart';
@@ -10,7 +10,8 @@ import 'package:mmm/presentation/cubits/admin/contracts_management_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/documents_management_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/handovers_management_cubit.dart';
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
-import 'package:mmm/presentation/screens/admin/tabs/projects_management_tab.dart';
+import 'package:mmm/presentation/cubits/projects/projects_cubit.dart';
+import 'package:mmm/presentation/screens/admin/tabs/projects_tab.dart';
 import 'package:mmm/presentation/screens/admin/tabs/clients_management_tab.dart';
 import 'package:mmm/presentation/screens/admin/tabs/payments_management_tab.dart';
 import 'package:mmm/presentation/screens/admin/tabs/construction_updates_tab.dart';
@@ -48,7 +49,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   final List<Widget> _tabViews = const [
     OverviewTab(),
-    ProjectsManagementTab(),
+    ProjectsTab(),
     ClientsManagementTab(),
     PaymentsManagementTab(),
     ConstructionUpdatesTab(),
@@ -76,23 +77,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => ClientsManagementCubit(),
+          create: (context) => AdminDashboardCubit()..loadDashboard(),
         ),
-        BlocProvider(
-          create: (context) => PaymentsManagementCubit(),
-        ),
-        BlocProvider(
-          create: (context) => AdminNotificationsCubit(),
-        ),
-        BlocProvider(
-          create: (context) => ContractsManagementCubit(),
-        ),
-        BlocProvider(
-          create: (context) => DocumentsManagementCubit(),
-        ),
-        BlocProvider(
-          create: (context) => HandoversManagementCubit(),
-        ),
+        BlocProvider(create: (context) => ProjectsCubit()..loadProjects()),
+        BlocProvider(create: (context) => ClientsManagementCubit()),
+        BlocProvider(create: (context) => PaymentsManagementCubit()),
+        BlocProvider(create: (context) => AdminNotificationsCubit()),
+        BlocProvider(create: (context) => ContractsManagementCubit()),
+        BlocProvider(create: (context) => DocumentsManagementCubit()),
+        BlocProvider(create: (context) => HandoversManagementCubit()),
       ],
       child: Scaffold(
         backgroundColor: AppColors.background,
@@ -107,9 +100,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const CreateUserScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const CreateUserScreen()),
                 );
               },
             ),
@@ -119,9 +110,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const ReportsScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const ReportsScreen()),
                 );
               },
             ),
@@ -131,9 +120,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const ActivityLogsScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const ActivityLogsScreen()),
                 );
               },
             ),
@@ -156,7 +143,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     children: [
                       Icon(Icons.logout, color: AppColors.error),
                       SizedBox(width: 8),
-                      Text('تسجيل الخروج', style: TextStyle(color: AppColors.error)),
+                      Text(
+                        'تسجيل الخروج',
+                        style: TextStyle(color: AppColors.error),
+                      ),
                     ],
                   ),
                 ),
@@ -179,10 +169,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             tabAlignment: TabAlignment.start,
           ),
         ),
-        body: TabBarView(
-          controller: _tabController,
-          children: _tabViews,
-        ),
+        body: TabBarView(controller: _tabController, children: _tabViews),
       ),
     );
   }

@@ -5,7 +5,7 @@ import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/presentation/cubits/admin/documents_management_cubit.dart';
 import 'package:mmm/data/models/document_model.dart';
 import 'package:intl/intl.dart';
-
+import 'package:shimmer/shimmer.dart';
 import '../../../cubits/admin/documents_management_state.dart';
 
 class DocumentsManagementTab extends StatefulWidget {
@@ -51,7 +51,7 @@ class _DocumentsManagementTabState extends State<DocumentsManagementTab> {
                 },
                 builder: (context, state) {
                   if (state is DocumentsManagementLoading) {
-                    return const Center(child: CircularProgressIndicator());
+                    return _buildSkeletonLoader();
                   }
 
                   if (state is DocumentsManagementLoaded) {
@@ -138,13 +138,16 @@ class _DocumentsManagementTabState extends State<DocumentsManagementTab> {
             ),
           ),
           const SizedBox(width: Dimensions.spaceL),
-          ElevatedButton.icon(
-            onPressed: _showUploadDialog,
-            icon: const Icon(Icons.upload_file),
-            label: const Text('رفع مستند'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+          SizedBox(
+            width: 150,
+            child: ElevatedButton.icon(
+              onPressed: _showUploadDialog,
+              icon: const Icon(Icons.upload_file),
+              label: const Text('رفع مستند'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
             ),
           ),
         ],
@@ -388,6 +391,69 @@ class _DocumentsManagementTabState extends State<DocumentsManagementTab> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSkeletonLoader() {
+    return GridView.builder(
+      padding: const EdgeInsets.all(Dimensions.spaceL),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: Dimensions.spaceM,
+        mainAxisSpacing: Dimensions.spaceM,
+        childAspectRatio: 0.85,
+      ),
+      itemCount: 6,
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: AppColors.gray200,
+          highlightColor: AppColors.gray100,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(Dimensions.radiusL),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.gray300,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(Dimensions.radiusL),
+                        topRight: Radius.circular(Dimensions.radiusL),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(Dimensions.spaceM),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          height: 14,
+                          width: double.infinity,
+                          color: AppColors.gray300,
+                        ),
+                        const SizedBox(height: Dimensions.spaceS),
+                        Container(
+                          height: 12,
+                          width: 80,
+                          color: AppColors.gray300,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

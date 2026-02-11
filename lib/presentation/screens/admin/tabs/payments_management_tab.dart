@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/presentation/cubits/admin/payments_management_cubit.dart';
+import 'package:mmm/presentation/screens/admin/screens/payment_detail_screen.dart';
 import 'package:mmm/presentation/widgets/skeleton/skeleton_list.dart';
 import 'package:intl/intl.dart';
 
@@ -31,16 +32,27 @@ class _PaymentsManagementTabState extends State<PaymentsManagementTab> {
           _buildFilters(),
           const SizedBox(height: Dimensions.spaceL),
           Expanded(
-            child: BlocBuilder<PaymentsManagementCubit, PaymentsManagementState>(
+            child:
+                BlocBuilder<PaymentsManagementCubit, PaymentsManagementState>(
               builder: (context, state) {
                 if (state is PaymentsLoading) {
                   return const SkeletonList();
                 }
                 if (state is PaymentsLoaded) {
                   if (state.transactions.isEmpty) {
-                    return const Center(child: Text('لا توجد مدفوعات'));
+                    return const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.payment,
+                              size: 64, color: AppColors.gray400),
+                          SizedBox(height: Dimensions.spaceL),
+                          Text('لا توجد مدفوعات'),
+                        ],
+                      ),
+                    );
                   }
-                  return _buildTransactionsTable(state.transactions);
+                  return _buildPaymentsList(state.transactions);
                 }
                 if (state is PaymentsError) {
                   return Center(child: Text(state.message));
@@ -75,7 +87,9 @@ class _PaymentsManagementTabState extends State<PaymentsManagementTab> {
             selectedColor: AppColors.success.withOpacity(0.3),
             onSelected: (_) {
               setState(() => _selectedStatus = 'completed');
-              context.read<PaymentsManagementCubit>().loadTransactions(status: 'completed');
+              context
+                  .read<PaymentsManagementCubit>()
+                  .loadTransactions(status: 'completed');
             },
           ),
           const SizedBox(width: Dimensions.spaceS),
@@ -86,7 +100,9 @@ class _PaymentsManagementTabState extends State<PaymentsManagementTab> {
             selectedColor: AppColors.warning.withOpacity(0.3),
             onSelected: (_) {
               setState(() => _selectedStatus = 'pending');
-              context.read<PaymentsManagementCubit>().loadTransactions(status: 'pending');
+              context
+                  .read<PaymentsManagementCubit>()
+                  .loadTransactions(status: 'pending');
             },
           ),
         ],
@@ -94,72 +110,191 @@ class _PaymentsManagementTabState extends State<PaymentsManagementTab> {
     );
   }
 
-  Widget _buildTransactionsTable(List<Map<String, dynamic>> transactions) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowColor: MaterialStateProperty.all(
-            AppColors.primary.withOpacity(0.05),
-          ),
-          columns: const [
-            DataColumn(label: Text('المعرف')),
-            DataColumn(label: Text('العميل')),
-            DataColumn(label: Text('المشروع')),
-            DataColumn(label: Text('المبلغ')),
-            DataColumn(label: Text('التاريخ')),
-            DataColumn(label: Text('الحالة')),
-          ],
-          rows: transactions.map((t) {
-            final profile = t['profiles'] ?? {};
-            final project = t['projects'] ?? {};
-            return DataRow(
-              cells: [
-                DataCell(Text((t['id'] as String).substring(0, 8))),
-                DataCell(Text(profile['full_name'] ?? '-')),
-                DataCell(Text(project['name_ar'] ?? '-')),
-                DataCell(Text('${t['amount']} ر.س')),
-                DataCell(Text(DateFormat('yyyy-MM-dd').format(DateTime.parse(t['created_at'])))),
-                DataCell(_buildStatusChip(t['status'])),
-              ],
-            );
-          }).toList(),
-        ),
-      ),
+  Widget _buildPaymentsList(List<Map<String, dynamic>> transactions) {
+    return ListView.builder(
+      itemCount: transactions.length,
+      itemBuilder: (context, index) {
+        final transaction = transactions[index];
+        return _PaymentCard(transaction: transaction);
+      },
     );
   }
+}
 
-  Widget _buildStatusChip(String status) {
-    Color color;
-    String label;
+class _PaymentCard extends StatelessWidget {
+  final Map<String, dynamic> transaction;
+
+  const _PaymentCard({required this.transaction});
+
+  Color _getStatusColor(String? status) {
     switch (status) {
       case 'completed':
-        color = AppColors.success;
-        label = 'مكتمل';
-        break;
+        return AppColors.success;
       case 'pending':
-        color = AppColors.warning;
-        label = 'معلق';
-        break;
+        return AppColors.warning;
       case 'failed':
-        color = AppColors.error;
-        label = 'فشل';
-        break;
+        return AppColors.error;
       default:
-        color = Colors.grey;
-        label = status;
+        return AppColors.gray400;
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.5)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+  }
+
+  String _getStatusText(String? status) {
+    switch (status) {
+      case 'completed':
+        return 'مكتمل';
+      case 'pending':
+        return 'معلق';
+      case 'failed':
+        return 'فشل';
+      default:
+        return 'غير معروف';
+    }
+  }
+
+  IconData _getPaymentIcon(String? type) {
+    switch (type) {
+      case 'subscription':
+        return Icons.autorenew;
+      case 'installment':
+        return Icons.payments;
+      case 'contract':
+        return Icons.description;
+      default:
+        return Icons.payment;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = transaction['amount'] as num? ?? 0;
+    final status = transaction['status'] as String?;
+    final type = transaction['type'] as String?;
+    final createdAt = transaction['created_at'] as String?;
+    final userName = transaction['user_name'] as String? ?? 'غير معروف';
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentDetailScreen(transaction: transaction),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: Dimensions.spaceL),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(Dimensions.radiusL),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(Dimensions.spaceL),
+          child: Row(
+            children: [
+              // Icon
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: _getStatusColor(status).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(Dimensions.radiusM),
+                ),
+                child: Icon(
+                  _getPaymentIcon(type),
+                  color: _getStatusColor(status),
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: Dimensions.spaceL),
+
+              // Payment Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          userName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          '$amount ر.س',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Dimensions.spaceS),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Dimensions.spaceS,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(status),
+                            borderRadius:
+                                BorderRadius.circular(Dimensions.radiusS),
+                          ),
+                          child: Text(
+                            _getStatusText(status),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        if (createdAt != null) ...[
+                          const SizedBox(width: Dimensions.spaceS),
+                          const Icon(Icons.access_time,
+                              size: 12, color: AppColors.textSecondary),
+                          const SizedBox(width: Dimensions.spaceXS),
+                          Text(
+                            DateFormat('yyyy-MM-dd').format(
+                              DateTime.parse(createdAt),
+                            ),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Arrow
+              const Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

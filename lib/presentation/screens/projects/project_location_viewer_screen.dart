@@ -1,6 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mmm/core/constants/colors.dart';
@@ -139,26 +140,75 @@ class _ProjectLocationViewerScreenState
     }
   }
 
-  void _calculateRoute() {
+  Future<void> _calculateRoute() async {
     if (_currentLocation == null) return;
 
-    // Simple straight line route (for demo)
-    // في التطبيق الحقيقي، استخدم OpenRouteService API للمسارات الحقيقية
-    _routePoints = [
-      _currentLocation!,
-      LatLng(widget.projectLat, widget.projectLng),
-    ];
+    try {
+      // استخدام OSRM API المجاني لحساب المسار الفعلي
+      final startLng = _currentLocation!.longitude;
+      final startLat = _currentLocation!.latitude;
+      final endLng = widget.projectLng;
+      final endLat = widget.projectLat;
 
-    // Adjust map to show both points
-    _mapController.fitCamera(
-      CameraFit.bounds(
-        bounds: LatLngBounds(
+      // OSRM Public API endpoint
+      final url = 'https://router.project-osrm.org/route/v1/driving/'
+          '$startLng,$startLat;$endLng,$endLat?overview=full&geometries=geojson';
+
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data['routes'] != null && data['routes'].isNotEmpty) {
+          final route = data['routes'][0];
+          final coordinates = route['geometry']['coordinates'] as List;
+          
+          // تحويل الإحداثيات إلى LatLng
+          _routePoints = coordinates
+              .map((coord) => LatLng(coord[1] as double, coord[0] as double))
+              .toList();
+        } else {
+          // في حالة عدم وجود مسار، استخدم خط مستقيم
+          _routePoints = [_currentLocation!, LatLng(endLat, endLng)];
+        }
+      } else {
+        // في حالة فشل الطلب، استخدم خط مستقيم
+        _routePoints = [
           _currentLocation!,
           LatLng(widget.projectLat, widget.projectLng),
+        ];
+      }
+
+      setState(() {});
+
+      // ضبط الخريطة لعرض المسار كاملاً
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: LatLngBounds(
+            _currentLocation!,
+            LatLng(widget.projectLat, widget.projectLng),
+          ),
+          padding: const EdgeInsets.all(50),
         ),
-        padding: const EdgeInsets.all(50),
-      ),
-    );
+      );
+    } catch (e) {
+      // في حالة حدوث خطأ، استخدم خط مستقيم كبديل
+      setState(() {
+        _routePoints = [
+          _currentLocation!,
+          LatLng(widget.projectLat, widget.projectLng),
+        ];
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تعذر حساب المسار، يتم عرض خط مستقيم'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _openInGoogleMaps() async {
@@ -228,10 +278,10 @@ class _ProjectLocationViewerScreenState
                   polylines: [
                     Polyline(
                       points: _routePoints,
-                      strokeWidth: 4,
-                      color: AppColors.primary,
-                      borderStrokeWidth: 2,
-                      borderColor: Colors.white,
+                      strokeWidth: 6,
+                      color: AppColors.accent,
+                      borderStrokeWidth: 3,
+                      borderColor: AppColors.primary,
                     ),
                   ],
                 ),

@@ -4,7 +4,7 @@ import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/core/enums/user_role.dart';
 import 'package:mmm/data/models/project_model.dart';
-import 'package:mmm/data/models/user_model.dart';
+
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
 
 import 'package:mmm/presentation/cubits/projects/projects_cubit.dart';

@@ -5,9 +5,9 @@ import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/data/models/project_model.dart';
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
 import 'package:mmm/presentation/cubits/projects/projects_cubit.dart';
-
 import 'package:mmm/presentation/screens/admin/dialogs/add_project_dialog.dart';
 import 'package:mmm/presentation/screens/projects/project_detail_full_screen.dart';
+import 'package:shimmer/shimmer.dart';
 
 class ProjectsTab extends StatelessWidget {
   const ProjectsTab({super.key});
@@ -19,7 +19,7 @@ class ProjectsTab extends StatelessWidget {
       body: BlocBuilder<ProjectsCubit, ProjectsState>(
         builder: (context, state) {
           if (state is ProjectsLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return _buildSkeletonLoader();
           }
 
           if (state is ProjectsError) {
@@ -97,6 +97,78 @@ class ProjectsTab extends StatelessWidget {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
+    );
+  }
+
+  static Widget _buildSkeletonLoader() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(Dimensions.spaceL),
+      itemCount: 3,
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: AppColors.gray200,
+          highlightColor: AppColors.gray100,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: Dimensions.spaceL),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(Dimensions.radiusL),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: AppColors.gray300,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(Dimensions.radiusL),
+                      topRight: Radius.circular(Dimensions.radiusL),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(Dimensions.spaceL),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 24,
+                        width: 200,
+                        color: AppColors.gray300,
+                      ),
+                      const SizedBox(height: Dimensions.spaceS),
+                      Container(
+                        height: 16,
+                        width: 150,
+                        color: AppColors.gray300,
+                      ),
+                      const SizedBox(height: Dimensions.spaceM),
+                      Container(
+                        height: 6,
+                        width: double.infinity,
+                        color: AppColors.gray300,
+                      ),
+                      const SizedBox(height: Dimensions.spaceM),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: List.generate(
+                          3,
+                          (i) => Container(
+                            height: 60,
+                            width: 80,
+                            color: AppColors.gray300,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -181,14 +253,15 @@ class _ProjectCard extends StatelessWidget {
                       topLeft: Radius.circular(Dimensions.radiusL),
                       topRight: Radius.circular(Dimensions.radiusL),
                     ),
-                    image: project.imageUrl != null
+                    image: (project.imageUrl != null && project.imageUrl!.isNotEmpty)
                         ? DecorationImage(
                             image: NetworkImage(project.imageUrl!),
                             fit: BoxFit.cover,
+                            onError: (error, stackTrace) {},
                           )
                         : null,
                   ),
-                  child: project.imageUrl == null
+                  child: (project.imageUrl == null || project.imageUrl!.isEmpty)
                       ? const Center(
                           child: Icon(
                             Icons.business,
