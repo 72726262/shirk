@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:mmm/data/services/contract_service.dart';
@@ -5,8 +6,10 @@ import 'package:mmm/data/models/contract_model.dart';
 
 part 'contracts_management_state.dart';
 
+// Cubit
 class ContractsManagementCubit extends Cubit<ContractsManagementState> {
   final ContractService _contractService = ContractService();
+  StreamSubscription? _contractsSubscription;
 
   ContractsManagementCubit() : super(ContractsManagementInitial());
 
@@ -17,14 +20,21 @@ class ContractsManagementCubit extends Cubit<ContractsManagementState> {
   }) async {
     try {
       emit(ContractsManagementLoading());
+      
+      await _contractsSubscription?.cancel();
 
-      final contracts = await _contractService.getContracts(
+      _contractsSubscription = _contractService.getContractsStream(
         status: status,
         subscriptionId: subscriptionId,
         userId: userId,
+      ).listen(
+        (contracts) {
+          emit(ContractsManagementLoaded(contracts: contracts));
+        },
+        onError: (e) {
+          emit(ContractsManagementError(message: e.toString()));
+        },
       );
-
-      emit(ContractsManagementLoaded(contracts: contracts));
     } catch (e) {
       emit(ContractsManagementError(message: e.toString()));
     }
@@ -78,9 +88,7 @@ class ContractsManagementCubit extends Cubit<ContractsManagementState> {
       );
 
       emit(ContractCreatedSuccessfully(contract: contract));
-
-      // Reload all contracts
-      await loadContracts();
+      // Stream updates automatically
     } catch (e) {
       emit(ContractsManagementError(message: e.toString()));
     }
@@ -109,9 +117,7 @@ class ContractsManagementCubit extends Cubit<ContractsManagementState> {
       );
 
       emit(ContractCreatedSuccessfully(contract: contract));
-
-      // Reload all contracts
-      await loadContracts();
+      // Stream updates automatically
     } catch (e) {
       emit(ContractsManagementError(message: e.toString()));
     }
@@ -133,7 +139,7 @@ class ContractsManagementCubit extends Cubit<ContractsManagementState> {
 
       emit(const ContractSignedSuccessfully());
 
-      // Reload contract details
+      // Reload contract details if we are viewing details
       await loadContractById(contractId);
     } catch (e) {
       emit(ContractsManagementError(message: e.toString()));
@@ -153,9 +159,7 @@ class ContractsManagementCubit extends Cubit<ContractsManagementState> {
       );
 
       emit(const ContractUpdatedSuccessfully());
-
-      // Reload all contracts
-      await loadContracts();
+      // Stream updates automatically
     } catch (e) {
       emit(ContractsManagementError(message: e.toString()));
     }
@@ -180,9 +184,7 @@ class ContractsManagementCubit extends Cubit<ContractsManagementState> {
       );
 
       emit(const ContractUpdatedSuccessfully());
-
-      // Reload all contracts
-      await loadContracts();
+      // Stream updates automatically
     } catch (e) {
       emit(ContractsManagementError(message: e.toString()));
     }
@@ -195,9 +197,7 @@ class ContractsManagementCubit extends Cubit<ContractsManagementState> {
       await _contractService.deleteContract(id);
 
       emit(const ContractDeletedSuccessfully());
-
-      // Reload all contracts
-      await loadContracts();
+      // Stream updates automatically
     } catch (e) {
       emit(ContractsManagementError(message: e.toString()));
     }
@@ -210,5 +210,11 @@ class ContractsManagementCubit extends Cubit<ContractsManagementState> {
     } catch (e) {
       emit(ContractsManagementError(message: e.toString()));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _contractsSubscription?.cancel();
+    return super.close();
   }
 }

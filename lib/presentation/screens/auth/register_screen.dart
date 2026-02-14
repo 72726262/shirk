@@ -147,7 +147,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           label: 'رقم الهاتف',
                           hint: '01XXXXXXXXX',
                           icon: Icons.phone,
-                          keyboardType: TextInputType.phone,
+                          keyboardType: TextInputType.number,
                         ),
 
                         const SizedBox(height: Dimensions.spaceL),

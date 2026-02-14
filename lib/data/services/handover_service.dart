@@ -36,6 +36,11 @@ class HandoverService {
     }
   }
 
+  // Get handovers stream
+  Stream<List<HandoverModel>> getUserHandoversStream(String userId) {
+    return _handoverRepository.getUserHandoversStream(userId);
+  }
+
   // Get subscription ID by user and project
   Future<String?> getSubscriptionId({
     required String userId,

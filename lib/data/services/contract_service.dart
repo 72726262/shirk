@@ -21,6 +21,19 @@ class ContractService {
     }
   }
 
+  /// Get contracts stream
+  Stream<List<ContractModel>> getContractsStream({
+    String? status,
+    String? subscriptionId,
+    String? userId,
+  }) {
+    return _contractRepository.getContractsStream(
+      status: status,
+      subscriptionId: subscriptionId,
+      userId: userId,
+    );
+  }
+
   /// Get contract by ID
   Future<ContractModel?> getContractById(String id) async {
     try {

@@ -35,6 +35,39 @@ class ContractRepository {
     }
   }
 
+  // Get contracts stream
+  Stream<List<ContractModel>> getContractsStream({
+    String? status,
+    String? subscriptionId,
+    String? userId,
+  }) {
+    return _supabase
+        .from('contracts')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .map((data) {
+          var filtered = data;
+
+          if (status != null) {
+            filtered = filtered
+                .where((json) => json['status'] == status)
+                .toList();
+          }
+          if (subscriptionId != null) {
+            filtered = filtered
+                .where((json) => json['subscription_id'] == subscriptionId)
+                .toList();
+          }
+          if (userId != null) {
+            filtered = filtered
+                .where((json) => json['user_id'] == userId)
+                .toList();
+          }
+
+          return filtered.map((json) => ContractModel.fromJson(json)).toList();
+        });
+  }
+
   // Get contract by ID
   Future<ContractModel?> getContractById(String id) async {
     try {

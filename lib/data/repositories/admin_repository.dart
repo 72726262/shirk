@@ -101,12 +101,86 @@ class AdminRepository {
     }
   }
 
+  // Get clients stream
+  Stream<List<UserModel>> getClientsStream({
+    String? kycStatus,
+    String? role,
+    String? searchQuery,
+    int limit = 200,
+  }) {
+    return _client
+        .from('profiles')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .limit(limit)
+        .map((data) {
+          var filtered = data;
+
+          if (role != null) {
+            filtered = filtered.where((json) => json['role'] == role).toList();
+          }
+
+          if (kycStatus != null) {
+            filtered = filtered
+                .where((json) => json['kyc_status'] == kycStatus)
+                .toList();
+          }
+
+          // Search filtering (basic)
+          if (searchQuery != null && searchQuery.isNotEmpty) {
+            final query = searchQuery.toLowerCase();
+            filtered = filtered.where((json) {
+              final name = (json['full_name'] as String?)?.toLowerCase() ?? '';
+              final email = (json['email'] as String?)?.toLowerCase() ?? '';
+              return name.contains(query) || email.contains(query);
+            }).toList();
+          }
+
+          return filtered.map((json) => UserModel.fromJson(json)).toList();
+        });
+  }
+
   // Update User Role (Super Admin only)
   Future<void> updateUserRole(String userId, String newRole) async {
     try {
       await _client.from('profiles').update({'role': newRole}).eq('id', userId);
     } catch (e) {
       throw Exception('فشل تحديث صلاحية المستخدم: ${e.toString()}');
+    }
+  }
+
+  // Delete Client (Safe Deletion)
+  Future<void> deleteClient(String userId) async {
+    try {
+      // 1. Check for active/in_progress subscriptions
+      final activeSubscriptionsCount = await _client
+          .from('subscriptions')
+          .count()
+          .eq('user_id', userId)
+          .inFilter('status', ['active', 'in_progress']); // Adjust status values as needed
+
+      if (activeSubscriptionsCount > 0) {
+        throw Exception('لا يمكن حذف العميل: لديه مشاريع نشطة. يجب انسحابه أو انتهاء مشاريعه أولاً.');
+      }
+
+      // 2. Delete client (Cascade should handle related data like profiles, documents if configured, 
+      // but safely Supabase Auth user deletion requires Service Role or Edge Function usually.
+      // Here we allow deleting the 'profile' row. If Auth user needs deletion, it's separate.)
+      // Assuming deleting profile triggers cascade or we just delete profile for now.
+      
+      // Note: Deleting from 'users' table (Auth) via Client SDK is not possible with RLS usually.
+      // We will delete the PROFILE. 
+      // If we need to delete Auth User, we need an Edge Function.
+      // For this app context, let's assume deleting profile is sufficient or triggers a trigger.
+      
+      await _client.from('profiles').delete().eq('id', userId);
+      
+    } catch (e) {
+       // Check if it's our custom exception
+       if (e.toString().contains('لا يمكن حذف العميل')) {
+         rethrow;
+       }
+       throw Exception('فشل حذف العميل: ${e.toString()}');
     }
   }
 

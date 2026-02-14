@@ -144,7 +144,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     controller: _phoneController,
                     label: 'رقم الجوال',
                     prefixIcon: Icons.phone,
-                    keyboardType: TextInputType.phone,
+                    keyboardType: TextInputType.number,
                     enabled: !isLoading,
                   ),
                   const SizedBox(height: Dimensions.spaceXXL),

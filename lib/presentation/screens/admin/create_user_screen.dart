@@ -170,13 +170,16 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                     label: 'رقم الجوال',
                     hint: '05xxxxxxxx',
                     prefixIcon: Icons.phone,
-                    keyboardType: TextInputType.phone,
+                    keyboardType: TextInputType.number,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'رقم الجوال مطلوب';
                       }
-                      if (!RegExp(r'^05[0-9]{8}$').hasMatch(value)) {
-                        return 'رقم الجوال غير صحيح';
+                      if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                        return 'رقم الجوال يجب أن يحتوي على أرقام فقط';
+                      }
+                      if (value.length < 9) {
+                        return 'رقم الجوال قصير جداً';
                       }
                       return null;
                     },

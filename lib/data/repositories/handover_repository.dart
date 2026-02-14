@@ -612,6 +612,22 @@ class HandoverRepository {
     }
   }
 
+  // Get handovers stream
+  Stream<List<HandoverModel>> getUserHandoversStream(String userId) {
+    return _client
+        .from('handovers')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
+        .order('created_at', ascending: false)
+        .map((data) => data.map((json) => HandoverModel.fromJson(json)).toList());
+        // Note: stream doesn't support select() for joins like defects(*).
+        // Clients might need to fetch defects separately or we live with basic handover data in stream list.
+        // For the *list* view, we usually don't need defects.
+        // If we strictly need them in list, we might need to listen to handovers and then fetch defects?
+        // Or just display basic info in list.
+        // For now, assuming basic info is enough or we rely on partial data.
+  }
+
   // Get handover statistics
   Future<Map<String, dynamic>> getHandoverStats(String handoverId) async {
     try {

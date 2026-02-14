@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:mmm/data/services/handover_service.dart';
 import 'package:mmm/data/models/handover_model.dart';
@@ -5,9 +6,11 @@ import 'package:mmm/data/repositories/handover_repository.dart';
 import 'package:mmm/data/models/defect_model.dart';
 import 'package:mmm/presentation/cubits/admin/handovers_management_state.dart';
 
+// Cubit
 class HandoversManagementCubit extends Cubit<HandoversManagementState> {
   final HandoverService _handoverService = HandoverService();
   final HandoverRepository _handoverRepository = HandoverRepository();
+  StreamSubscription? _handoversSubscription;
 
   HandoversManagementCubit() : super(HandoversManagementInitial());
 
@@ -20,15 +23,26 @@ class HandoversManagementCubit extends Cubit<HandoversManagementState> {
         return;
       }
 
-      // getUserHandovers gets all handovers for a user
-      final handovers = await _handoverService.getUserHandovers(userId);
+      await _handoversSubscription?.cancel();
 
-      // Filter by status if provided
-      final filteredHandovers = status != null
-          ? handovers.where((h) => h.status.name == status).toList()
-          : handovers;
+      // Subscribe to stream
+      _handoversSubscription = _handoverService.getUserHandoversStream(userId).listen(
+        (handovers) {
+          // Apply status filter in memory if provided
+          final filteredHandovers = status != null
+              ? handovers.where((h) => h.status.name == status).toList()
+              : handovers;
 
-      emit(HandoversManagementLoaded(handovers: filteredHandovers));
+          emit(HandoversManagementLoaded(handovers: filteredHandovers));
+        },
+        onError: (e) {
+          emit(
+            HandoversManagementError(
+              message: 'فشل في تحميل عمليات التسليم: ${e.toString()}',
+            ),
+          );
+        },
+      );
     } catch (e) {
       emit(
         HandoversManagementError(
@@ -59,6 +73,7 @@ class HandoversManagementCubit extends Cubit<HandoversManagementState> {
       );
 
       emit(HandoverCreatedSuccessfully());
+      // Stream updates automatically
     } catch (e) {
       emit(
         HandoversManagementError(
@@ -204,6 +219,7 @@ class HandoversManagementCubit extends Cubit<HandoversManagementState> {
         notes: notes,
       );
       emit(const HandoverUpdatedSuccessfully());
+      // Stream updates automatically
     } catch (e) {
       emit(
         HandoversManagementError(message: 'فشل تحديث الاستلام: ${e.toString()}'),
@@ -216,10 +232,17 @@ class HandoversManagementCubit extends Cubit<HandoversManagementState> {
       emit(HandoversManagementLoading());
       await _handoverRepository.deleteHandover(handoverId);
       emit(const HandoverDeletedSuccessfully());
+      // Stream updates automatically
     } catch (e) {
       emit(
         HandoversManagementError(message: 'فشل حذف الاستلام: ${e.toString()}'),
       );
     }
+  }
+
+  @override
+  Future<void> close() {
+    _handoversSubscription?.cancel();
+    return super.close();
   }
 }

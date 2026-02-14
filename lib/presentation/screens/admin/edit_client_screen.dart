@@ -185,13 +185,16 @@ class _EditClientScreenState extends State<EditClientScreen> {
               controller: _phoneController,
               label: 'رقم الهاتف',
               prefixIcon: Icons.phone,
-              keyboardType: TextInputType.phone,
+              keyboardType: TextInputType.number,
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'الرجاء إدخال رقم الهاتف';
                 }
-                if (!RegExp(r'^05\d{8}$').hasMatch(value)) {
-                  return 'رقم الهاتف يجب أن يبدأ بـ 05 ويحتوي على 10 أرقام';
+                if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                  return 'رقم الهاتف يجب أن يحتوي على أرقام فقط';
+                }
+                if (value.length < 9) {
+                  return 'رقم الهاتف قصير جداً';
                 }
                 return null;
               },
