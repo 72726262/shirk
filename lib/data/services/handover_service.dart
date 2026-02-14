@@ -11,8 +11,8 @@ class HandoverService {
   HandoverService({
     HandoverRepository? handoverRepository,
     StorageService? storageService,
-  })  : _handoverRepository = handoverRepository ?? HandoverRepository(),
-        _storageService = storageService ?? StorageService();
+  }) : _handoverRepository = handoverRepository ?? HandoverRepository(),
+       _storageService = storageService ?? StorageService();
 
   // Get handover by subscription ID
   Future<HandoverModel?> getHandoverBySubscription(
@@ -33,6 +33,46 @@ class HandoverService {
       return await _handoverRepository.getUserHandovers(userId);
     } catch (e) {
       throw Exception('فشل تحميل التسليمات: ${e.toString()}');
+    }
+  }
+
+  // Get subscription ID by user and project
+  Future<String?> getSubscriptionId({
+    required String userId,
+    required String projectId,
+  }) async {
+    try {
+      return await _handoverRepository.getSubscriptionId(
+        userId: userId,
+        projectId: projectId,
+      );
+    } catch (e) {
+      // Return null or rethrow? For now, return null as it's a helper
+      return null;
+    }
+  }
+
+  // Create new handover
+  Future<HandoverModel> createHandover({
+    required String userId,
+    required String projectId,
+    String? subscriptionId,
+    required DateTime appointmentDate,
+    String? appointmentLocation,
+    String? notes,
+  }) async {
+    try {
+      return await _handoverRepository.createHandover(
+        userId: userId,
+        projectId: projectId,
+        subscriptionId: subscriptionId,
+        appointmentDate: appointmentDate,
+        appointmentLocation: appointmentLocation,
+        notes: notes,
+      );
+    } catch (e) {
+      print("object" + e.toString());
+      throw Exception('فشل إنشاء التسليم: ${e.toString()}');
     }
   }
 
@@ -101,9 +141,11 @@ class HandoverService {
         photoUrls = [];
         for (final photoPath in photosPaths) {
           // Get project ID from handover (assuming we have it in context)
-          final handover = await _handoverRepository.getHandoverById(handoverId);
+          final handover = await _handoverRepository.getHandoverById(
+            handoverId,
+          );
           final projectId = handover.projectId ?? 'unknown';
-          
+
           final url = await _storageService.uploadConstructionMedia(
             photoPath,
             projectId,
@@ -112,7 +154,6 @@ class HandoverService {
           photoUrls.add(url);
         }
       }
-
 
       await _handoverRepository.submitDefect(
         handoverId: handoverId,
@@ -126,7 +167,6 @@ class HandoverService {
       throw Exception('فشل إرسال العيب: ${e.toString()}');
     }
   }
-
 
   // Get all defects for a handover
   Future<List<DefectModel>> getDefects(String handoverId) async {

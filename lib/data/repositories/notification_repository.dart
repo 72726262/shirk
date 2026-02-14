@@ -114,17 +114,14 @@ class NotificationRepository {
   }
 
   // Subscribe to real-time notifications
-  Stream<NotificationModel> watchNotifications(String userId) {
+  Stream<List<NotificationModel>> watchNotifications(String userId) {
     return _client
         .from('notifications')
         .stream(primaryKey: ['id'])
         .eq('user_id', userId)
         .order('created_at', ascending: false)
         .map((data) {
-          if (data.isEmpty) {
-            throw Exception('No notifications');
-          }
-          return NotificationModel.fromJson(data.first);
+          return data.map((json) => NotificationModel.fromJson(json)).toList();
         });
   }
 

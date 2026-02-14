@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 
 import 'package:mmm/presentation/cubits/admin/admin_dashboard_cubit.dart';
-import 'package:mmm/presentation/cubits/admin/clients_management_cubit.dart';
+import 'package:mmm/presentation/cubits/admin/client_management_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/payments_management_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/admin_notifications_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/contracts_management_cubit.dart';
@@ -80,7 +80,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           create: (context) => AdminDashboardCubit()..loadDashboard(),
         ),
         BlocProvider(create: (context) => ProjectsCubit()..loadProjects()),
-        BlocProvider(create: (context) => ClientsManagementCubit()),
+        BlocProvider(
+          create: (context) => ClientManagementCubit()..loadClients(),
+        ),
         BlocProvider(create: (context) => PaymentsManagementCubit()),
         BlocProvider(create: (context) => AdminNotificationsCubit()),
         BlocProvider(create: (context) => ContractsManagementCubit()),
@@ -90,6 +92,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
+          automaticallyImplyLeading: false,
           title: const Text('لوحة التحكم'),
           backgroundColor: AppColors.primary,
           elevation: 0,

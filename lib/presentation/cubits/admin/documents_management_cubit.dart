@@ -12,10 +12,10 @@ class DocumentsManagementCubit extends Cubit<DocumentsManagementState> {
     try {
       emit(DocumentsManagementLoading());
       
-      if (userId == null) {
-        emit(DocumentsManagementError(message: 'معرف المستخدم مطلوب'));
-        return;
-      }
+      // if (userId == null) {
+      //   emit(DocumentsManagementError(message: 'معرف المستخدم مطلوب'));
+      //   return;
+      // }
 
       // getUserDocuments accepts userId and optional type
       DocumentType? documentType;
@@ -63,6 +63,31 @@ class DocumentsManagementCubit extends Cubit<DocumentsManagementState> {
       loadDocuments(userId: userId);
     } catch (e) {
       emit(DocumentsManagementError(message: 'فشل في رفع المستند: ${e.toString()}'));
+    }
+  }
+
+  Future<void> updateDocument({
+    required String documentId,
+    String? title,
+    String? description,
+    DocumentType? type,
+    String? projectId,
+  }) async {
+    try {
+      emit(DocumentsManagementUploading());
+
+      final document = await _documentService.updateDocument(
+        documentId: documentId,
+        title: title,
+        description: description,
+        type: type,
+        projectId: projectId,
+      );
+
+      emit(DocumentUploadedSuccessfully(document: document));
+      loadDocuments();
+    } catch (e) {
+      emit(DocumentsManagementError(message: 'فشل في تعديل المستند: ${e.toString()}'));
     }
   }
 

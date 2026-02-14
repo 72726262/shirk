@@ -180,6 +180,8 @@ class _ProjectCard extends StatelessWidget {
 
   String _getStatusText(ProjectStatus status) {
     switch (status) {
+      case ProjectStatus.planning:
+        return 'التخطيط';
       case ProjectStatus.upcoming:
         return 'قيد الإعداد';
       case ProjectStatus.inProgress:
@@ -197,6 +199,8 @@ class _ProjectCard extends StatelessWidget {
 
   Color _getStatusColor(ProjectStatus status) {
     switch (status) {
+      case ProjectStatus.planning:
+        return AppColors.textSecondary;
       case ProjectStatus.inProgress:
         return AppColors.primary;
       case ProjectStatus.completed:
@@ -253,7 +257,9 @@ class _ProjectCard extends StatelessWidget {
                       topLeft: Radius.circular(Dimensions.radiusL),
                       topRight: Radius.circular(Dimensions.radiusL),
                     ),
-                    image: (project.imageUrl != null && project.imageUrl!.isNotEmpty)
+                    image:
+                        (project.imageUrl != null &&
+                            project.imageUrl!.isNotEmpty)
                         ? DecorationImage(
                             image: NetworkImage(project.imageUrl!),
                             fit: BoxFit.cover,

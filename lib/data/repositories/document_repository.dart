@@ -12,7 +12,7 @@ class DocumentRepository {
 
   // Get user documents
   Future<List<DocumentModel>> getUserDocuments({
-    required String userId,
+    String? userId,
     DocumentType? type,
     String? projectId,
     String? subscriptionId,
@@ -20,8 +20,11 @@ class DocumentRepository {
     try {
       var query = _client
           .from('documents')
-          .select('*')
-          .eq('user_id', userId);
+          .select('*');
+
+      if (userId != null) {
+        query = query.eq('user_id', userId);
+      }
 
       if (type != null) {
         query = query.eq('document_type', type.name);
@@ -106,6 +109,37 @@ class DocumentRepository {
       return DocumentModel.fromJson(response);
     } catch (e) {
       throw Exception('خطأ في رفع المستند: ${e.toString()}');
+    }
+  }
+
+  // Update document metadata
+  Future<DocumentModel> updateDocument({
+    required String documentId,
+    String? title,
+    String? description,
+    String? projectId,
+    DocumentType? type,
+  }) async {
+    try {
+      final updates = <String, dynamic>{
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      
+      if (title != null) updates['title'] = title;
+      if (description != null) updates['description'] = description;
+      if (projectId != null) updates['project_id'] = projectId;
+      if (type != null) updates['document_type'] = type.name;
+
+      final response = await _client
+          .from('documents')
+          .update(updates)
+          .eq('id', documentId)
+          .select()
+          .single();
+
+      return DocumentModel.fromJson(response);
+    } catch (e) {
+      throw Exception('خطأ في تحديث المستند: ${e.toString()}');
     }
   }
 

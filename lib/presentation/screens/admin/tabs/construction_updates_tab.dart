@@ -6,6 +6,7 @@ import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/presentation/cubits/projects/projects_cubit.dart';
 import 'package:mmm/presentation/widgets/construction_reports_uploader.dart';
+import 'package:mmm/presentation/widgets/dialogs/searchable_project_picker.dart';
 
 class ConstructionUpdatesTab extends StatefulWidget {
   const ConstructionUpdatesTab({super.key});
@@ -68,27 +69,81 @@ class _ConstructionUpdatesTabState extends State<ConstructionUpdatesTab> {
           BlocBuilder<ProjectsCubit, ProjectsState>(
             builder: (context, state) {
               if (state is ProjectsLoaded) {
-                return DropdownButtonFormField<String>(
-                  value: _selectedProjectId,
-                  decoration: const InputDecoration(
-                    labelText: 'اختر المشروع',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.business),
-                  ),
-                  items: state.projects.map((project) {
-                    return DropdownMenuItem(
-                      value: project.id,
-                      child: Text(project.nameAr),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedProjectId = value;
-                      // Pre-fill fields based on project if needed
-                      final project = state.projects.firstWhere((p) => p.id == value);
-                      _percentageController.text = (project.completionPercentage ?? 0).toString();
-                    });
-                  },
+                final selectedProject = _selectedProjectId != null
+                    ? state.projects
+                        .where((p) => p.id == _selectedProjectId)
+                        .firstOrNull
+                    : null;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'المشروع',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: Dimensions.spaceS),
+                    InkWell(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => SearchableProjectPicker(
+                            projects: state.projects,
+                            selectedProjectId: _selectedProjectId,
+                            onProjectSelected: (project) {
+                              setState(() {
+                                _selectedProjectId = project.id;
+                                // Pre-fill fields based on project
+                                _percentageController.text =
+                                    (project.completionPercentage ?? 0)
+                                        .toString();
+                              });
+                            },
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(Dimensions.radiusM),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Dimensions.spaceM,
+                          vertical: Dimensions.spaceM,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.gray400),
+                          borderRadius:
+                              BorderRadius.circular(Dimensions.radiusM),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.business,
+                              color: _selectedProjectId != null
+                                  ? AppColors.primary
+                                  : AppColors.gray500,
+                            ),
+                            const SizedBox(width: Dimensions.spaceM),
+                            Expanded(
+                              child: Text(
+                                selectedProject?.name ?? 'اختر المشروع',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: _selectedProjectId != null
+                                      ? AppColors.textPrimary
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.arrow_drop_down,
+                                color: AppColors.gray500),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               }
               return const Center(child: CircularProgressIndicator());

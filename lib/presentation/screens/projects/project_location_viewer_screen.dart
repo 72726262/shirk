@@ -269,7 +269,11 @@ class _ProjectLocationViewerScreenState
               // Map Tiles
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.mmm.app',
+                userAgentPackageName: 'com.example.sharik', // Must match Android applicationId
+                // Add error tile callback to catch loading errors
+                errorTileCallback: (tile, error, stackTrace) {
+                   print('❌ Tile loading error: $error');
+                },
               ),
 
               // Route Polyline

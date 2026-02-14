@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:mmm/core/constants/colors.dart';
+import 'package:mmm/presentation/widgets/common/fallback_image_widget.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
+import 'package:flutter/gestures.dart';
 
 class MediaCarousel extends StatefulWidget {
   final List<String> mediaUrls;
@@ -192,9 +194,8 @@ class _MediaCarouselState extends State<MediaCarousel> {
 
   Widget _buildMediaItem(String url) {
     // Check if video (simple check - you can improve this)
-    final isVideo = url.contains('.mp4') ||
-        url.contains('.mov') ||
-        url.contains('video');
+    final isVideo =
+        url.contains('.mp4') || url.contains('.mov') || url.contains('video');
 
     if (isVideo) {
       return Container(
@@ -206,9 +207,8 @@ class _MediaCarouselState extends State<MediaCarousel> {
               imageUrl: url.replaceAll('.mp4', '_thumbnail.jpg'),
               fit: BoxFit.cover,
               width: double.infinity,
-              placeholder: (context, url) => Container(
-                color: AppColors.gray200,
-              ),
+              placeholder: (context, url) =>
+                  Container(color: AppColors.gray200),
               errorWidget: (context, url, error) => const Icon(
                 Icons.videocam,
                 size: 60,
@@ -232,23 +232,25 @@ class _MediaCarouselState extends State<MediaCarousel> {
       );
     }
 
+    // Check if URL is valid
+    if (url.isEmpty || !url.startsWith('http')) {
+      return const FallbackImageWidget(
+        icon: Icons.image_not_supported,
+        text: 'صورة غير متوفرة',
+      );
+    }
+
     return CachedNetworkImage(
       imageUrl: url,
       fit: BoxFit.cover,
       width: double.infinity,
       placeholder: (context, url) => Container(
         color: AppColors.gray200,
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: const Center(child: CircularProgressIndicator()),
       ),
-      errorWidget: (context, url, error) => Container(
-        color: AppColors.gray200,
-        child: const Icon(
-          Icons.error,
-          size: 60,
-          color: AppColors.error,
-        ),
+      errorWidget: (context, url, error) => const FallbackImageWidget(
+        icon: Icons.error,
+        text: 'فشل في تحميل الصورة',
       ),
     );
   }
@@ -267,11 +269,7 @@ class _MediaCarouselState extends State<MediaCarousel> {
           customBorder: const CircleBorder(),
           child: Padding(
             padding: const EdgeInsets.all(Dimensions.spaceM),
-            child: Icon(
-              icon,
-              color: AppColors.primary,
-              size: 20,
-            ),
+            child: Icon(icon, color: AppColors.primary, size: 20),
           ),
         ),
       ),
@@ -297,10 +295,7 @@ class _MediaCarouselState extends State<MediaCarousel> {
             const SizedBox(height: Dimensions.spaceM),
             Text(
               'لا توجد صور',
-              style: TextStyle(
-                color: AppColors.gray500,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: AppColors.gray500, fontSize: 14),
             ),
           ],
         ),
@@ -336,11 +331,13 @@ class _FullscreenGallery extends StatefulWidget {
 
 class _FullscreenGalleryState extends State<_FullscreenGallery> {
   late int _currentIndex;
+  late PageController _pageController;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
   }
 
   @override
@@ -349,40 +346,53 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          PhotoViewGallery.builder(
+          // Simple PageView instead of PhotoViewGallery
+          PageView.builder(
+            controller: _pageController,
             itemCount: widget.mediaUrls.length,
-            builder: (context, index) {
-              return PhotoViewGalleryPageOptions(
-                imageProvider: CachedNetworkImageProvider(
-                  widget.mediaUrls[index],
-                ),
-                minScale: PhotoViewComputedScale.contained,
-                maxScale: PhotoViewComputedScale.covered * 2,
-                heroAttributes: PhotoViewHeroAttributes(
-                  tag: 'media_${widget.mediaUrls[index]}_$index',
-                ),
-              );
-            },
-            pageController: PageController(initialPage: widget.initialIndex),
             onPageChanged: (index) {
               setState(() => _currentIndex = index);
             },
-            backgroundDecoration: const BoxDecoration(
-              color: Colors.black,
-            ),
+            itemBuilder: (context, index) {
+              final url = widget.mediaUrls[index];
+              if (url.isEmpty || !url.startsWith('http')) {
+                return const Center(
+                  child: FallbackImageWidget(
+                    width: 200,
+                    height: 200,
+                    icon: Icons.image_not_supported,
+                    text: 'صورة غير متوفرة',
+                  ),
+                );
+              }
+
+              return InteractiveViewer(
+                child: CachedNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  ),
+                  errorWidget: (context, url, error) => const Center(
+                    child: FallbackImageWidget(
+                      width: 200,
+                      height: 200,
+                      icon: Icons.error,
+                      text: 'فشل في التحميل',
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
-          
+
           // Close button
           SafeArea(
             child: Positioned(
               top: 0,
               right: 0,
               child: IconButton(
-                icon: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 28,
-                ),
+                icon: const Icon(Icons.close, color: Colors.white, size: 28),
                 onPressed: () => Navigator.pop(context),
               ),
             ),

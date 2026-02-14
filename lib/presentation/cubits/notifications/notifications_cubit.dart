@@ -120,11 +120,14 @@ class NotificationsCubit extends Cubit<NotificationsState> {
 
   void subscribeToNotifications(String userId) {
     _notificationRepository.watchNotifications(userId).listen(
-      (notification) {
+      (notifications) {
+        // We can either emit loaded directly or just reload to get unread count too
+        // For now, let's reload to keep it consistent
         loadNotifications(userId);
       },
       onError: (error) {
-        emit(NotificationsError(error.toString()));
+        // Silently fail or log, don't emit error to avoid blocking UI
+        print('Notification stream error: $error');
       },
     );
   }

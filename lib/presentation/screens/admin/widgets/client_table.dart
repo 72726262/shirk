@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/data/models/user_model.dart';
-import 'package:mmm/presentation/cubits/admin/clients_management_cubit.dart';
+import 'package:mmm/presentation/cubits/admin/client_management_cubit.dart';
+import 'package:mmm/presentation/screens/admin/client_details_screen.dart';
 
 class ClientTable extends StatelessWidget {
   final List<UserModel> clients;
@@ -34,13 +35,28 @@ class ClientTable extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 16,
-                        backgroundImage: client.avatarUrl != null
+                        backgroundColor: AppColors.primary.withOpacity(0.1),
+                        backgroundImage: (client.avatarUrl != null &&
+                                client.avatarUrl!.isNotEmpty)
                             ? NetworkImage(client.avatarUrl!)
                             : null,
-                        child: client.avatarUrl == null
+                        onBackgroundImageError: (client.avatarUrl != null &&
+                                client.avatarUrl!.isNotEmpty)
+                            ? (exception, stackTrace) {
+                                // Fallback is handled by child
+                              }
+                            : null,
+                        child: (client.avatarUrl == null ||
+                                client.avatarUrl!.isEmpty)
                             ? Text(
-                                (client.fullName ?? 'U')[0].toUpperCase(),
-                                style: const TextStyle(fontSize: 12),
+                                (client.fullName?.isNotEmpty == true
+                                        ? client.fullName![0]
+                                        : 'U')
+                                    .toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.primary,
+                                ),
                               )
                             : null,
                       ),
@@ -51,7 +67,7 @@ class ClientTable extends StatelessWidget {
                 ),
                 DataCell(Text(client.email)),
                 DataCell(Text(client.phone ?? '-')),
-                DataCell(_buildKYCStatusChip(client.kycStatus.name)),
+                DataCell(_buildKYCStatusChip(client.kycStatus)),
                 DataCell(
                   Row(
                     children: [
@@ -62,16 +78,24 @@ class ClientTable extends StatelessWidget {
                           _showClientDetails(context, client);
                         },
                       ),
-                      if (client.kycStatus == KYCStatus.pending) ...[
+                      if (client.kycStatus == KYCStatus.underReview) ...[
                         IconButton(
-                          icon: const Icon(Icons.check_circle, color: AppColors.success),
+                          icon: const Icon(
+                            Icons.check_circle,
+                            color: AppColors.success,
+                          ),
                           tooltip: 'موافقة',
                           onPressed: () {
-                            context.read<ClientsManagementCubit>().approveKYC(client.id);
+                            context.read<ClientManagementCubit>().approveKyc(
+                              client.id,
+                            );
                           },
                         ),
                         IconButton(
-                          icon: const Icon(Icons.cancel, color: AppColors.error),
+                          icon: const Icon(
+                            Icons.cancel,
+                            color: AppColors.error,
+                          ),
                           tooltip: 'رفض',
                           onPressed: () {
                             _showRejectDialog(context, client);
@@ -89,21 +113,20 @@ class ClientTable extends StatelessWidget {
     );
   }
 
-  Widget _buildKYCStatusChip(String? status) {
+  Widget _buildKYCStatusChip(KYCStatus status) {
     Color color;
     String label;
 
     switch (status) {
-      case 'verified':
-      case 'approved':
+      case KYCStatus.approved:
         color = AppColors.success;
         label = 'موثق';
         break;
-      case 'pending':
+      case KYCStatus.underReview:
         color = AppColors.warning;
         label = 'قيد المراجعة';
         break;
-      case 'rejected':
+      case KYCStatus.rejected:
         color = AppColors.error;
         label = 'مرفوض';
         break;
@@ -121,38 +144,33 @@ class ClientTable extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
 
-  void _showClientDetails(BuildContext context, UserModel client) {
-    showDialog(
-      context: context,
-      builder: (_) => Dialog(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('تفاصيل العميل', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 16),
-              // Add more details here
-              ListTile(leading: Icon(Icons.person), title: Text(client.fullName ?? '-')),
-              ListTile(leading: Icon(Icons.email), title: Text(client.email)),
-              ListTile(leading: Icon(Icons.phone), title: Text(client.phone ?? '-')),
-               if (client.kycStatus == KYCStatus.pending)
-                 ElevatedButton(
-                   onPressed: () {
-                     // Show ID preview if needed
-                   }, 
-                   child: Text('عرض مستندات التوثيق')
-                 ),
-            ],
-          ),
+  void _showClientDetails(BuildContext context, UserModel client) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BlocProvider.value(
+          value: context.read<ClientManagementCubit>(),
+          child: ClientDetailsScreen(client: client),
         ),
       ),
     );
+
+    if (result == true) {
+      // Refresh list handled by parent or Bloc listener if needed, but since we use BlocProvider.value, state updates should reflect.
+      // However, triggering a reload might be good to ensure fresh data.
+      if (context.mounted) {
+        context.read<ClientManagementCubit>().loadClients();
+      }
+    }
   }
 
   void _showRejectDialog(BuildContext context, UserModel client) {
@@ -180,7 +198,7 @@ class ClientTable extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              context.read<ClientsManagementCubit>().rejectKYC(
+              context.read<ClientManagementCubit>().rejectKyc(
                 client.id,
                 reasonController.text,
               );

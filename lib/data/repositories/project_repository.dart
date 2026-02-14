@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mmm/data/models/project_model.dart';
 import 'package:mmm/data/models/unit_model.dart'; // Add this import
@@ -170,9 +171,17 @@ class ProjectRepository {
 
   Future<String> uploadProjectImage(String projectId, String filePath, String fileName) async {
     try {
-      // Placeholder: Upload to Supabase Storage
-      // actual implementation would use _client.storage.from('projects').upload()
-      return 'https://placeholder.com/$fileName';
+      final file = File(filePath);
+      final fileExt = filePath.split('.').last;
+      final path = '$projectId/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      
+      await _client.storage.from('project-images').upload(
+        path,
+        file,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+      );
+      
+      return _client.storage.from('project-images').getPublicUrl(path);
     } catch (e) {
       throw Exception('فشل رفع الصورة: ${e.toString()}');
     }

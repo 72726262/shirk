@@ -15,7 +15,7 @@ class DocumentService {
 
   // Get user documents with optional filters
   Future<List<DocumentModel>> getUserDocuments({
-    required String userId,
+    String? userId,
     String? projectId,
     DocumentType? type,
   }) async {
@@ -81,6 +81,27 @@ class DocumentService {
       );
     } catch (e) {
       throw Exception('فشل رفع المستند: ${e.toString()}');
+    }
+  }
+
+  // Update document metadata
+  Future<DocumentModel> updateDocument({
+    required String documentId,
+    String? title,
+    String? description,
+    String? projectId,
+    DocumentType? type,
+  }) async {
+    try {
+      return await _documentRepository.updateDocument(
+        documentId: documentId,
+        title: title,
+        description: description,
+        projectId: projectId,
+        type: type,
+      );
+    } catch (e) {
+      throw Exception('فشل تحديث المستند: ${e.toString()}');
     }
   }
 

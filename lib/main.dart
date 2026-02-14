@@ -1,5 +1,4 @@
 // lib/main.dart
-import 'package:device_preview/device_preview.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -36,6 +35,10 @@ import 'package:mmm/presentation/cubits/handover/handover_cubit.dart';
 import 'package:mmm/presentation/cubits/profile/profile_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/admin_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/admin_dashboard_cubit.dart';
+
+import 'package:mmm/presentation/cubits/admin/contracts_management_cubit.dart';
+import 'package:mmm/presentation/cubits/admin/documents_management_cubit.dart';
+import 'package:mmm/presentation/cubits/admin/handovers_management_cubit.dart';
 import 'package:mmm/core/services/network_service.dart';
 import 'package:mmm/core/services/cache_service.dart';
 
@@ -66,7 +69,7 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(DevicePreview(enabled: true, builder: (context) => const SharikApp()));
+  runApp(const SharikApp());
 }
 
 class SharikApp extends StatelessWidget {
@@ -132,13 +135,14 @@ class SharikApp extends StatelessWidget {
           BlocProvider(create: (_) => AdminCubit()),
           BlocProvider(create: (_) => AdminDashboardCubit()), // ✅ Fix
           BlocProvider(create: (_) => ClientManagementCubit()), // ✅ Add
+
+          BlocProvider(create: (_) => ContractsManagementCubit()), // ✅ Add
+          BlocProvider(create: (_) => DocumentsManagementCubit()), // ✅ Add
+          BlocProvider(create: (_) => HandoversManagementCubit()), // ✅ Add
         ],
         child: MaterialApp(
           title: 'شريك - منصة الاستثمار العقاري',
           debugShowCheckedModeBanner: false,
-
-          // DevicePreview locale
-          locale: DevicePreview.locale(context),
 
           supportedLocales: const [Locale('ar', 'SA'), Locale('en', 'US')],
 
@@ -156,11 +160,9 @@ class SharikApp extends StatelessWidget {
           initialRoute: RouteNames.login,
 
           builder: (context, child) {
-            final preview = DevicePreview.appBuilder(context, child);
-
             return Directionality(
               textDirection: TextDirection.rtl,
-              child: preview ?? const SizedBox.shrink(),
+              child: child ?? const SizedBox.shrink(),
             );
           },
         ),

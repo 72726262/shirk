@@ -103,6 +103,35 @@ class ContractRepository {
     }
   }
 
+  // Create manual contract
+  Future<ContractModel> createManualContract({
+    required String userId,
+    String? projectId,
+    required String title,
+    required String content,
+    required String contractNumber,
+    double? amount,
+    Map<String, dynamic>? terms,
+  }) async {
+    try {
+      final data = await _supabase.from('contracts').insert({
+        'user_id': userId,
+        'project_id': projectId,
+        'title': title,
+        'content': content,
+        'contract_number': contractNumber,
+        'status': 'draft',
+        'terms': terms ?? {},
+        // 'amount': amount, // If amount column exists, add it. Schema didn't allow amount in root, maybe in terms or payment_schedule?
+        // Schema checks: title, content, contract_number are required.
+      }).select('*').single();
+
+      return ContractModel.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to create manual contract: ${e.toString()}');
+    }
+  }
+
   // Sign contract
   Future<void> signContract({
     required String contractId,
@@ -132,6 +161,35 @@ class ContractRepository {
       }).eq('id', contractId);
     } catch (e) {
       throw Exception('Failed to update contract status: ${e.toString()}');
+    }
+  }
+
+  // Update contract details
+  Future<ContractModel> updateContract({
+    required String contractId,
+    String? title,
+    String? content,
+    double? amount,
+    Map<String, dynamic>? terms,
+  }) async {
+    try {
+      final updates = <String, dynamic>{
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (title != null) updates['title'] = title;
+      if (content != null) updates['content'] = content;
+      if (terms != null) updates['terms'] = terms;
+
+      final data = await _supabase
+          .from('contracts')
+          .update(updates)
+          .eq('id', contractId)
+          .select('*')
+          .single();
+
+      return ContractModel.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to update contract: ${e.toString()}');
     }
   }
 

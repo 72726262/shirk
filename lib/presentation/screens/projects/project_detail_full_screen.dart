@@ -17,6 +17,8 @@ class ProjectDetailFullScreen extends StatelessWidget {
 
   String _getStatusText(ProjectStatus status) {
     switch (status) {
+      case ProjectStatus.planning:
+        return 'التخطيط';
       case ProjectStatus.upcoming:
         return 'قيد الإعداد';
       case ProjectStatus.inProgress:
@@ -34,6 +36,8 @@ class ProjectDetailFullScreen extends StatelessWidget {
 
   Color _getStatusColor(ProjectStatus status) {
     switch (status) {
+      case ProjectStatus.planning:
+        return AppColors.textSecondary;
       case ProjectStatus.inProgress:
         return AppColors.primary;
       case ProjectStatus.completed:

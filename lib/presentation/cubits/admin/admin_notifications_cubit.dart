@@ -31,6 +31,7 @@ class AdminNotificationsCubit extends Cubit<AdminNotificationsState> {
     required String body,
     required String bodyAr,
     String? userId,
+    List<String>? userIds,
     String? projectId,
     String priority = 'normal',
   }) async {
@@ -42,6 +43,7 @@ class AdminNotificationsCubit extends Cubit<AdminNotificationsState> {
         body: body,
         bodyAr: bodyAr,
         userId: userId,
+        userIds: userIds,
         projectId: projectId,
         priority: priority,
       );

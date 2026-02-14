@@ -134,6 +134,10 @@ class ProjectTable extends StatelessWidget {
     String label;
 
     switch (status) {
+      case ProjectStatus.planning:
+        color = AppColors.textSecondary;
+        label = 'التخطيط';
+        break;
       case ProjectStatus.upcoming:
         color = AppColors.info;
         label = 'قريباً';

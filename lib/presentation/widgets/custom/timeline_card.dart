@@ -261,6 +261,18 @@ class TimelineCard extends StatelessWidget {
   }
 
   Widget _buildPhotoThumbnail(String url) {
+    if (url.isEmpty || !url.startsWith('http')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(Dimensions.radiusM),
+        child: Container(
+          width: 80,
+          height: 80,
+          color: AppColors.gray200,
+          child: const Icon(Icons.image, color: AppColors.gray400),
+        ),
+      );
+    }
+    
     return ClipRRect(
       borderRadius: BorderRadius.circular(Dimensions.radiusM),
       child: CachedNetworkImage(
@@ -276,6 +288,27 @@ class TimelineCard extends StatelessWidget {
   }
 
   Widget _buildMorePhotosIndicator(int count, String backgroundUrl) {
+    if (backgroundUrl.isEmpty || !backgroundUrl.startsWith('http')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(Dimensions.radiusM),
+        child: Container(
+          width: 80,
+          height: 80,
+          color: AppColors.gray200,
+          child: Center(
+            child: Text(
+              '+$count',
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    
     return ClipRRect(
       borderRadius: BorderRadius.circular(Dimensions.radiusM),
       child: Stack(
@@ -285,6 +318,11 @@ class TimelineCard extends StatelessWidget {
             width: 80,
             height: 80,
             fit: BoxFit.cover,
+            errorWidget: (context, url, error) => Container(
+              width: 80,
+              height: 80,
+              color: AppColors.gray200,
+            ),
           ),
           Container(
             width: 80,

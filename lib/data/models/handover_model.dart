@@ -114,10 +114,10 @@ class DefectItem extends Equatable {
 
 class HandoverModel extends Equatable {
   final String id;
-  final String subscriptionId;
+  final String? subscriptionId;
   final String userId;
   final String projectId;
-  final String unitId;
+  final String? unitId;
   final HandoverStatus status;
   final DateTime? scheduledDate;
   final DateTime? actualDate;
@@ -127,6 +127,8 @@ class HandoverModel extends Equatable {
   final String? adminSignatureUrl;
   final List<String> photos;
   final String? notes;
+  final DateTime? appointmentDate;
+  final String? appointmentLocation;
   final DateTime? inProgress;
   final DateTime? completedAt;
   final DateTime createdAt;
@@ -134,10 +136,10 @@ class HandoverModel extends Equatable {
 
   const HandoverModel({
     required this.id,
-    required this.subscriptionId,
+    this.subscriptionId,
     required this.userId,
     required this.projectId,
-    required this.unitId,
+    this.unitId,
     this.status = HandoverStatus.scheduled,
     this.scheduledDate,
     this.actualDate,
@@ -147,6 +149,8 @@ class HandoverModel extends Equatable {
     this.adminSignatureUrl,
     this.photos = const [],
     this.notes,
+    this.appointmentDate,
+    this.appointmentLocation,
     this.completedAt,
     this.inProgress,
     required this.createdAt,
@@ -162,10 +166,10 @@ class HandoverModel extends Equatable {
   factory HandoverModel.fromJson(Map<String, dynamic> json) {
     return HandoverModel(
       id: json['id'] as String,
-      subscriptionId: json['subscription_id'] as String,
+      subscriptionId: json['subscription_id'] as String?,
       userId: json['user_id'] as String,
       projectId: json['project_id'] as String,
-      unitId: json['unit_id'] as String,
+      unitId: json['unit_id'] as String?,
       status: json['status'] != null
           ? HandoverStatus.fromJson(json['status'] as String)
           : HandoverStatus.scheduled,
@@ -186,7 +190,11 @@ class HandoverModel extends Equatable {
       photos: json['photos'] != null
           ? List<String>.from(json['photos'] as List)
           : const [],
-      notes: json['notes'] as String?,
+      notes: (json['appointment_notes'] ?? json['notes']) as String?,
+      appointmentDate: json['appointment_date'] != null
+          ? DateTime.parse(json['appointment_date'] as String)
+          : null,
+      appointmentLocation: json['appointment_location'] as String?,
       completedAt: json['completed_at'] != null
           ? DateTime.parse(json['completed_at'] as String)
           : null,
@@ -208,7 +216,9 @@ class HandoverModel extends Equatable {
       'client_signature_url': clientSignatureUrl,
       'admin_signature_url': adminSignatureUrl,
       'photos': photos,
-      'notes': notes,
+      'appointment_notes': notes,
+      'appointment_date': appointmentDate?.toIso8601String(),
+      'appointment_location': appointmentLocation,
       'completed_at': completedAt?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -228,6 +238,8 @@ class HandoverModel extends Equatable {
     String? adminSignatureUrl,
     List<String>? photos,
     String? notes,
+    DateTime? appointmentDate,
+    String? appointmentLocation,
     DateTime? completedAt,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -245,6 +257,8 @@ class HandoverModel extends Equatable {
       adminSignatureUrl: adminSignatureUrl ?? this.adminSignatureUrl,
       photos: photos ?? this.photos,
       notes: notes ?? this.notes,
+      appointmentDate: appointmentDate ?? this.appointmentDate,
+      appointmentLocation: appointmentLocation ?? this.appointmentLocation,
       completedAt: completedAt ?? this.completedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -265,6 +279,8 @@ class HandoverModel extends Equatable {
     adminSignatureUrl,
     photos,
     notes,
+    appointmentDate,
+    appointmentLocation,
     completedAt,
     createdAt,
     updatedAt,

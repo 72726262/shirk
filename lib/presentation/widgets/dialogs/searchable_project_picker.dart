@@ -16,7 +16,8 @@ class SearchableProjectPicker extends StatefulWidget {
   });
 
   @override
-  State<SearchableProjectPicker> createState() => _SearchableProjectPickerState();
+  State<SearchableProjectPicker> createState() =>
+      _SearchableProjectPickerState();
 }
 
 class _SearchableProjectPickerState extends State<SearchableProjectPicker> {
@@ -44,7 +45,8 @@ class _SearchableProjectPickerState extends State<SearchableProjectPicker> {
           final nameLower = project.name.toLowerCase();
           final locationLower = project.location?.toLowerCase() ?? '';
           final queryLower = query.toLowerCase();
-          return nameLower.contains(queryLower) || locationLower.contains(queryLower);
+          return nameLower.contains(queryLower) ||
+              locationLower.contains(queryLower);
         }).toList();
       }
     });
@@ -131,7 +133,10 @@ class _SearchableProjectPickerState extends State<SearchableProjectPicker> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(Dimensions.radiusL),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                      width: 2,
+                    ),
                   ),
                   filled: true,
                   fillColor: AppColors.gray50,
@@ -142,7 +147,9 @@ class _SearchableProjectPickerState extends State<SearchableProjectPicker> {
             // Results Count
             if (_filteredProjects.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Dimensions.spaceL),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Dimensions.spaceL,
+                ),
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: Text(
@@ -180,31 +187,41 @@ class _SearchableProjectPickerState extends State<SearchableProjectPicker> {
                       ),
                     )
                   : GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: Dimensions.spaceL),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: Dimensions.spaceM,
-                        mainAxisSpacing: Dimensions.spaceM,
-                        childAspectRatio: 0.85,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Dimensions.spaceL,
                       ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: Dimensions.spaceM,
+                            mainAxisSpacing: Dimensions.spaceM,
+                            childAspectRatio: 0.85,
+                          ),
                       itemCount: _filteredProjects.length,
                       itemBuilder: (context, index) {
                         final project = _filteredProjects[index];
-                        final isSelected = project.id == widget.selectedProjectId;
+                        final isSelected =
+                            project.id == widget.selectedProjectId;
 
                         return InkWell(
                           onTap: () {
                             widget.onProjectSelected(project);
                             Navigator.pop(context);
                           },
-                          borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                          borderRadius: BorderRadius.circular(
+                            Dimensions.radiusL,
+                          ),
                           child: Container(
                             decoration: BoxDecoration(
                               border: Border.all(
-                                color: isSelected ? AppColors.primary : AppColors.gray300,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.gray300,
                                 width: isSelected ? 3 : 1,
                               ),
-                              borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                              borderRadius: BorderRadius.circular(
+                                Dimensions.radiusL,
+                              ),
                               color: isSelected
                                   ? AppColors.primary.withOpacity(0.05)
                                   : Colors.white,
@@ -218,21 +235,30 @@ class _SearchableProjectPickerState extends State<SearchableProjectPicker> {
                                   child: Container(
                                     decoration: BoxDecoration(
                                       borderRadius: const BorderRadius.only(
-                                        topLeft: Radius.circular(Dimensions.radiusL),
-                                        topRight: Radius.circular(Dimensions.radiusL),
+                                        topLeft: Radius.circular(
+                                          Dimensions.radiusL,
+                                        ),
+                                        topRight: Radius.circular(
+                                          Dimensions.radiusL,
+                                        ),
                                       ),
                                       color: AppColors.gray200,
-                                      image: project.imageUrl != null &&
+                                      image:
+                                          project.imageUrl != null &&
                                               project.imageUrl!.isNotEmpty &&
-                                              project.imageUrl != 'file:///'
+                                              project.imageUrl != 'file:///' &&
+                                              project.imageUrl!.startsWith('http')
                                           ? DecorationImage(
-                                              image: NetworkImage(project.imageUrl!),
+                                              image: NetworkImage(
+                                                project.imageUrl!,
+                                              ),
                                               fit: BoxFit.cover,
                                               onError: (_, __) {},
                                             )
                                           : null,
                                     ),
-                                    child: project.imageUrl == null ||
+                                    child:
+                                        project.imageUrl == null ||
                                             project.imageUrl!.isEmpty ||
                                             project.imageUrl == 'file:///'
                                         ? const Center(
@@ -248,75 +274,91 @@ class _SearchableProjectPickerState extends State<SearchableProjectPicker> {
 
                                 // Project Details
                                 Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(Dimensions.spaceM),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        // Project Name
-                                        Text(
-                                          project.name,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.textPrimary,
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      return SingleChildScrollView(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(
+                                            Dimensions.spaceM,
                                           ),
-                                        ),
-
-                                        // Location & Status
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            if (project.location != null)
-                                              Row(
-                                                children: [
-                                                  const Icon(
-                                                    Icons.location_on,
-                                                    size: 12,
-                                                    color: AppColors.textSecondary,
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Expanded(
-                                                    child: Text(
-                                                      project.location!,
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                      style: const TextStyle(
-                                                        fontSize: 11,
-                                                        color: AppColors.textSecondary,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            const SizedBox(height: 4),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 2,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: _getStatusColor(project.status ?? '')
-                                                    .withOpacity(0.1),
-                                                borderRadius:
-                                                    BorderRadius.circular(Dimensions.radiusS),
-                                              ),
-                                              child: Text(
-                                                project.status ?? 'نشط',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: _getStatusColor(project.status ?? ''),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              // Project Name
+                                              Text(
+                                                project.name,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.textPrimary,
                                                 ),
                                               ),
-                                            ),
-                                          ],
+
+                                              // Location & Status
+                                              const SizedBox(height: 8),
+                                              if (project.location != null)
+                                                Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.location_on,
+                                                      size: 12,
+                                                      color:
+                                                          AppColors.textSecondary,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Expanded(
+                                                      child: Text(
+                                                        project.location!,
+                                                        maxLines: 1,
+                                                        overflow:
+                                                            TextOverflow.ellipsis,
+                                                        style: const TextStyle(
+                                                          fontSize: 11,
+                                                          color: AppColors
+                                                              .textSecondary,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              const SizedBox(height: 4),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: _getStatusColor(
+                                                    project.status.toString() ??
+                                                        '',
+                                                  ).withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        Dimensions.radiusS,
+                                                      ),
+                                                ),
+                                                child: Text(
+                                                  project.status.toString() ??
+                                                      'نشط',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: _getStatusColor(
+                                                      project.status.toString() ??
+                                                          '',
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ],
-                                    ),
+                                      );
+                                    },
                                   ),
                                 ),
                               ],

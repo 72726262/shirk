@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mmm/data/services/supabase_service.dart';
 import 'package:mmm/data/models/user_model.dart';
@@ -106,6 +107,48 @@ class AdminRepository {
       await _client.from('profiles').update({'role': newRole}).eq('id', userId);
     } catch (e) {
       throw Exception('فشل تحديث صلاحية المستخدم: ${e.toString()}');
+    }
+  }
+
+  // Update Client Profile
+  Future<void> updateClient({
+    required String userId,
+    String? fullName,
+    String? phone,
+    String? nationalId,
+    String? avatarPath, // Local path to new avatar image
+  }) async {
+    try {
+      final updates = <String, dynamic>{
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (fullName != null) updates['full_name'] = fullName;
+      if (phone != null) updates['phone'] = phone;
+      if (nationalId != null) updates['national_id'] = nationalId;
+
+      // particular logic for avatar upload
+      if (avatarPath != null) {
+        final extension = avatarPath.split('.').last;
+        final path = 'avatars/$userId/avatar_${DateTime.now().millisecondsSinceEpoch}.$extension';
+        
+        // Upload image
+        await _client.storage.from('avatars').upload(
+          path,
+          File(avatarPath),
+          fileOptions: const FileOptions(upsert: true),
+        );
+
+        // Get public URL
+        final avatarUrl = _client.storage.from('avatars').getPublicUrl(path);
+        updates['avatar_url'] = avatarUrl;
+      }
+
+      if (updates.isNotEmpty) {
+        await _client.from('profiles').update(updates).eq('id', userId);
+      }
+    } catch (e) {
+      throw Exception('فشل تحديث بيانات العميل: ${e.toString()}');
     }
   }
 
@@ -224,48 +267,90 @@ class AdminRepository {
     required String titleAr,
     required String body,
     required String bodyAr,
-    String? userId, // specific user
+    String? userId, // specific user (single)
+    List<String>? userIds, // specific users (multiple)
     String? projectId, // all users in a project
     bool details = false, // false = simple message
     String priority = 'normal',
   }) async {
     try {
+      final createdAt = DateTime.now().toIso8601String();
+
+      // Common notification data
+      final baseNotification = {
+        'title': title,
+        'title_ar': titleAr,
+        'body': body,
+        'body_ar': bodyAr,
+        'type': 'info',
+        'priority': priority,
+        'created_at': createdAt,
+        if (projectId != null) 'project_id': projectId,
+      };
+
       if (userId != null) {
-        // Send to specific user
+        // Send to specific user (single)
         await _client.from('notifications').insert({
           'user_id': userId,
-          'title': title,
-          'title_ar': titleAr,
-          'body': body,
-          'body_ar': bodyAr,
-          'type': 'admin_message',
-          'priority': priority,
-          'created_at': DateTime.now().toIso8601String(),
+          ...baseNotification,
         });
+      } else if (userIds != null && userIds.isNotEmpty) {
+        // Send to multiple users
+        final notifications = userIds.map((id) => {
+          'user_id': id,
+          ...baseNotification,
+        }).toList();
+        
+        await _client.from('notifications').insert(notifications);
+
       } else if (projectId != null) {
-        // Send to all project users (subscribers/owners)
-        // 1. Get all units in project
-        final units = await _client
-            .from('units')
-            .select('id')
-            .eq('project_id', projectId);
+        // Send to all project users
+        // For MVP, we'll try to get all users who have an active subscription/unit in this project
+        // Since schema is not fully known for units->owner, we'll check subscriptions
+        final subscriptions = await _client
+            .from('subscriptions')
+            .select('user_id')
+            .eq('project_id', projectId)
+            .filter('status', 'in', ['active', 'completed']); // Include completed subscriptions
+        
+        final projectUserIds = List<Map<String, dynamic>>.from(subscriptions)
+            .map((s) => s['user_id'] as String)
+            .toSet() // Unique
+            .toList();
 
-        if (units.isEmpty) return;
+        if (projectUserIds.isEmpty) return;
 
-        // 2. Get all distinct users who have these units (assuming user_units table or unit.owner_id)
-        // Let's assume units have 'owner_id' or we look up in 'user_units'
-        // For MVP, if we don't have owner_id on units, this is hard.
-        // Assuming unit table has owner_id
-        // final owners = await _client.from('units').select('owner_id').in_('id', unitIds).neq('owner_id', null);
+        final notifications = projectUserIds.map((id) => {
+          'user_id': id,
+          ...baseNotification,
+        }).toList();
 
-        // Simplified: Just insert into a 'broadcast_notifications' if exists or loop valid users.
-        // We'll skip complex logic and just log for now to avoid breaking if schema is unknown.
-        // Or send to a demo user.
+        await _client.from('notifications').insert(notifications);
+
       } else {
         // Broadcast to ALL users
-        // This usually requires a separate 'broadcasts' table or Cloud Function.
-        // We will insert one record with user_id = null if system supports it, or throw limitation error.
-        throw Exception('Broadcast details not implemented in MVP');
+        // Warning: This is expensive in client-side loop. Should be Server function.
+        // For now, allow it but limit to 500 recent active users or just throw if too risky.
+        // Let's implement a batch insert for all profiles.
+        
+        final profiles = await _client.from('profiles').select('id');
+        final allUserIds = List<Map<String, dynamic>>.from(profiles)
+            .map((p) => p['id'] as String)
+            .toList();
+            
+        if (allUserIds.isEmpty) return;
+
+        // Batch insert in chunks of 50 to avoid request size limits
+        const chunkSize = 50;
+        for (var i = 0; i < allUserIds.length; i += chunkSize) {
+          final chunk = allUserIds.skip(i).take(chunkSize);
+          final notifications = chunk.map((id) => {
+            'user_id': id,
+            ...baseNotification,
+          }).toList();
+          
+          await _client.from('notifications').insert(notifications);
+        }
       }
     } catch (e) {
       throw Exception('خطأ في إرسال الإشعار: ${e.toString()}');

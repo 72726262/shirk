@@ -1,18 +1,20 @@
 import 'package:bloc/bloc.dart';
 import 'package:mmm/data/services/handover_service.dart';
 import 'package:mmm/data/models/handover_model.dart';
+import 'package:mmm/data/repositories/handover_repository.dart';
 import 'package:mmm/data/models/defect_model.dart';
 import 'package:mmm/presentation/cubits/admin/handovers_management_state.dart';
 
 class HandoversManagementCubit extends Cubit<HandoversManagementState> {
   final HandoverService _handoverService = HandoverService();
+  final HandoverRepository _handoverRepository = HandoverRepository();
 
   HandoversManagementCubit() : super(HandoversManagementInitial());
 
   Future<void> loadHandovers({String? userId, String? status}) async {
     try {
       emit(HandoversManagementLoading());
-      
+
       if (userId == null) {
         emit(HandoversManagementError(message: 'معرف المستخدم مطلوب'));
         return;
@@ -20,22 +22,67 @@ class HandoversManagementCubit extends Cubit<HandoversManagementState> {
 
       // getUserHandovers gets all handovers for a user
       final handovers = await _handoverService.getUserHandovers(userId);
-      
-      // Filter by status if provided  
+
+      // Filter by status if provided
       final filteredHandovers = status != null
           ? handovers.where((h) => h.status.name == status).toList()
           : handovers;
 
       emit(HandoversManagementLoaded(handovers: filteredHandovers));
     } catch (e) {
-      emit(HandoversManagementError(message: 'فشل في تحميل عمليات التسليم: ${e.toString()}'));
+      emit(
+        HandoversManagementError(
+          message: 'فشل في تحميل عمليات التسليم: ${e.toString()}',
+        ),
+      );
+    }
+  }
+
+  Future<void> createHandover({
+    required String userId,
+    required String projectId,
+    String? subscriptionId,
+    required DateTime appointmentDate,
+    String? appointmentLocation,
+    String? notes,
+  }) async {
+    try {
+      emit(HandoversManagementCreating());
+
+      await _handoverService.createHandover(
+        userId: userId,
+        projectId: projectId,
+        subscriptionId: subscriptionId,
+        appointmentDate: appointmentDate,
+        appointmentLocation: appointmentLocation,
+        notes: notes,
+      );
+
+      emit(HandoverCreatedSuccessfully());
+    } catch (e) {
+      emit(
+        HandoversManagementError(
+          message: 'فشل في إنشاء عملية التسليم: ${e.toString()}',
+        ),
+      );
+    }
+  }
+
+  Future<String?> getSubscriptionId(String userId, String projectId) async {
+    try {
+      return await _handoverService.getSubscriptionId(
+        userId: userId,
+        projectId: projectId,
+      );
+    } catch (_) {
+      return null;
     }
   }
 
   Future<void> loadHandoverById(String handoverId) async {
     try {
       emit(HandoversManagementLoading());
-      
+
       final handover = await _handoverService.getHandoverById(handoverId);
 
       emit(HandoverDetailLoaded(handover: handover));
@@ -133,10 +180,46 @@ class HandoversManagementCubit extends Cubit<HandoversManagementState> {
 
   Future<void> generateHandoverCertificate(String handoverId) async {
     try {
-      final certificateUrl = await _handoverService.generateCertificate(handoverId);
+      final certificateUrl = await _handoverService.generateCertificate(
+        handoverId,
+      );
       emit(HandoverCertificateGenerated(certificateUrl: certificateUrl));
     } catch (e) {
       emit(HandoversManagementError(message: 'فشل في إصدار الشهادة'));
+    }
+  }
+
+  Future<void> updateHandover({
+    required String handoverId,
+    DateTime? appointmentDate,
+    String? appointmentLocation,
+    String? notes,
+  }) async {
+    try {
+      emit(HandoversManagementLoading());
+      await _handoverRepository.updateHandover(
+        handoverId: handoverId,
+        appointmentDate: appointmentDate,
+        appointmentLocation: appointmentLocation,
+        notes: notes,
+      );
+      emit(const HandoverUpdatedSuccessfully());
+    } catch (e) {
+      emit(
+        HandoversManagementError(message: 'فشل تحديث الاستلام: ${e.toString()}'),
+      );
+    }
+  }
+
+  Future<void> deleteHandover(String handoverId) async {
+    try {
+      emit(HandoversManagementLoading());
+      await _handoverRepository.deleteHandover(handoverId);
+      emit(const HandoverDeletedSuccessfully());
+    } catch (e) {
+      emit(
+        HandoversManagementError(message: 'فشل حذف الاستلام: ${e.toString()}'),
+      );
     }
   }
 }

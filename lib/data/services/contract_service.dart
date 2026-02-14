@@ -64,6 +64,31 @@ class ContractService {
     }
   }
 
+  /// Create manual contract
+  Future<ContractModel> createManualContract({
+    required String userId,
+    String? projectId,
+    required String title,
+    required String content,
+    required String contractNumber,
+    double? amount,
+    Map<String, dynamic>? terms,
+  }) async {
+    try {
+      return await _contractRepository.createManualContract(
+        userId: userId,
+        projectId: projectId,
+        title: title,
+        content: content,
+        contractNumber: contractNumber,
+        amount: amount,
+        terms: terms,
+      );
+    } catch (e) {
+      throw Exception('فشل إنشاء العقد اليدوي: ${e.toString()}');
+    }
+  }
+
   /// Sign contract
   Future<void> signContract({
     required String contractId,
@@ -93,6 +118,27 @@ class ContractService {
       );
     } catch (e) {
       throw Exception('فشل تحديث حالة العقد: ${e.toString()}');
+    }
+  }
+
+  /// Update contract details
+  Future<ContractModel> updateContract({
+    required String contractId,
+    String? title,
+    String? content,
+    double? amount,
+    Map<String, dynamic>? terms,
+  }) async {
+    try {
+      return await _contractRepository.updateContract(
+        contractId: contractId,
+        title: title,
+        content: content,
+        amount: amount,
+        terms: terms,
+      );
+    } catch (e) {
+      throw Exception('فشل تحديث العقد: ${e.toString()}');
     }
   }
 

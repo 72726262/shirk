@@ -5,6 +5,9 @@ import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/data/models/user_model.dart';
 import 'package:mmm/presentation/cubits/admin/client_management_cubit.dart';
 import 'package:mmm/presentation/widgets/common/custom_text_field.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+
 import 'package:mmm/presentation/widgets/common/primary_button.dart';
 
 class EditClientScreen extends StatefulWidget {
@@ -22,25 +25,31 @@ class _EditClientScreenState extends State<EditClientScreen> {
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _nationalIdController;
-  
+
   bool _isLoading = false;
+
+  File? _newAvatarFile;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     _fullNameController = TextEditingController(text: widget.client.fullName);
+    // ... rest of init
     _emailController = TextEditingController(text: widget.client.email);
     _phoneController = TextEditingController(text: widget.client.phone);
-    _nationalIdController = TextEditingController(text: widget.client.nationalId);
+    _nationalIdController = TextEditingController(
+      text: widget.client.nationalId,
+    );
   }
 
-  @override
-  void dispose() {
-    _fullNameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _nationalIdController.dispose();
-    super.dispose();
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _newAvatarFile = File(image.path);
+      });
+    }
   }
 
   Future<void> _saveChanges() async {
@@ -51,15 +60,14 @@ class _EditClientScreenState extends State<EditClientScreen> {
     });
 
     try {
-      // TODO: Implement update client in cubit
-      // await context.read<ClientManagementCubit>().updateClient(
-      //   widget.client.id,
-      //   fullName: _fullNameController.text,
-      //   phone: _phoneController.text,
-      //   nationalId: _nationalIdController.text,
-      // );
+      await context.read<ClientManagementCubit>().updateClient(
+        userId: widget.client.id,
+        fullName: _fullNameController.text,
+        phone: _phoneController.text,
+        nationalId: _nationalIdController.text,
+        avatarPath: _newAvatarFile?.path,
+      );
 
-      // Temporary success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -67,7 +75,7 @@ class _EditClientScreenState extends State<EditClientScreen> {
             backgroundColor: AppColors.success,
           ),
         );
-        Navigator.pop(context, true); // Return true to refresh list
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -107,10 +115,14 @@ class _EditClientScreenState extends State<EditClientScreen> {
                   CircleAvatar(
                     radius: 60,
                     backgroundColor: AppColors.primary.withOpacity(0.1),
-                    backgroundImage: widget.client.avatarUrl != null
-                        ? NetworkImage(widget.client.avatarUrl!)
-                        : null,
-                    child: widget.client.avatarUrl == null
+                    backgroundImage: _newAvatarFile != null
+                        ? FileImage(_newAvatarFile!) as ImageProvider
+                        : (widget.client.avatarUrl != null
+                              ? NetworkImage(widget.client.avatarUrl!)
+                              : null),
+                    child:
+                        (_newAvatarFile == null &&
+                            widget.client.avatarUrl == null)
                         ? Text(
                             widget.client.fullName?.isNotEmpty ?? false
                                 ? widget.client.fullName![0].toUpperCase()
@@ -126,13 +138,16 @@ class _EditClientScreenState extends State<EditClientScreen> {
                   Positioned(
                     bottom: 0,
                     right: 0,
-                    child: CircleAvatar(
-                      radius: 20,
-                      backgroundColor: AppColors.primary,
-                      child: const Icon(
-                        Icons.camera_alt,
-                        size: 20,
-                        color: Colors.white,
+                    child: InkWell(
+                      onTap: _pickImage,
+                      child: CircleAvatar(
+                        radius: 20,
+                        backgroundColor: AppColors.primary,
+                        child: const Icon(
+                          Icons.camera_alt,
+                          size: 20,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -213,10 +228,7 @@ class _EditClientScreenState extends State<EditClientScreen> {
                 children: [
                   const Text(
                     'حالة التوثيق (KYC)',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: Dimensions.spaceM),
                   Row(
@@ -231,7 +243,9 @@ class _EditClientScreenState extends State<EditClientScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: _getKycColor(widget.client.kycStatus.toString()),
+                          color: _getKycColor(
+                            widget.client.kycStatus.toString(),
+                          ),
                         ),
                       ),
                     ],
@@ -263,7 +277,9 @@ class _EditClientScreenState extends State<EditClientScreen> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.textSecondary,
                 side: const BorderSide(color: AppColors.gray300),
-                padding: const EdgeInsets.symmetric(vertical: Dimensions.spaceM),
+                padding: const EdgeInsets.symmetric(
+                  vertical: Dimensions.spaceM,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(Dimensions.radiusM),
                 ),

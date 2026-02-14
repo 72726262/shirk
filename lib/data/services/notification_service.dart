@@ -84,7 +84,7 @@ class NotificationService {
   }
 
   // Real-time notification stream
-  Stream<NotificationModel> watchNotifications(String userId) {
+  Stream<List<NotificationModel>> watchNotifications(String userId) {
     try {
       return _notificationRepository.watchNotifications(userId);
     } catch (e) {

@@ -96,7 +96,9 @@ class ProjectCard extends StatelessWidget {
                   topRight: Radius.circular(Dimensions.radiusL),
                 ),
                 color: AppColors.gray200,
-                image: imageUrl.isNotEmpty && imageUrl != 'file:///'
+                image: imageUrl.isNotEmpty && 
+                       imageUrl != 'file:///' &&
+                       imageUrl.startsWith('http')
                     ? DecorationImage(
                         image: NetworkImage(imageUrl),
                         fit: BoxFit.cover,

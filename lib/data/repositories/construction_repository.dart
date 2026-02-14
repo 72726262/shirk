@@ -135,8 +135,9 @@ class ConstructionRepository {
       final urls = <String>[];
 
       for (var i = 0; i < filePaths.length; i++) {
+        // Use StorageService constant or correct string 'construction-media'
         final url = await _supabaseService.uploadFile(
-          bucketName: 'construction_media',
+          bucketName: 'construction-media', 
           path: 'projects/$projectId/updates/$updateId/${mediaType}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg',
           filePath: filePaths[i],
         );
@@ -176,10 +177,9 @@ class ConstructionRepository {
     required String reportType, // engineering, financial, supervision
   }) async {
     try {
-      final update = await getUpdateById(updateId);
-      
+      // Use correct bucket name 'reports'
       final url = await _supabaseService.uploadFile(
-        bucketName: 'construction_reports',
+        bucketName: 'reports',
         path: 'updates/$updateId/${reportType}_report_${DateTime.now().millisecondsSinceEpoch}.pdf',
         filePath: filePath,
       );

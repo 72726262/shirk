@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 enum ProjectStatus {
+  planning,
   upcoming,
   inProgress,
   completed,
@@ -9,16 +10,18 @@ enum ProjectStatus {
   cancelled;
 
   String toJson() => name;
-  
+
   static ProjectStatus fromJson(String value) {
     return ProjectStatus.values.firstWhere(
       (e) => e.name == value,
-      orElse: () => ProjectStatus.upcoming,
+      orElse: () => ProjectStatus.planning,
     );
   }
-  
+
   String get displayName {
     switch (this) {
+      case ProjectStatus.planning:
+        return 'التخطيط';
       case ProjectStatus.upcoming:
         return 'قريباً';
       case ProjectStatus.inProgress:
@@ -42,12 +45,12 @@ class ProjectModel extends Equatable {
   final String? description;
   final String? descriptionAr;
   final ProjectStatus status;
-  
+
   // Location
   final String? locationName;
   final double? locationLat;
   final double? locationLng;
-  
+
   // Pricing
   final double? pricePerSqm;
   final double? minInvestment;
@@ -55,21 +58,21 @@ class ProjectModel extends Equatable {
   final int totalUnits;
   final int soldUnits;
   final int reservedUnits;
-  
+
   // Progress
   final double completionPercentage;
   final DateTime? startDate;
   final DateTime? expectedCompletionDate;
   final DateTime? actualCompletionDate;
-  
+
   // Media
   final String? heroImageUrl;
   final String? videoUrl;
   final List<String> renderImages;
-  
+
   // Partners
   final int totalPartners;
-  
+
   // Metadata
   final bool featured;
   final bool isActive;
@@ -109,13 +112,15 @@ class ProjectModel extends Equatable {
   });
 
   int get availableUnits => totalUnits - soldUnits - reservedUnits;
-  
+
   // Compatibility getters for screens
   String get imageUrl => heroImageUrl ?? '';
   String get location => locationName ?? 'غير محدد';
   double get constructionProgress => completionPercentage;
+
   double get totalValue => (pricePerSqm ?? 0) * totalUnits.toDouble();
   int get unitsCount => totalUnits;
+  String get developer => 'شريك'; // Default developer name
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
     return ProjectModel(
@@ -269,33 +274,33 @@ class ProjectModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        nameAr,
-        description,
-        descriptionAr,
-        status,
-        locationName,
-        locationLat,
-        locationLng,
-        pricePerSqm,
-        minInvestment,
-        maxInvestment,
-        totalUnits,
-        soldUnits,
-        reservedUnits,
-        completionPercentage,
-        startDate,
-        expectedCompletionDate,
-        actualCompletionDate,
-        heroImageUrl,
-        videoUrl,
-        renderImages,
-        totalPartners,
-        featured,
-        isActive,
-        createdBy,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    name,
+    nameAr,
+    description,
+    descriptionAr,
+    status,
+    locationName,
+    locationLat,
+    locationLng,
+    pricePerSqm,
+    minInvestment,
+    maxInvestment,
+    totalUnits,
+    soldUnits,
+    reservedUnits,
+    completionPercentage,
+    startDate,
+    expectedCompletionDate,
+    actualCompletionDate,
+    heroImageUrl,
+    videoUrl,
+    renderImages,
+    totalPartners,
+    featured,
+    isActive,
+    createdBy,
+    createdAt,
+    updatedAt,
+  ];
 }

@@ -13,6 +13,8 @@ class HandoversManagementInitial extends HandoversManagementState {}
 
 class HandoversManagementLoading extends HandoversManagementState {}
 
+class HandoversManagementCreating extends HandoversManagementState {}
+
 class HandoversManagementLoaded extends HandoversManagementState {
   final List<HandoverModel> handovers;
 
@@ -44,6 +46,10 @@ class HandoverAppointmentBookedSuccessfully extends HandoversManagementState {
   const HandoverAppointmentBookedSuccessfully();
 }
 
+class HandoverCreatedSuccessfully extends HandoversManagementState {
+  const HandoverCreatedSuccessfully();
+}
+
 class HandoverRescheduledSuccessfully extends HandoversManagementState {
   const HandoverRescheduledSuccessfully();
 }
@@ -54,6 +60,14 @@ class DefectUpdatedSuccessfully extends HandoversManagementState {
 
 class HandoverCompletedSuccessfully extends HandoversManagementState {
   const HandoverCompletedSuccessfully();
+}
+
+class HandoverUpdatedSuccessfully extends HandoversManagementState {
+  const HandoverUpdatedSuccessfully();
+}
+
+class HandoverDeletedSuccessfully extends HandoversManagementState {
+  const HandoverDeletedSuccessfully();
 }
 
 class HandoverCertificateGenerated extends HandoversManagementState {

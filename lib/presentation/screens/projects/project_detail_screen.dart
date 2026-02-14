@@ -14,7 +14,8 @@ class ProjectDetailScreen extends StatefulWidget {
   State<ProjectDetailScreen> createState() => _ProjectDetailScreenState();
 }
 
-class _ProjectDetailScreenState extends State<ProjectDetailScreen> with SingleTickerProviderStateMixin {
+class _ProjectDetailScreenState extends State<ProjectDetailScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -54,11 +55,50 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> with SingleTi
                   backgroundColor: AppColors.primary,
                   flexibleSpace: FlexibleSpaceBar(
                     title: Text(project.name),
-                    background: project.imageUrl != null
-                        ? Image.network(project.imageUrl!, fit: BoxFit.cover)
+                    background:
+                        project.imageUrl.isNotEmpty &&
+                            project.imageUrl != 'file:///'
+                        ? Image.network(
+                            project.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              // Log error for debugging
+                              debugPrint('Error loading project image: $error');
+                              return Container(
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppColors.primary,
+                                      AppColors.primaryDark,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.business,
+                                  size: 80,
+                                  color: Colors.white,
+                                ),
+                              );
+                            },
+                          )
                         : Container(
-                            decoration: BoxDecoration(gradient: AppColors.primaryGradient),
-                            child: const Icon(Icons.business, size: 80, color: AppColors.white),
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppColors.primary,
+                                  AppColors.primaryDark,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.business,
+                              size: 80,
+                              color: Colors.white,
+                            ),
                           ),
                   ),
                 ),
@@ -117,7 +157,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> with SingleTi
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('الوصف', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(
+            'الوصف',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: Dimensions.spaceM),
           Text(
             project.description ?? 'لا يوجد وصف متاح',
@@ -128,9 +171,22 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> with SingleTi
           _buildInfoCard('معلومات المشروع', [
             _buildInfoRow('الموقع', project.location ?? '-'),
             _buildInfoRow('المطور', project.developer ?? '-'),
-            _buildInfoRow('القيمة الإجمالية', currency.format(project.totalValue ?? 0)),
-            _buildInfoRow('تاريخ البدء', project.startDate != null ? DateFormat('dd/MM/yyyy').format(project.startDate) : '-'),
-            _buildInfoRow('تاريخ الانتهاء المتوقع', project.expectedEndDate != null ? DateFormat('dd/MM/yyyy').format(project.expectedEndDate) : '-'),
+            _buildInfoRow(
+              'القيمة الإجمالية',
+              currency.format(project.totalValue ?? 0),
+            ),
+            _buildInfoRow(
+              'تاريخ البدء',
+              project.startDate != null
+                  ? DateFormat('dd/MM/yyyy').format(project.startDate)
+                  : '-',
+            ),
+            _buildInfoRow(
+              'تاريخ الانتهاء المتوقع',
+              project.expectedEndDate != null
+                  ? DateFormat('dd/MM/yyyy').format(project.expectedEndDate)
+                  : '-',
+            ),
           ]),
         ],
       ),
@@ -142,9 +198,16 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> with SingleTi
       padding: const EdgeInsets.all(Dimensions.spaceXXL),
       child: Column(
         children: [
-          CircularProgressIndicator(value: project.progress / 100, strokeWidth: 8, backgroundColor: AppColors.gray200),
+          CircularProgressIndicator(
+            value: project.progress / 100,
+            strokeWidth: 8,
+            backgroundColor: AppColors.gray200,
+          ),
           const SizedBox(height: Dimensions.spaceL),
-          Text('${project.progress}%', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+          Text(
+            '${project.progress}%',
+            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: Dimensions.spaceXXL),
 
           // Progress milestones would go here
@@ -182,7 +245,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> with SingleTi
           child: ListTile(
             title: Text('دفعة ${index + 1}'),
             subtitle: Text(DateFormat('dd/MM/yyyy').format(DateTime.now())),
-            trailing: Text(currency.format(50000), style: const TextStyle(fontWeight: FontWeight.bold)),
+            trailing: Text(
+              currency.format(50000),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         );
       },
@@ -199,7 +265,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> with SingleTi
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: Dimensions.spaceL),
           ...children,
         ],
@@ -232,7 +301,11 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => _tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Container(color: AppColors.white, child: _tabBar);
   }
 

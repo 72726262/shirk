@@ -5,6 +5,7 @@ import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/presentation/cubits/admin/documents_management_cubit.dart';
 import 'package:mmm/data/models/document_model.dart';
 import 'package:intl/intl.dart';
+import 'package:mmm/presentation/screens/documents/upload_document_screen.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../cubits/admin/documents_management_state.dart';
 
@@ -26,43 +27,62 @@ class _DocumentsManagementTabState extends State<DocumentsManagementTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildFilters(),
-        Expanded(
-          child:
-              BlocConsumer<DocumentsManagementCubit, DocumentsManagementState>(
-                listener: (context, state) {
-                  if (state is DocumentsManagementError) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(state.message),
-                        backgroundColor: AppColors.error,
-                      ),
-                    );
-                  } else if (state is DocumentUploadedSuccessfully) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('تم رفع المستند بنجاح'),
-                        backgroundColor: AppColors.success,
-                      ),
-                    );
-                  }
-                },
-                builder: (context, state) {
-                  if (state is DocumentsManagementLoading) {
-                    return _buildSkeletonLoader();
-                  }
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const UploadDocumentScreen(),
+            ),
+          );
+        },
+        label: const Text('رفع مستند'),
+        icon: const Icon(Icons.upload_file),
+        backgroundColor: AppColors.primary,
+      ),
+      body: Column(
+        children: [
+          _buildFilters(),
+          Expanded(
+            child:
+                BlocConsumer<
+                  DocumentsManagementCubit,
+                  DocumentsManagementState
+                >(
+                  listener: (context, state) {
+                    if (state is DocumentsManagementError) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(state.message),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                    } else if (state is DocumentUploadedSuccessfully) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('تم رفع المستند بنجاح'),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
+                    }
+                  },
+                  builder: (context, state) {
+                    if (state is DocumentsManagementLoading) {
+                      return _buildSkeletonLoader();
+                    }
 
-                  if (state is DocumentsManagementLoaded) {
-                    return _buildDocumentsGrid(state.documents);
-                  }
+                    if (state is DocumentsManagementLoaded) {
+                      return _buildDocumentsGrid(state.documents);
+                    }
 
-                  return const Center(child: Text('لا توجد مستندات'));
-                },
-              ),
-        ),
-      ],
+                    return const Center(child: Text('لا توجد مستندات'));
+                  },
+                ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -137,19 +157,6 @@ class _DocumentsManagementTabState extends State<DocumentsManagementTab> {
               ],
             ),
           ),
-          const SizedBox(width: Dimensions.spaceL),
-          SizedBox(
-            width: 150,
-            child: ElevatedButton.icon(
-              onPressed: _showUploadDialog,
-              icon: const Icon(Icons.upload_file),
-              label: const Text('رفع مستند'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -206,6 +213,26 @@ class _DocumentsManagementTabState extends State<DocumentsManagementTab> {
                   PopupMenuButton(
                     itemBuilder: (context) => [
                       const PopupMenuItem(
+                        value: 'view',
+                        child: Row(
+                          children: [
+                            Icon(Icons.visibility, size: 18),
+                            SizedBox(width: Dimensions.spaceS),
+                            Text('عرض'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit, size: 18, color: AppColors.primary),
+                            SizedBox(width: Dimensions.spaceS),
+                            Text('تعديل'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
                         value: 'download',
                         child: Row(
                           children: [
@@ -234,7 +261,11 @@ class _DocumentsManagementTabState extends State<DocumentsManagementTab> {
                       ),
                     ],
                     onSelected: (value) {
-                      if (value == 'download') {
+                      if (value == 'view') {
+                        _viewDocument(document);
+                      } else if (value == 'edit') {
+                        _editDocument(document);
+                      } else if (value == 'download') {
                         context
                             .read<DocumentsManagementCubit>()
                             .downloadDocument(document.id);
@@ -366,6 +397,16 @@ class _DocumentsManagementTabState extends State<DocumentsManagementTab> {
             child: const Text('إغلاق'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _editDocument(DocumentModel document) {
+    // Navigate to edit document screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UploadDocumentScreen(),
       ),
     );
   }

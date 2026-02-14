@@ -62,14 +62,37 @@ class HandoverRepository {
     }
   }
 
-  // Create handover (when subscription is ready)
-  Future<HandoverModel> createHandover({
-    required String subscriptionId,
+  // Get subscription ID by user and project
+  Future<String?> getSubscriptionId({
     required String userId,
     required String projectId,
-    String? unitId,
   }) async {
     try {
+      final response = await _client
+          .from('subscriptions')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('project_id', projectId)
+          .maybeSingle();
+      
+      return response?['id'] as String?;
+    } catch (e) {
+      throw Exception('خطأ في جلب بيانات الاشتراك: ${e.toString()}');
+    }
+  }
+
+  // Create handover (when subscription is ready)
+  Future<HandoverModel> createHandover({
+    required String userId,
+    required String projectId,
+    String? subscriptionId,
+    String? unitId,
+    DateTime? appointmentDate,
+    String? appointmentLocation,
+    String? notes,
+  }) async {
+    try {
+      final now = DateTime.now();
       final handoverData = {
         'subscription_id': subscriptionId,
         'user_id': userId,
@@ -78,6 +101,13 @@ class HandoverRepository {
         'status': 'not_started',
         'defects_count': 0,
         'defects_fixed': 0,
+        if (appointmentDate != null)
+          'appointment_date': appointmentDate.toIso8601String(),
+        if (appointmentLocation != null)
+          'appointment_location': appointmentLocation,
+        if (notes != null) 'appointment_notes': notes,
+        'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
       };
 
       final response = await _client
@@ -155,7 +185,7 @@ class HandoverRepository {
       if (photosPaths != null && photosPaths.isNotEmpty) {
         for (var i = 0; i < photosPaths.length; i++) {
           final url = await _supabaseService.uploadFile(
-            bucketName: 'defect_photos',
+            bucketName: 'handover-photos',
             path:
                 'handovers/$handoverId/defects/photo_${DateTime.now().millisecondsSinceEpoch}_$i.jpg',
             filePath: photosPaths[i],
@@ -233,15 +263,14 @@ class HandoverRepository {
     String? location,
     String? severity,
     List<String>? photosPaths,
-  }) =>
-      submitDefect(
-        handoverId: handoverId,
-        category: category,
-        description: description,
-        location: location,
-        severity: severity,
-        photosPaths: photosPaths,
-      );
+  }) => submitDefect(
+    handoverId: handoverId,
+    category: category,
+    description: description,
+    location: location,
+    severity: severity,
+    photosPaths: photosPaths,
+  );
 
   // Update defect status (Admin)
   Future<void> updateDefectStatus({
@@ -299,7 +328,7 @@ class HandoverRepository {
     try {
       // Upload new photo
       final photoUrl = await _supabaseService.uploadFile(
-        bucketName: 'defect_photos',
+        bucketName: 'handover-photos',
         path:
             'defects/$defectId/update_${DateTime.now().millisecondsSinceEpoch}.jpg',
         filePath: photoPath,
@@ -378,7 +407,7 @@ class HandoverRepository {
       if (afterPhotos != null && afterPhotos.isNotEmpty) {
         for (var i = 0; i < afterPhotos.length; i++) {
           final url = await _supabaseService.uploadFile(
-            bucketName: 'defect_photos',
+            bucketName: 'handover-photos',
             path:
                 'defects/$defectId/after_fix_${DateTime.now().millisecondsSinceEpoch}_$i.jpg',
             filePath: afterPhotos[i],
@@ -655,6 +684,36 @@ class HandoverRepository {
     }
   }
 
+  // Update Handover
+  Future<void> updateHandover({
+    required String handoverId,
+    DateTime? appointmentDate,
+    String? appointmentLocation,
+    String? notes,
+  }) async {
+    try {
+      final updates = <String, dynamic>{
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (appointmentDate != null) {
+        updates['appointment_date'] = appointmentDate.toIso8601String();
+      }
+      if (appointmentLocation != null) {
+        updates['appointment_location'] = appointmentLocation;
+      }
+      if (notes != null) {
+        updates['appointment_notes'] = notes;
+      }
+
+      if (updates.isNotEmpty) {
+        await _client.from('handovers').update(updates).eq('id', handoverId);
+      }
+    } catch (e) {
+      throw Exception('خطأ في تحديث الاستلام: ${e.toString()}');
+    }
+  }
+
   // Delete handover (admin only)
   Future<void> deleteHandover(String handoverId) async {
     try {
@@ -701,13 +760,15 @@ class HandoverRepository {
       final handover = await getHandoverById(handoverId);
 
       // Create notification record
-      await _client.from('handover_notifications').insert({
-        'handover_id': handoverId,
+      await _client.from('notifications').insert({
         'user_id': handover.userId,
-        'notification_type': notificationType,
-        'message': message,
+        'subscription_id': handover.subscriptionId,
+        'type': 'handover',
+        'title': 'تحديث استلام',
+        'body': message,
         'is_read': false,
         'created_at': DateTime.now().toIso8601String(),
+        'project_id': handover.projectId,
       });
     } catch (e) {
       throw Exception('خطأ في إرسال الإشعار: ${e.toString()}');
@@ -718,9 +779,10 @@ class HandoverRepository {
   Future<List<Map<String, dynamic>>> getNotifications(String userId) async {
     try {
       final response = await _client
-          .from('handover_notifications')
+          .from('notifications')
           .select()
           .eq('user_id', userId)
+          .eq('type', 'handover')
           .order('created_at', ascending: false);
 
       return List<Map<String, dynamic>>.from(response);

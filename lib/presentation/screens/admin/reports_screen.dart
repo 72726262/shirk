@@ -163,11 +163,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<void> _exportReport() async {
-    await context.read<AdminCubit>().exportReport(_selectedPeriod);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تصدير التقرير بنجاح'), backgroundColor: AppColors.success),
-      );
+    try {
+      await context.read<AdminCubit>().exportReport(_selectedPeriod);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تصدير التقرير بنجاح'), backgroundColor: AppColors.success),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل في تصدير التقرير: ${e.toString()}'), backgroundColor: AppColors.error),
+        );
+      }
     }
   }
 }

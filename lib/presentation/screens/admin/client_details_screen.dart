@@ -6,21 +6,21 @@ import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/data/models/user_model.dart';
 import 'package:mmm/presentation/cubits/admin/client_management_cubit.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mmm/presentation/screens/admin/edit_client_screen.dart';
 
 class ClientDetailsScreen extends StatefulWidget {
   final UserModel client;
 
-  const ClientDetailsScreen({
-    super.key,
-    required this.client,
-  });
+  const ClientDetailsScreen({super.key, required this.client});
 
   @override
   State<ClientDetailsScreen> createState() => _ClientDetailsScreenState();
 }
 
 class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
-  final TextEditingController _rejectionReasonController = TextEditingController();
+  final TextEditingController _rejectionReasonController =
+      TextEditingController();
 
   @override
   void dispose() {
@@ -35,6 +35,13 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
         title: const Text('تفاصيل العميل'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () => _editClient(context),
+            tooltip: 'تعديل البيانات',
+          ),
+        ],
       ),
       body: BlocConsumer<ClientManagementCubit, ClientManagementState>(
         listener: (context, state) {
@@ -65,7 +72,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
         },
         builder: (context, state) {
           final isLoading = state is ClientManagementLoading;
-          
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(Dimensions.spaceL),
             child: Column(
@@ -75,7 +82,8 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                 const SizedBox(height: Dimensions.spaceXL),
                 _buildKycSection(),
                 const SizedBox(height: Dimensions.spaceXL),
-                if (widget.client.kycStatus == KYCStatus.underReview) // ✅ Fix enum
+                if (widget.client.kycStatus ==
+                    KYCStatus.underReview) // ✅ Fix enum
                   _buildActionButtons(isLoading),
               ],
             ),
@@ -94,15 +102,18 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
           children: [
             const Text(
               'المعلومات الأساسية',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const Divider(height: Dimensions.spaceL),
-            _buildInfoRow('الاسم الكامل', widget.client.fullName ?? '-'), // ✅ Fix nullable
+            _buildInfoRow(
+              'الاسم الكامل',
+              widget.client.fullName ?? '-',
+            ), // ✅ Fix nullable
             _buildInfoRow('البريد الإلكتروني', widget.client.email),
-            _buildInfoRow('رقم الهاتف', widget.client.phone ?? '-'), // ✅ Fix field name
+            _buildInfoRow(
+              'رقم الهاتف',
+              widget.client.phone ?? '-',
+            ), // ✅ Fix field name
             _buildInfoRow(
               'تاريخ الميلاد',
               widget.client.dateOfBirth != null
@@ -112,7 +123,9 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
             _buildInfoRow('الرقم الوطني', widget.client.nationalId ?? '-'),
             _buildInfoRow(
               'حالة KYC',
-              _getKycStatusLabel(widget.client.kycStatus), // ✅ Pass enum directly
+              _getKycStatusLabel(
+                widget.client.kycStatus,
+              ), // ✅ Pass enum directly
               valueColor: _getKycStatusColor(widget.client.kycStatus),
             ),
           ],
@@ -130,38 +143,33 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
           children: [
             const Text(
               'مستندات التحقق (KYC)',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const Divider(height: Dimensions.spaceL),
-            if (widget.client.idFrontUrl != null) ...[  // ✅ Fix field name
+            if (widget.client.idFrontUrl != null) ...[
+              // ✅ Fix field name
               _buildDocumentCard(
                 'صورة الهوية (الأمام)',
                 widget.client.idFrontUrl!,
               ),
               const SizedBox(height: Dimensions.spaceM),
             ],
-            if (widget.client.idBackUrl != null) ...[  // ✅ Fix field name
+            if (widget.client.idBackUrl != null) ...[
+              // ✅ Fix field name
               _buildDocumentCard(
                 'صورة الهوية (الخلف)',
                 widget.client.idBackUrl!,
               ),
               const SizedBox(height: Dimensions.spaceM),
             ],
-            if (widget.client.selfieUrl != null) ...[  // ✅ Fix field name
-              _buildDocumentCard(
-                'صورة السيلفي',
-                widget.client.selfieUrl!,
-              ),
+            if (widget.client.selfieUrl != null) ...[
+              // ✅ Fix field name
+              _buildDocumentCard('صورة السيلفي', widget.client.selfieUrl!),
               const SizedBox(height: Dimensions.spaceM),
             ],
-            if (widget.client.incomeProofUrl != null) ...[  // ✅ Fix field name
-              _buildDocumentCard(
-                'إثبات الدخل',
-                widget.client.incomeProofUrl!,
-              ),
+            if (widget.client.incomeProofUrl != null) ...[
+              // ✅ Fix field name
+              _buildDocumentCard('إثبات الدخل', widget.client.incomeProofUrl!),
             ],
             if (widget.client.kycSubmittedAt != null) ...[
               const SizedBox(height: Dimensions.spaceM),
@@ -227,38 +235,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
             borderRadius: const BorderRadius.vertical(
               bottom: Radius.circular(Dimensions.radiusM),
             ),
-            child: Image.network(
-              imageUrl,
-              width: double.infinity,
-              height: 300,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  height: 300,
-                  color: AppColors.surface,
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error, color: AppColors.error, size: 48),
-                        SizedBox(height: Dimensions.spaceS),
-                        Text('فشل تحميل الصورة'),
-                      ],
-                    ),
-                  ),
-                );
-              },
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Container(
-                  height: 300,
-                  color: AppColors.surface,
-                  child: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              },
-            ),
+            child: _SecureImage(imageUrl: imageUrl),
           ),
         ],
       ),
@@ -270,9 +247,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
       children: [
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: isLoading
-                ? null
-                : () => _approveKyc(),
+            onPressed: isLoading ? null : () => _approveKyc(),
             icon: const Icon(Icons.check_circle),
             label: const Text('الموافقة'),
             style: ElevatedButton.styleFrom(
@@ -285,9 +260,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
         const SizedBox(width: Dimensions.spaceM),
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: isLoading
-                ? null
-                : () => _showRejectDialog(),
+            onPressed: isLoading ? null : () => _showRejectDialog(),
             icon: const Icon(Icons.cancel),
             label: const Text('رفض'),
             style: ElevatedButton.styleFrom(
@@ -318,10 +291,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: TextStyle(color: valueColor),
-            ),
+            child: Text(value, style: TextStyle(color: valueColor)),
           ),
         ],
       ),
@@ -333,7 +303,9 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('تأكيد الموافقة'),
-        content: const Text('هل أنت متأكد من الموافقة على مستندات التحقق لهذا العميل?'),
+        content: const Text(
+          'هل أنت متأكد من الموافقة على مستندات التحقق لهذا العميل?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -342,7 +314,9 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              context.read<ClientManagementCubit>().approveKyc(widget.client.id);
+              context.read<ClientManagementCubit>().approveKyc(
+                widget.client.id,
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.success,
@@ -393,9 +367,9 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
               }
               Navigator.pop(context);
               context.read<ClientManagementCubit>().rejectKyc(
-                    widget.client.id,
-                    _rejectionReasonController.text.trim(),
-                  );
+                widget.client.id,
+                _rejectionReasonController.text.trim(),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
@@ -408,7 +382,8 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
     );
   }
 
-  String _getKycStatusLabel(KYCStatus status) { // ✅ Fix enum
+  String _getKycStatusLabel(KYCStatus status) {
+    // ✅ Fix enum
     switch (status) {
       case KYCStatus.pending:
         return 'قيد الانتظار';
@@ -421,7 +396,8 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
     }
   }
 
-  Color _getKycStatusColor(KYCStatus status) { // ✅ Fix enum
+  Color _getKycStatusColor(KYCStatus status) {
+    // ✅ Fix enum
     switch (status) {
       case KYCStatus.approved:
         return AppColors.success;
@@ -432,5 +408,138 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
       default:
         return AppColors.textSecondary;
     }
+  }
+
+  Future<void> _editClient(BuildContext context) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BlocProvider.value(
+          value: context.read<ClientManagementCubit>(),
+          child: EditClientScreen(client: widget.client),
+        ),
+      ),
+    );
+
+    if (result == true && mounted) {
+      Navigator.pop(context, true);
+    }
+  }
+}
+
+class _SecureImage extends StatefulWidget {
+  final String imageUrl;
+
+  const _SecureImage({required this.imageUrl});
+
+  @override
+  State<_SecureImage> createState() => _SecureImageState();
+}
+
+class _SecureImageState extends State<_SecureImage> {
+  late Future<String> _imageFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageFuture = _resolveImageUrl(widget.imageUrl);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SecureImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      _imageFuture = _resolveImageUrl(widget.imageUrl);
+    }
+  }
+
+  Future<String> _resolveImageUrl(String url) async {
+    // Check if it's a Supabase Storage URL
+    if (url.contains('/storage/v1/object/public/')) {
+      final uri = Uri.parse(url);
+      final pathSegments = uri.pathSegments; // Corrected from pathSeconds
+
+      // Typical path: /storage/v1/object/public/bucket_name/path/to/file
+      // segments: [storage, v1, object, public, bucket_name, path, to, file]
+
+      try {
+        final publicIndex = uri.pathSegments.indexOf('public');
+        if (publicIndex != -1 && publicIndex + 1 < uri.pathSegments.length) {
+          final bucketName = uri.pathSegments[publicIndex + 1];
+          // Check if it's a private bucket we know of
+          if (bucketName == 'kyc-documents' || bucketName == 'documents') {
+            final filePath = uri.pathSegments
+                .sublist(publicIndex + 2)
+                .join('/');
+
+            // Generate Signed URL
+            final signedUrl = await Supabase.instance.client.storage
+                .from(bucketName)
+                .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+            return signedUrl;
+          }
+        }
+      } catch (e) {
+        debugPrint('Error parsing Supabase URL: $e');
+      }
+    }
+    return url;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String>(
+      future: _imageFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            height: 300,
+            color: AppColors.surface,
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          return Container(
+            height: 300,
+            color: AppColors.surface,
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.broken_image, color: AppColors.error, size: 48),
+                  SizedBox(height: Dimensions.spaceS),
+                  Text('رابط غير صالح'),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Image.network(
+          snapshot.data!,
+          width: double.infinity,
+          height: 300,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              height: 300,
+              color: AppColors.surface,
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error, color: AppColors.error, size: 48),
+                    SizedBox(height: Dimensions.spaceS),
+                    Text('فشل تحميل الصورة'),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }

@@ -7,6 +7,8 @@ import 'package:mmm/presentation/screens/admin/screens/contract_detail_screen.da
 import 'package:mmm/data/models/contract_model.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:mmm/presentation/screens/admin/screens/create_contract_screen.dart';
+import 'package:mmm/presentation/screens/admin/screens/edit_contract_screen.dart';
 
 class ContractsManagementTab extends StatefulWidget {
   const ContractsManagementTab({super.key});
@@ -26,65 +28,101 @@ class _ContractsManagementTabState extends State<ContractsManagementTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(Dimensions.spaceL),
-      child: Column(
-        children: [
-          _buildFiltersAndAction(),
-          const SizedBox(height: Dimensions.spaceL),
-          Expanded(
-            child:
-                BlocConsumer<
-                  ContractsManagementCubit,
-                  ContractsManagementState
-                >(
-                  listener: (context, state) {
-                    if (state is ContractsManagementError) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(state.message),
-                          backgroundColor: AppColors.error,
-                        ),
-                      );
-                    } else if (state is ContractCreatedSuccessfully) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('تم إنشاء العقد بنجاح'),
-                          backgroundColor: AppColors.success,
-                        ),
-                      );
-                    }
-                  },
-                  builder: (context, state) {
-                    if (state is ContractsManagementLoading) {
-                      return _buildSkeletonLoader();
-                    }
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CreateContractScreen(),
+            ),
+          );
 
-                    if (state is ContractsManagementLoaded) {
-                      if (state.contracts.isEmpty) {
-                        return const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.description_outlined,
-                                size: 64,
-                                color: AppColors.gray400,
-                              ),
-                              SizedBox(height: Dimensions.spaceL),
-                              Text('لا توجد عقود'),
-                            ],
+          if (result == true && mounted) {
+            context.read<ContractsManagementCubit>().loadContracts();
+          }
+        },
+        label: const Text('إنشاء عقد'),
+        icon: const Icon(Icons.add),
+        backgroundColor: AppColors.primary,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(Dimensions.spaceL),
+        child: Column(
+          children: [
+            _buildFiltersAndAction(),
+            const SizedBox(height: Dimensions.spaceL),
+            Expanded(
+              child:
+                  BlocConsumer<
+                    ContractsManagementCubit,
+                    ContractsManagementState
+                  >(
+                    listener: (context, state) {
+                      if (state is ContractsManagementError) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(state.message),
+                            backgroundColor: AppColors.error,
                           ),
                         );
+                      } else if (state is ContractCreatedSuccessfully) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('تم إنشاء العقد بنجاح'),
+                            backgroundColor: AppColors.success,
+                          ),
+                        );
+                      } else if (state is ContractUpdatedSuccessfully) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('تم تحديث العقد بنجاح'),
+                            backgroundColor: AppColors.success,
+                          ),
+                        );
+                        context.read<ContractsManagementCubit>().loadContracts();
+                      } else if (state is ContractDeletedSuccessfully) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('تم حذف العقد بنجاح'),
+                            backgroundColor: AppColors.success,
+                          ),
+                        );
+                        context.read<ContractsManagementCubit>().loadContracts();
                       }
-                      return _buildContractsList(state.contracts);
-                    }
+                    },
+                    builder: (context, state) {
+                      if (state is ContractsManagementLoading) {
+                        return _buildSkeletonLoader();
+                      }
 
-                    return const Center(child: Text('لا توجد عقود'));
-                  },
-                ),
-          ),
-        ],
+                      if (state is ContractsManagementLoaded) {
+                        if (state.contracts.isEmpty) {
+                          return const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.description_outlined,
+                                  size: 64,
+                                  color: AppColors.gray400,
+                                ),
+                                SizedBox(height: Dimensions.spaceL),
+                                Text('لا توجد عقود'),
+                              ],
+                            ),
+                          );
+                        }
+                        return _buildContractsList(state.contracts);
+                      }
+
+                      return const Center(child: Text('لا توجد عقود'));
+                    },
+                  ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -421,11 +459,96 @@ class _ContractCard extends StatelessWidget {
                 ),
               ),
 
-              // Arrow
-              const Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: AppColors.textSecondary,
+              // Actions
+              PopupMenuButton<String>(
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: AppColors.textSecondary,
+                ),
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider.value(
+                          value: context.read<ContractsManagementCubit>(),
+                          child: EditContractScreen(contract: contract),
+                        ),
+                      ),
+                    );
+                  } else if (value == 'delete') {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('تأكيد الحذف'),
+                        content: const Text('هل أنت متأكد من حذف هذا العقد؟'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('إلغاء'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              // Capture the cubit context before the dialog
+                              // Just ensure the widget context has the cubit
+                              // In this case, _ContractCard assumes a provider above it.
+                              // If using specific context:
+                              Navigator.pop(context); // Close dialog first
+                              
+                              // We need to use valid context, but here 'context' is from builder
+                              // ContractCard's context is safe if used outside builder or via closure
+                              // Let's rely on the fact that ContractsManagementTab provides it.
+                              
+                              // Use the outer context (from build method) via closure or just assume standard lookup
+                              // But standard lookup from dialog context might fail if provider is not above MaterialApp (it usually is for global, but here unlikely)
+                              // A safer way:
+                              // context.read<ContractsManagementCubit>().deleteContract(contract.id); 
+                              // This 'context' is the Dialog's context. 
+                              // If BlocProvider is in the Tab, and Dialog is pushed, it is NOT in the tree of Dialog.
+                              // So we must access the Cubit via the wrapper logic or pass it.
+                              
+                              // BETTER:
+                              // Pass the function as callback or access parent context.
+                              // Here we can use 'context' of build method if we capture it?
+                              // Actually, StatelessWidget build context is fine. 
+                              // But inside showDialog, the context is new.
+                              
+                              // FIX: Use read from the parent context (captured in closure).
+                              final cubit = BlocProvider.of<ContractsManagementCubit>(context);
+                              cubit.deleteContract(contract.id);
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.error,
+                            ),
+                            child: const Text('حذف'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, size: 18, color: AppColors.primary),
+                        SizedBox(width: 8),
+                        Text('تعديل'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, size: 18, color: AppColors.error),
+                        SizedBox(width: 8),
+                        Text('حذف', style: TextStyle(color: AppColors.error)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

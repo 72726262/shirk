@@ -6,6 +6,7 @@ import 'package:mmm/presentation/cubits/admin/handovers_management_cubit.dart';
 import 'package:mmm/data/models/handover_model.dart';
 import 'package:mmm/data/models/defect_model.dart';
 import 'package:intl/intl.dart';
+import 'package:mmm/presentation/screens/admin/screens/create_handover_screen.dart';
 
 import '../../../cubits/admin/handovers_management_state.dart';
 
@@ -27,43 +28,83 @@ class _HandoversManagementTabState extends State<HandoversManagementTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildFilters(),
-        Expanded(
-          child:
-              BlocConsumer<HandoversManagementCubit, HandoversManagementState>(
-                listener: (context, state) {
-                  if (state is HandoversManagementError) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(state.message),
-                        backgroundColor: AppColors.error,
-                      ),
-                    );
-                  } else if (state is HandoverCompletedSuccessfully) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('تم إتمام التسليم بنجاح'),
-                        backgroundColor: AppColors.success,
-                      ),
-                    );
-                  }
-                },
-                builder: (context, state) {
-                  if (state is HandoversManagementLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CreateHandoverScreen(),
+            ),
+          );
 
-                  if (state is HandoversManagementLoaded) {
-                    return _buildHandoversTable(state.handovers);
-                  }
+          if (result == true && mounted) {
+            context.read<HandoversManagementCubit>().loadHandovers();
+          }
+        },
+        label: const Text('إنشاء تسليم'),
+        icon: const Icon(Icons.add),
+        backgroundColor: AppColors.primary,
+      ),
+      body: Column(
+        children: [
+          _buildFilters(),
+          Expanded(
+            child:
+                BlocConsumer<
+                  HandoversManagementCubit,
+                  HandoversManagementState
+                >(
+                  listener: (context, state) {
+                    if (state is HandoversManagementError) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(state.message),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                    } else if (state is HandoverCompletedSuccessfully) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('تم إتمام التسليم بنجاح'),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
+                      context.read<HandoversManagementCubit>().loadHandovers();
+                    } else if (state is HandoverUpdatedSuccessfully) {
+                       ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('تم تحديث التسليم بنجاح'),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
+                      context.read<HandoversManagementCubit>().loadHandovers();
+                    } else if (state is HandoverDeletedSuccessfully) {
+                       ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('تم حذف التسليم بنجاح'),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
+                      context.read<HandoversManagementCubit>().loadHandovers();
+                    }
+                  },
+                  builder: (context, state) {
+                    if (state is HandoversManagementLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-                  return const Center(child: Text('لا توجد عمليات تسليم'));
-                },
-              ),
-        ),
-      ],
+                    if (state is HandoversManagementLoaded) {
+                      return _buildHandoversTable(state.handovers);
+                    }
+
+                    return const Center(child: Text('لا توجد عمليات تسليم'));
+                  },
+                ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -181,6 +222,69 @@ class _HandoversManagementTabState extends State<HandoversManagementTab> {
               ),
             ),
             _buildStatusChip(handover.status),
+            const SizedBox(width: Dimensions.spaceS),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: AppColors.textSecondary),
+              onSelected: (value) {
+                if (value == 'edit') {
+                   // Reuse CreateHandoverScreen for editing? Or create new one?
+                   // For now, let's show a "Not Implemented" or better, navigate to Create screen with data
+                   // But CreateScreen might not support editing mode yet.
+                   // Let's implement delete first as it is easier.
+                   ScaffoldMessenger.of(context).showSnackBar(
+                     const SnackBar(content: Text('تعديل التسليم قيد التطوير')),
+                   );
+                } else if (value == 'delete') {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('تأكيد الحذف'),
+                      content: const Text(
+                        'هل أنت متأكد من حذف عملية التسليم هذه؟\nسيتم حذف جميع العيوب المرتبطة بها.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('إلغاء'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                             context.read<HandoversManagementCubit>().deleteHandover(handover.id);
+                             Navigator.pop(context);
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.error,
+                          ),
+                          child: const Text('حذف'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 18, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Text('تعديل'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 18, color: AppColors.error),
+                      SizedBox(width: 8),
+                      Text('حذف', style: TextStyle(color: AppColors.error)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
         subtitle: Padding(
@@ -449,7 +553,9 @@ class _HandoversManagementTabState extends State<HandoversManagementTab> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('تأكيد إتمام التسليم'),
-        content: const Text('هل أنت متأكد من إتمام عملية التسليم؟\nملاحظة: يتطلب توقيع العميل'),
+        content: const Text(
+          'هل أنت متأكد من إتمام عملية التسليم؟\nملاحظة: يتطلب توقيع العميل',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
