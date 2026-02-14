@@ -163,23 +163,96 @@ class AdminRepository {
         throw Exception('لا يمكن حذف العميل: لديه مشاريع نشطة. يجب انسحابه أو انتهاء مشاريعه أولاً.');
       }
 
-      // 2. Delete client (Cascade should handle related data like profiles, documents if configured, 
-      // but safely Supabase Auth user deletion requires Service Role or Edge Function usually.
-      // Here we allow deleting the 'profile' row. If Auth user needs deletion, it's separate.)
-      // Assuming deleting profile triggers cascade or we just delete profile for now.
+      // 2. Delete related data manually in correct order to avoid Foreign Key constraints
       
-      // Note: Deleting from 'users' table (Auth) via Client SDK is not possible with RLS usually.
-      // We will delete the PROFILE. 
-      // If we need to delete Auth User, we need an Edge Function.
-      // For this app context, let's assume deleting profile is sufficient or triggers a trigger.
-      
+      print('🗑️ Starting deletion for user: $userId');
+
+      // A. Notifications
+      await _client.from('notifications').delete().eq('user_id', userId);
+      print('✅ Notifications deleted');
+
+      // B. Activity Logs
+      await _client.from('activity_logs').delete().eq('user_id', userId);
+      print('✅ Activity logs deleted');
+
+      // Handle 'created_by' references (if user was admin/staff)
+      // Update projects created by user
+      await _client.from('projects').update({'created_by': null}).eq('created_by', userId);
+      // Update construction updates created by user
+      await _client.from('construction_updates').update({'created_by': null}).eq('created_by', userId);
+      print('✅ Orphaned references updated');
+
+      // C. Defects (Indirectly via Handovers)
+      final handovers = await _client.from('handovers').select('id').eq('user_id', userId);
+      if (handovers.isNotEmpty) {
+        final handoverIds = handovers.map((h) => h['id']).toList();
+        await _client.from('defects').delete().inFilter('handover_id', handoverIds);
+      }
+      print('✅ Defects deleted');
+
+      // D. Handovers
+      await _client.from('handovers').delete().eq('user_id', userId);
+      print('✅ Handovers deleted');
+
+      // E. Installments
+      await _client.from('installments').delete().eq('user_id', userId);
+      print('✅ Installments deleted');
+
+      // F. Documents
+      await _client.from('documents').delete().eq('user_id', userId);
+      print('✅ Documents deleted');
+
+      // G. Break Circular Dependency: Subscriptions <-> Contracts
+      await _client.from('subscriptions').update({'contract_id': null}).eq('user_id', userId);
+      print('✅ Contracts unlinked');
+
+      // H. Contracts
+      await _client.from('contracts').delete().eq('user_id', userId);
+      print('✅ Contracts deleted');
+
+      // I. Transactions
+      await _client.from('transactions').delete().eq('user_id', userId);
+      print('✅ Transactions deleted');
+
+      // J. Subscriptions
+      await _client.from('subscriptions').delete().eq('user_id', userId);
+      print('✅ Subscriptions deleted');
+
+      // K. Wallets
+      await _client.from('wallets').delete().eq('user_id', userId);
+      print('✅ Wallets deleted');
+
+      // 3. Delete client profile (Manually first, just to be consistent with our order)
       await _client.from('profiles').delete().eq('id', userId);
+      print('✅ Profile deleted');
+      
+      // 4. Delete Auth User (from auth.users) using RPC
+      // This allows the user to sign up again with the same email.
+      try {
+        await _client.rpc('delete_user_account', params: {'target_user_id': userId});
+        print('✅ Auth User deleted');
+      } catch (e) {
+        // If RPC fails (e.g., function not created), warn but don't fail the whole process if profile is gone
+        print('⚠️ Failed to delete Auth User (RPC might be missing): $e');
+        // We might want to rethrow if this is critical, but for now let's persist.
+        // Actually, for "Re-register" to work, this IS critical.
+        throw Exception('تم حذف بيانات العميل، ولكن فشل حذف حساب الدخول (Auth). يرجى التأكد من تشغيل دالة delete_user_account في قاعدة البيانات.');
+      }
       
     } catch (e) {
+       print('❌ Error deleting client: $e');
        // Check if it's our custom exception
        if (e.toString().contains('لا يمكن حذف العميل')) {
          rethrow;
        }
+       // Check for FK violation
+       if (e.toString().contains('violates foreign key constraint')) {
+          if (e.toString().contains('notifications')) {
+             throw Exception('لا يمكن حذف العميل لأنه مرتبط بإشعارات.');
+          }
+           throw Exception('لا يمكن حذف العميل لوجود بيانات مرتبطة به (رمز الخطأ: FK).');
+       }
+       
        throw Exception('فشل حذف العميل: ${e.toString()}');
     }
   }

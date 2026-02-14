@@ -4,10 +4,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/data/models/user_model.dart';
+import 'package:mmm/data/models/document_model.dart';
+import 'package:mmm/data/repositories/document_repository.dart';
 import 'package:mmm/presentation/cubits/admin/client_management_cubit.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mmm/presentation/screens/admin/edit_client_screen.dart';
+import 'package:mmm/presentation/screens/common/document_viewer_screen.dart';
 
 class ClientDetailsScreen extends StatefulWidget {
   final UserModel client;
@@ -21,6 +24,36 @@ class ClientDetailsScreen extends StatefulWidget {
 class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
   final TextEditingController _rejectionReasonController =
       TextEditingController();
+  final DocumentRepository _documentRepository = DocumentRepository();
+  List<DocumentModel> _clientDocuments = [];
+  bool _isLoadingDocuments = true;
+  bool _isDeleting = false; // Add this state variable
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchClientDocuments();
+  }
+
+  Future<void> _fetchClientDocuments() async {
+    try {
+      final docs = await _documentRepository.getUserDocuments(
+        userId: widget.client.id,
+      );
+      if (mounted) {
+        setState(() {
+          _clientDocuments = docs;
+          _isLoadingDocuments = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingDocuments = false);
+        // Silently fail or show snackbar? Low priority for now.
+        print('Error fetching documents: $e');
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -41,54 +74,87 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
             onPressed: () => _editClient(context),
             tooltip: 'تعديل البيانات',
           ),
+          IconButton(
+             icon: const Icon(Icons.delete, color: AppColors.error),
+            onPressed: () => _confirmDeleteClient(),
+            tooltip: 'حذف العميل',
+          ),
         ],
       ),
-      body: BlocConsumer<ClientManagementCubit, ClientManagementState>(
-        listener: (context, state) {
-          if (state is KycApproved) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('✅ تمت الموافقة على KYC بنجاح'),
-                backgroundColor: AppColors.success,
-              ),
-            );
-            Navigator.pop(context, true);
-          } else if (state is KycRejected) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('تم رفض KYC'),
-                backgroundColor: AppColors.error,
-              ),
-            );
-            Navigator.pop(context, true);
-          } else if (state is ClientManagementError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.error,
-              ),
-            );
-          }
-        },
-        builder: (context, state) {
-          final isLoading = state is ClientManagementLoading;
+      body: Stack(
+        children: [
+          BlocConsumer<ClientManagementCubit, ClientManagementState>(
+            listener: (context, state) {
+              if (state is KycApproved) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ تمت الموافقة على KYC بنجاح'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+                Navigator.pop(context, true);
+              } else if (state is KycRejected) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('تم رفض KYC'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+                Navigator.pop(context, true);
+              } else if (state is ClientManagementError) {
+                // Only show error if NOT deleting (since delete handles its own error)
+                if (!_isDeleting) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+              }
+            },
+            builder: (context, state) {
+              final isLoading = state is ClientManagementLoading;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(Dimensions.spaceL),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildInfoSection(),
-                const SizedBox(height: Dimensions.spaceXL),
-                _buildKycSection(),
-                const SizedBox(height: Dimensions.spaceXL),
-                if (widget.client.kycStatus ==
-                    KYCStatus.underReview) // ✅ Fix enum
-                  _buildActionButtons(isLoading),
-              ],
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(Dimensions.spaceL),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildInfoSection(),
+                    const SizedBox(height: Dimensions.spaceXL),
+                    _buildCombinedDocumentsSection(), // Unified documents section
+                    const SizedBox(height: Dimensions.spaceXL),
+                    if (widget.client.kycStatus == KYCStatus.underReview)
+                      _buildActionButtons(isLoading),
+                  ],
+                ),
+              );
+            },
+          ),
+          
+          // Loading Overlay
+          if (_isDeleting)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('جاري حذف العميل والبيانات المرتبطة...'),
+                         Text('قد تستغرق العملية بضع ثوانٍ', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
-          );
-        },
+        ],
       ),
     );
   }
@@ -105,15 +171,9 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const Divider(height: Dimensions.spaceL),
-            _buildInfoRow(
-              'الاسم الكامل',
-              widget.client.fullName ?? '-',
-            ), // ✅ Fix nullable
+            _buildInfoRow('الاسم الكامل', widget.client.fullName ?? '-'),
             _buildInfoRow('البريد الإلكتروني', widget.client.email),
-            _buildInfoRow(
-              'رقم الهاتف',
-              widget.client.phone ?? '-',
-            ), // ✅ Fix field name
+            _buildInfoRow('رقم الهاتف', widget.client.phone ?? '-'),
             _buildInfoRow(
               'تاريخ الميلاد',
               widget.client.dateOfBirth != null
@@ -123,9 +183,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
             _buildInfoRow('الرقم الوطني', widget.client.nationalId ?? '-'),
             _buildInfoRow(
               'حالة KYC',
-              _getKycStatusLabel(
-                widget.client.kycStatus,
-              ), // ✅ Pass enum directly
+              _getKycStatusLabel(widget.client.kycStatus),
               valueColor: _getKycStatusColor(widget.client.kycStatus),
             ),
           ],
@@ -134,53 +192,101 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
     );
   }
 
-  Widget _buildKycSection() {
+  Widget _buildCombinedDocumentsSection() {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(Dimensions.spaceL),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'مستندات التحقق (KYC)',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'المستندات والوثائق',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                if (_isLoadingDocuments)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
             ),
             const Divider(height: Dimensions.spaceL),
-            if (widget.client.idFrontUrl != null) ...[
-              // ✅ Fix field name
-              _buildDocumentCard(
-                'صورة الهوية (الأمام)',
-                widget.client.idFrontUrl!,
+            
+            // KYC Documents
+            if (widget.client.idFrontUrl != null || 
+                widget.client.idBackUrl != null || 
+                widget.client.selfieUrl != null || 
+                widget.client.incomeProofUrl != null) ...[
+              const Text(
+                'مستندات KYC',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
               ),
               const SizedBox(height: Dimensions.spaceM),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: Dimensions.spaceM,
+                mainAxisSpacing: Dimensions.spaceM,
+                childAspectRatio: 0.8,
+                children: [
+                  if (widget.client.idFrontUrl != null)
+                    _buildDocumentThumbnail('صورة الهوية (الأمام)', widget.client.idFrontUrl!, DocumentViewerType.image),
+                  if (widget.client.idBackUrl != null)
+                    _buildDocumentThumbnail('صورة الهوية (الخلف)', widget.client.idBackUrl!, DocumentViewerType.image),
+                  if (widget.client.selfieUrl != null)
+                    _buildDocumentThumbnail('صورة السيلفي', widget.client.selfieUrl!, DocumentViewerType.image),
+                  if (widget.client.incomeProofUrl != null)
+                     // Income proof might be PDF or Image. Assuming image for now based on previous implementation, 
+                     // or we check extension/type if available. 
+                     // For simplicity, let's treat as image unless we know otherwise.
+                     // A safer bet is to assume image for now.
+                    _buildDocumentThumbnail('إثبات الدخل', widget.client.incomeProofUrl!, DocumentViewerType.image), 
+                    
+                ],
+              ),
+              const SizedBox(height: Dimensions.spaceL),
             ],
-            if (widget.client.idBackUrl != null) ...[
-              // ✅ Fix field name
-              _buildDocumentCard(
-                'صورة الهوية (الخلف)',
-                widget.client.idBackUrl!,
+
+            // Other Documents (from Documents table)
+            if (_clientDocuments.isNotEmpty) ...[
+               const Text(
+                'مستندات أخرى',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
               ),
               const SizedBox(height: Dimensions.spaceM),
-            ],
-            if (widget.client.selfieUrl != null) ...[
-              // ✅ Fix field name
-              _buildDocumentCard('صورة السيلفي', widget.client.selfieUrl!),
-              const SizedBox(height: Dimensions.spaceM),
-            ],
-            if (widget.client.incomeProofUrl != null) ...[
-              // ✅ Fix field name
-              _buildDocumentCard('إثبات الدخل', widget.client.incomeProofUrl!),
-            ],
-            if (widget.client.kycSubmittedAt != null) ...[
-              const SizedBox(height: Dimensions.spaceM),
-              Text(
-                'تاريخ الإرسال: ${DateFormat('dd/MM/yyyy - HH:mm').format(widget.client.kycSubmittedAt!)}', // ✅ Already DateTime
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
+               GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: Dimensions.spaceM,
+                  mainAxisSpacing: Dimensions.spaceM,
+                  childAspectRatio: 0.8,
                 ),
+                itemCount: _clientDocuments.length,
+                itemBuilder: (context, index) {
+                  final doc = _clientDocuments[index];
+                  final isPdf = doc.mimeType == 'application/pdf' || doc.fileUrl.toLowerCase().endsWith('.pdf');
+                  return _buildDocumentThumbnail(
+                    doc.title, 
+                    doc.fileUrl, 
+                    isPdf ? DocumentViewerType.pdf : DocumentViewerType.image,
+                  );
+                },
               ),
+            ] else if (!_isLoadingDocuments && 
+                       widget.client.idFrontUrl == null && 
+                       widget.client.idBackUrl == null &&
+                       widget.client.selfieUrl == null &&
+                       widget.client.incomeProofUrl == null) ...[
+               const Center(child: Text('لا توجد مستندات لعرضها')),
             ],
+
             if (widget.client.kycRejectionReason != null) ...[
               const SizedBox(height: Dimensions.spaceM),
               Container(
@@ -195,10 +301,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                   children: [
                     const Text(
                       'سبب الرفض:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.error,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.error),
                     ),
                     const SizedBox(height: Dimensions.spaceXS),
                     Text(
@@ -215,33 +318,95 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
     );
   }
 
-  Widget _buildDocumentCard(String title, String imageUrl) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(Dimensions.radiusM),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(Dimensions.spaceM),
-            child: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+  Widget _buildDocumentThumbnail(String title, String url, DocumentViewerType type) {
+    return GestureDetector(
+      onTap: () async {
+        // Resolve signed URL first if needed
+        final resolvedUrl = await _resolveImageUrl(url);
+        if (context.mounted) {
+           Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DocumentViewerScreen(
+                url: resolvedUrl,
+                type: type,
+                title: title,
+              ),
             ),
-          ),
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(Dimensions.radiusM),
+          );
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(Dimensions.radiusM),
+          color: AppColors.surface,
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(Dimensions.radiusM)),
+                child: type == DocumentViewerType.pdf 
+                    ? const Center(child: Icon(Icons.picture_as_pdf, size: 50, color: AppColors.error))
+                    : _SecureImage(imageUrl: url, thumbnail: true),
+              ),
             ),
-            child: _SecureImage(imageUrl: imageUrl),
-          ),
-        ],
+            Container(
+              padding: const EdgeInsets.all(Dimensions.spaceS),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppColors.gray100,
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(Dimensions.radiusM)),
+              ),
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  // Copied from below SecureImage widget and made static-like for utility
+  Future<String> _resolveImageUrl(String url) async {
+     // Check if it's a Supabase Storage URL
+    if (url.contains('/storage/v1/object/public/')) {
+      final uri = Uri.parse(url);
+
+      try {
+        final publicIndex = uri.pathSegments.indexOf('public');
+        if (publicIndex != -1 && publicIndex + 1 < uri.pathSegments.length) {
+          final bucketName = uri.pathSegments[publicIndex + 1];
+          // Check if it's a private bucket we know of
+          if (bucketName == 'kyc-documents' || bucketName == 'documents') {
+            final filePath = uri.pathSegments
+                .sublist(publicIndex + 2)
+                .join('/');
+
+            // Generate Signed URL
+            final signedUrl = await Supabase.instance.client.storage
+                .from(bucketName)
+                .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+            return signedUrl;
+          }
+        }
+      } catch (e) {
+        debugPrint('Error parsing Supabase URL: $e');
+      }
+    }
+    return url;
+  }
+
+  // ... (Rest of existing methods: _buildActionButtons, _buildInfoRow, _approveKyc, _showRejectDialog, _getKycStatusLabel, _getKycStatusColor, _editClient) ...
+  // Re-implementing them here to ensure they are available in the replaced content
+  
   Widget _buildActionButtons(bool isLoading) {
     return Row(
       children: [
@@ -298,6 +463,73 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
     );
   }
 
+  void _confirmDeleteClient() {
+    // Capture the screen context before showing the dialog
+    final screenContext = context;
+
+    showDialog(
+      context: screenContext,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف العميل'),
+        content: const Text(
+          'هل أنت متأكد من حذف هذا العميل؟ لا يمكن التراجع عن هذا الإجراء.\n\nسيتم حذف جميع البيانات المرتبطة: الاشتراكات، العقود، الدفعات، إلخ.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext); // Close confirmation dialog
+              
+              if (!mounted) return;
+
+              setState(() {
+                _isDeleting = true;
+              });
+
+              try {
+                // Use screenContext to access the Cubit
+                await screenContext.read<ClientManagementCubit>().deleteClient(widget.client.id);
+                
+                if (mounted) {
+                  ScaffoldMessenger.of(screenContext).showSnackBar(
+                    const SnackBar(
+                      content: Text('✅ تم حذف العميل بنجاح'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                  Navigator.pop(screenContext, true); // Close details screen
+                }
+              } catch (e) {
+                if (mounted) {
+                  setState(() {
+                    _isDeleting = false;
+                  });
+                  
+                  ScaffoldMessenger.of(screenContext).showSnackBar(
+                    SnackBar(
+                      content: Text('❌ حدث خطأ: ${e.toString().replaceAll('Exception:', '')}'),
+                      backgroundColor: AppColors.error,
+                      duration: const Duration(seconds: 10),
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   void _approveKyc() {
     showDialog(
       context: context,
@@ -314,9 +546,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              context.read<ClientManagementCubit>().approveKyc(
-                widget.client.id,
-              );
+              context.read<ClientManagementCubit>().approveKyc(widget.client.id);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.success,
@@ -383,7 +613,6 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
   }
 
   String _getKycStatusLabel(KYCStatus status) {
-    // ✅ Fix enum
     switch (status) {
       case KYCStatus.pending:
         return 'قيد الانتظار';
@@ -397,7 +626,6 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
   }
 
   Color _getKycStatusColor(KYCStatus status) {
-    // ✅ Fix enum
     switch (status) {
       case KYCStatus.approved:
         return AppColors.success;
@@ -429,8 +657,9 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
 
 class _SecureImage extends StatefulWidget {
   final String imageUrl;
+  final bool thumbnail; // Add thumbnail mode
 
-  const _SecureImage({required this.imageUrl});
+  const _SecureImage({required this.imageUrl, this.thumbnail = false});
 
   @override
   State<_SecureImage> createState() => _SecureImageState();
@@ -457,10 +686,6 @@ class _SecureImageState extends State<_SecureImage> {
     // Check if it's a Supabase Storage URL
     if (url.contains('/storage/v1/object/public/')) {
       final uri = Uri.parse(url);
-      final pathSegments = uri.pathSegments; // Corrected from pathSeconds
-
-      // Typical path: /storage/v1/object/public/bucket_name/path/to/file
-      // segments: [storage, v1, object, public, bucket_name, path, to, file]
 
       try {
         final publicIndex = uri.pathSegments.indexOf('public');
@@ -494,25 +719,18 @@ class _SecureImageState extends State<_SecureImage> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Container(
-            height: 300,
+            height: widget.thumbnail ? null : 300,
             color: AppColors.surface,
-            child: const Center(child: CircularProgressIndicator()),
+            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
           );
         }
 
         if (snapshot.hasError || !snapshot.hasData) {
           return Container(
-            height: 300,
+            height: widget.thumbnail ? null : 300,
             color: AppColors.surface,
             child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.broken_image, color: AppColors.error, size: 48),
-                  SizedBox(height: Dimensions.spaceS),
-                  Text('رابط غير صالح'),
-                ],
-              ),
+              child: Icon(Icons.broken_image, color: AppColors.error, size: 24),
             ),
           );
         }
@@ -520,21 +738,14 @@ class _SecureImageState extends State<_SecureImage> {
         return Image.network(
           snapshot.data!,
           width: double.infinity,
-          height: 300,
-          fit: BoxFit.contain,
+          height: widget.thumbnail ? null : 300,
+          fit: widget.thumbnail ? BoxFit.cover : BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
             return Container(
-              height: 300,
+              height: widget.thumbnail ? null : 300,
               color: AppColors.surface,
               child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error, color: AppColors.error, size: 48),
-                    SizedBox(height: Dimensions.spaceS),
-                    Text('فشل تحميل الصورة'),
-                  ],
-                ),
+                child: Icon(Icons.error, color: AppColors.error, size: 24),
               ),
             );
           },
@@ -543,3 +754,4 @@ class _SecureImageState extends State<_SecureImage> {
     );
   }
 }
+

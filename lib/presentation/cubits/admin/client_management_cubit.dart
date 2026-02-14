@@ -52,26 +52,26 @@ class ClientManagementCubit extends Cubit<ClientManagementState> {
   Future<void> loadClients({String? kycStatus, String? searchQuery}) async {
     try {
       emit(ClientManagementLoading());
-      
+
       // Cancel previous subscription if exists
       await _clientsSubscription?.cancel();
 
       print('📥 بدء الاستماع للعملاء من Supabase...');
 
-      _clientsSubscription = _adminRepository.getClientsStream(
-        kycStatus: kycStatus,
-        searchQuery: searchQuery,
-      ).listen(
-        (clients) {
-          print('✅ تم استقبال تحديث: ${clients.length} عميل');
-          emit(ClientManagementLoaded(clients));
-        },
-        onError: (error) {
-           print('❌ خطأ في stream العملاء: $error');
-           emit(ClientManagementError('فشل تحميل العملاء: ${error.toString()}'));
-        },
-      );
-      
+      _clientsSubscription = _adminRepository
+          .getClientsStream(kycStatus: kycStatus, searchQuery: searchQuery)
+          .listen(
+            (clients) {
+              print('✅ تم استقبال تحديث: ${clients.length} عميل');
+              emit(ClientManagementLoaded(clients));
+            },
+            onError: (error) {
+              print('❌ خطأ في stream العملاء: $error');
+              emit(
+                ClientManagementError('فشل تحميل العملاء: ${error.toString()}'),
+              );
+            },
+          );
     } catch (e) {
       print('❌ خطأ في loadClients: $e');
       emit(ClientManagementError('فشل تحميل العملاء: ${e.toString()}'));
@@ -87,10 +87,10 @@ class ClientManagementCubit extends Cubit<ClientManagementState> {
       // For better UX with streams, we usually don't emit 'Loading' for actions unless it blocks the whole view.
       // But existing logic emits Loading. Let's iterate.
       // If we emit Loading, the Stream listener might emit Loaded immediately after if data changes, or we might miss current state.
-      // Let's stick to simple "Optimistic UI" or just wait for stream update. 
+      // Let's stick to simple "Optimistic UI" or just wait for stream update.
       // But we need to handle success/error feedback.
       // Existing UI listens for KycApproved state.
-      
+
       print('✅ الموافقة على KYC للمستخدم: $userId');
 
       await _adminRepository.approveKYC(userId);
@@ -102,9 +102,9 @@ class ClientManagementCubit extends Cubit<ClientManagementState> {
     } catch (e) {
       print('❌ خطأ في approveKyc: $e');
       emit(ClientManagementError('فشلت الموافقة: ${e.toString()}'));
-      // After error, we might want to re-emit loaded state? 
-      // The stream is still active, but current state is Error. 
-      // We might need to "reset" to loaded if stream pushes again? 
+      // After error, we might want to re-emit loaded state?
+      // The stream is still active, but current state is Error.
+      // We might need to "reset" to loaded if stream pushes again?
       // Or manually re-emit last known data? Stream doesn't keep "last value" accessible easily unless we store it.
       // For now, let's leave as is, user might retry or refresh.
     }
@@ -131,12 +131,13 @@ class ClientManagementCubit extends Cubit<ClientManagementState> {
   Future<void> deleteClient(String userId) async {
     try {
       await _adminRepository.deleteClient(userId);
-      // Success is indicated by lack of error. 
+
+      // Success is indicated by lack of error.
       // Stream will automatically remove the client from list.
     } catch (e) {
+      print("object" + e.toString());
       emit(ClientManagementError(e.toString().replaceAll('Exception: ', '')));
-      // We might want to re-emit loaded state logic here if needed, 
-      // but Error state is fine to show snackbar in UI, then UI stays on list.
+      rethrow;
     }
   }
 
@@ -149,7 +150,7 @@ class ClientManagementCubit extends Cubit<ClientManagementState> {
     String? avatarPath,
   }) async {
     try {
-      // emit(ClientManagementLoading()); 
+      // emit(ClientManagementLoading());
 
       await _adminRepository.updateClient(
         userId: userId,
@@ -164,7 +165,7 @@ class ClientManagementCubit extends Cubit<ClientManagementState> {
       emit(ClientManagementError('فشل تحديث البيانات: ${e.toString()}'));
     }
   }
-  
+
   @override
   Future<void> close() {
     _clientsSubscription?.cancel();
