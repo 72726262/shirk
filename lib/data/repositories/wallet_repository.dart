@@ -5,28 +5,35 @@ import 'package:mmm/data/services/supabase_service.dart';
 
 class WalletRepository {
   final SupabaseService _supabaseService;
-  
+
   WalletRepository({SupabaseService? supabaseService})
       : _supabaseService = supabaseService ?? SupabaseService();
 
   SupabaseClient get _client => _supabaseService.client;
 
-  // Get wallet by user ID
+  // ========== FUTURE-BASED METHODS (Original) ==========
+
+  /// Get wallet by user ID (one-time fetch)
   Future<WalletModel> getWallet(String userId) async {
     try {
       final response = await _client
           .from('wallets')
           .select('*')
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
+
+      if (response == null) {
+        throw Exception('المحفظة غير موجودة');
+      }
 
       return WalletModel.fromJson(response);
     } catch (e) {
-      throw Exception('خطأ في تحميل المحفظة: ${e.toString()}');
+      throw Exception('فشل تحميل المحفظة: ${e.toString()}');
     }
   }
 
-  // Get wallet with real-time updates
+  /// Watch wallet changes (deprecated - use getWalletStream instead)
+  @Deprecated('Use getWalletStream() instead')
   Stream<WalletModel> watchWallet(String userId) {
     return _client
         .from('wallets')
@@ -35,135 +42,96 @@ class WalletRepository {
         .map((data) => WalletModel.fromJson(data.first));
   }
 
-  // Add funds to wallet
-  Future<TransactionModel> addFunds({
+  /// Add funds to wallet
+  Future<void> addFunds({
     required String userId,
     required double amount,
     required String paymentMethod,
     String? referenceId,
   }) async {
     try {
-      // Get wallet
       final wallet = await getWallet(userId);
 
-      // Create transaction
-      final transactionData = {
+      await _client.from('transactions').insert({
         'wallet_id': wallet.id,
-        'user_id': userId,
         'type': 'deposit',
         'amount': amount,
-        'status': 'pending',
+        'status': 'completed',
         'payment_method': paymentMethod,
         'reference_id': referenceId,
-        'description': 'إضافة رصيد',
-      };
+        'description': 'إيداع رصيد',
+        'created_at': DateTime.now().toIso8601String(),
+      });
 
-      final response = await _client
-          .from('transactions')
-          .insert(transactionData)
-          .select('*')
-          .single();
-
-      final transaction = TransactionModel.fromJson(response);
-
-      // Simulate payment processing
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Update transaction status to completed
-      await _client
-          .from('transactions')
-          .update({'status': 'completed'})
-          .eq('id', transaction.id);
-
-      // Update wallet balance
       await _client
           .from('wallets')
           .update({
             'balance': wallet.balance + amount,
-            'total_deposits': wallet.totalDeposits + amount,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', wallet.id);
-
-      return transaction;
     } catch (e) {
-      throw Exception('خطأ في إضافة الرصيد: ${e.toString()}');
+      throw Exception('فشل إيداع الرصيد: ${e.toString()}');
     }
   }
 
-  // Withdraw funds from wallet
-  Future<TransactionModel> withdrawFunds({
+  /// Withdraw funds from wallet
+  Future<void> withdrawFunds({
     required String userId,
     required double amount,
     required String iban,
   }) async {
     try {
-      // Get wallet
       final wallet = await getWallet(userId);
 
-      // Check balance
       if (wallet.balance < amount) {
-        throw Exception('الرصيد غير كافٍ');
+        throw Exception('الرصيد غير كافي');
       }
 
-      // Create transaction
-      final transactionData = {
+      await _client.from('transactions').insert({
         'wallet_id': wallet.id,
-        'user_id': userId,
         'type': 'withdrawal',
         'amount': amount,
-        'status': 'processing',
-        'payment_method': 'bank_transfer',
-        'description': 'سحب رصيد إلى $iban',
+        'status': 'pending',
+        'description': 'سحب رصيد',
         'metadata': {'iban': iban},
-      };
+        'created_at': DateTime.now().toIso8601String(),
+      });
 
-      final response = await _client
-          .from('transactions')
-          .insert(transactionData)
-          .select('*')
-          .single();
-
-      final transaction = TransactionModel.fromJson(response);
-
-      // Update wallet balance immediately
       await _client
           .from('wallets')
           .update({
             'balance': wallet.balance - amount,
-            'total_withdrawals': wallet.totalWithdrawals + amount,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', wallet.id);
-
-      return transaction;
     } catch (e) {
-      throw Exception('خطأ في سحب الرصيد: ${e.toString()}');
+      throw Exception('فشل سحب الرصيد: ${e.toString()}');
     }
   }
 
-  // Get transactions with filters
+  /// Get transactions history
   Future<List<TransactionModel>> getTransactions({
     required String userId,
-    String? type, // deposit, withdrawal, payment
+    String? type,
     DateTime? startDate,
     DateTime? endDate,
     int limit = 50,
   }) async {
     try {
+      final wallet = await getWallet(userId);
+
       var query = _client
           .from('transactions')
           .select('*')
-          .eq('user_id', userId);
+          .eq('wallet_id', wallet.id);
 
       if (type != null) {
         query = query.eq('type', type);
       }
-
       if (startDate != null) {
         query = query.gte('created_at', startDate.toIso8601String());
       }
-
       if (endDate != null) {
         query = query.lte('created_at', endDate.toIso8601String());
       }
@@ -176,11 +144,11 @@ class WalletRepository {
           .map((json) => TransactionModel.fromJson(json))
           .toList();
     } catch (e) {
-      throw Exception('خطأ في تحميل المعاملات: ${e.toString()}');
+      throw Exception('فشل تحميل المعاملات: ${e.toString()}');
     }
   }
 
-  // Get transaction by ID
+  /// Get transaction by ID
   Future<TransactionModel> getTransactionById(String transactionId) async {
     try {
       final response = await _client
@@ -191,12 +159,12 @@ class WalletRepository {
 
       return TransactionModel.fromJson(response);
     } catch (e) {
-      throw Exception('خطأ في تحميل المعاملة: ${e.toString()}');
+      throw Exception('فشل تحميل المعاملة: ${e.toString()}');
     }
   }
 
-  // Make payment from wallet
-  Future<TransactionModel> makePayment({
+  /// Make payment from wallet
+  Future<void> makePayment({
     required String userId,
     required double amount,
     required String description,
@@ -204,81 +172,162 @@ class WalletRepository {
     String? installmentId,
   }) async {
     try {
-      // Get wallet
       final wallet = await getWallet(userId);
 
-      // Check balance
       if (wallet.balance < amount) {
-        throw Exception('الرصيد غير كافٍ');
+        throw Exception('الرصيد غير كافي');
       }
 
-      // Create transaction
-      final transactionData = {
+      await _client.from('transactions').insert({
         'wallet_id': wallet.id,
-        'user_id': userId,
         'type': 'payment',
         'amount': amount,
         'status': 'completed',
-        'payment_method': 'wallet',
         'description': description,
         'metadata': {
-          if (subscriptionId != null) 'subscription_id': subscriptionId,
-          if (installmentId != null) 'installment_id': installmentId,
+          'subscription_id': subscriptionId,
+          'installment_id': installmentId,
         },
-      };
+        'created_at': DateTime.now().toIso8601String(),
+      });
 
-      final response = await _client
-          .from('transactions')
-          .insert(transactionData)
-          .select('*')
-          .single();
-
-      // Update wallet balance
       await _client
           .from('wallets')
           .update({
             'balance': wallet.balance - amount,
-            'total_payments': wallet.totalPayments + amount,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', wallet.id);
-
-      return TransactionModel.fromJson(response);
     } catch (e) {
-      throw Exception('خطأ في الدفع: ${e.toString()}');
+      throw Exception('فشل الدفع: ${e.toString()}');
     }
   }
 
-  // Get wallet statistics
+  /// Get wallet statistics
   Future<Map<String, dynamic>> getWalletStats(String userId) async {
     try {
       final wallet = await getWallet(userId);
-      final transactions = await getTransactions(userId: userId, limit: 100);
+      final transactions = await getTransactions(userId: userId);
 
-      final deposits = transactions
-          .where((t) => t.type == TransactionType.deposit)
-          .toList();
-      final withdrawals = transactions
-          .where((t) => t.type == TransactionType.withdrawal)
-          .toList();
-      final payments = transactions
-          .where((t) => t.type == TransactionType.payment)
-          .toList();
+      final totalDeposits = transactions
+          .where((t) => t.type == 'deposit')
+          .fold(0.0, (sum, t) => sum + t.amount);
+      final totalWithdrawals = transactions
+          .where((t) => t.type == 'withdrawal')
+          .fold(0.0, (sum, t) => sum + t.amount);
+      final totalPayments = transactions
+          .where((t) => t.type == 'payment')
+          .fold(0.0, (sum, t) => sum + t.amount);
 
       return {
-        'balance': wallet.balance,
-        'total_deposits': wallet.totalDeposits,
-        'total_withdrawals': wallet.totalWithdrawals,
-        'total_payments': wallet.totalPayments,
-        'deposits_count': deposits.length,
-        'withdrawals_count': withdrawals.length,
-        'payments_count': payments.length,
-        'last_transaction': transactions.isNotEmpty
-            ? transactions.first.createdAt
-            : null,
+        'current_balance': wallet.balance,
+        'total_deposits': totalDeposits,
+        'total_withdrawals': totalWithdrawals,
+        'total_payments': totalPayments,
+        'transaction_count': transactions.length,
       };
     } catch (e) {
-      throw Exception('خطأ في تحميل إحصائيات المحفظة: ${e.toString()}');
+      throw Exception('فشل تحميل إحصائيات المحفظة: ${e.toString()}');
+    }
+  }
+
+  // ========== STREAM-BASED METHODS (Real-time) ==========
+
+  /// Get wallet with real-time updates
+  Stream<WalletModel> getWalletStream(String userId) {
+    return _client
+        .from('wallets')
+        .stream(primaryKey: ['id'])
+        .map((data) {
+          final wallet = data.firstWhere(
+            (w) => w['user_id'] == userId,
+            orElse: () => throw Exception('المحفظة غير موجودة'),
+          );
+          return WalletModel.fromJson(wallet);
+        });
+  }
+
+  /// Get transactions with real-time updates
+  Stream<List<TransactionModel>> getTransactionsStream({
+    required String userId,
+    String? type,
+    DateTime? startDate,
+    DateTime? endDate,
+    int limit = 50,
+  }) async* {
+    try {
+      // First get wallet ID
+      final wallet = await getWallet(userId);
+
+      // Stream transactions
+      yield* _client
+          .from('transactions')
+          .stream(primaryKey: ['id'])
+          .order('created_at', ascending: false)
+          .map((data) {
+        var filtered = data.where((t) => t['wallet_id'] == wallet.id).toList();
+
+        if (type != null) {
+          filtered = filtered.where((t) => t['type'] == type).toList();
+        }
+        if (startDate != null) {
+          filtered = filtered.where((t) {
+            final createdAt = DateTime.parse(t['created_at']);
+            return createdAt.isAfter(startDate) || createdAt.isAtSameMomentAs(startDate);
+          }).toList();
+        }
+        if (endDate != null) {
+          filtered = filtered.where((t) {
+            final createdAt = DateTime.parse(t['created_at']);
+            return createdAt.isBefore(endDate) || createdAt.isAtSameMomentAs(endDate);
+          }).toList();
+        }
+
+        final limited = filtered.length > limit ? filtered.take(limit).toList() : filtered;
+        return limited.map((json) => TransactionModel.fromJson(json)).toList();
+      });
+    } catch (e) {
+      throw Exception('خطأ في البث المباشر للمعاملات: ${e.toString()}');
+    }
+  }
+
+  /// Get transaction by ID with real-time updates
+  Stream<TransactionModel> getTransactionByIdStream(String transactionId) {
+    return _client
+        .from('transactions')
+        .stream(primaryKey: ['id'])
+        .map((data) {
+          final transaction = data.firstWhere(
+            (t) => t['id'] == transactionId,
+            orElse: () => throw Exception('المعاملة غير موجودة'),
+          );
+          return TransactionModel.fromJson(transaction);
+        });
+  }
+
+  /// Get wallet statistics with real-time updates
+  Stream<Map<String, dynamic>> getWalletStatsStream(String userId) async* {
+    await for (final wallet in getWalletStream(userId)) {
+      await for (final transactions in getTransactionsStream(userId: userId)) {
+        final totalDeposits = transactions
+            .where((t) => t.type == 'deposit')
+            .fold(0.0, (sum, t) => sum + t.amount);
+        final totalWithdrawals = transactions
+            .where((t) => t.type == 'withdrawal')
+            .fold(0.0, (sum, t) => sum + t.amount);
+        final totalPayments = transactions
+            .where((t) => t.type == 'payment')
+            .fold(0.0, (sum, t) => sum + t.amount);
+
+        yield {
+          'current_balance': wallet.balance,
+          'total_deposits': totalDeposits,
+          'total_withdrawals': totalWithdrawals,
+          'total_payments': totalPayments,
+          'transaction_count': transactions.length,
+        };
+        break; // Only emit once per wallet update
+      }
     }
   }
 }

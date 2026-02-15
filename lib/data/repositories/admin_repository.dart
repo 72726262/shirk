@@ -48,6 +48,27 @@ class AdminRepository {
     }
   }
 
+  // ========== REAL-TIME STREAMS ==========
+
+  /// Get Dashboard Stats with real-time updates
+  Stream<AdminDashboardStats> getDashboardStatsStream() async* {
+    // We need to combine multiple streams for real-time stats
+    // This is a simplified version - in production you might want to optimize this
+    while (true) {
+      try {
+        final stats = await getDashboardStats();
+        yield stats;
+        
+        // Wait a bit before next check (or use proper stream combining)
+        await Future.delayed(const Duration(seconds: 2));
+      } catch (e) {
+        print('خطأ في البث المباشر للإحصائيات: $e');
+        // Continue streaming even on error
+        await Future.delayed(const Duration(seconds: 5));
+      }
+    }
+  }
+
   // Get monthly revenue (for chart)
   Future<List<Map<String, dynamic>>> getMonthlyRevenue({int months = 6}) async {
     try {

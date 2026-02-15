@@ -1,13 +1,15 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mmm/data/models/project_model.dart';
-import 'package:mmm/data/models/unit_model.dart'; // Add this import
+import 'package:mmm/data/models/unit_model.dart';
 
 class ProjectRepository {
   final SupabaseClient _client;
 
   ProjectRepository({SupabaseClient? client})
       : _client = client ?? Supabase.instance.client;
+
+  // ========== FUTURE-BASED METHODS (Original) ==========
 
   Future<List<ProjectModel>> getProjects({
     ProjectStatus? status,
@@ -53,7 +55,6 @@ class ProjectRepository {
     }
   }
 
-  // Add Project
   Future<ProjectModel> addProject(Map<String, dynamic> projectData) async {
     try {
       final response =
@@ -64,7 +65,6 @@ class ProjectRepository {
     }
   }
 
-  // Update Project
   Future<ProjectModel> updateProject(
     String id,
     Map<String, dynamic> updates,
@@ -83,7 +83,6 @@ class ProjectRepository {
     }
   }
 
-  // Delete Project
   Future<void> deleteProject(String id) async {
     try {
       await _client.from('projects').delete().eq('id', id);
@@ -92,7 +91,6 @@ class ProjectRepository {
     }
   }
 
-  // Add Construction Update
   Future<void> addConstructionUpdate({
     required String projectId,
     required int weekNumber,
@@ -103,8 +101,7 @@ class ProjectRepository {
     bool notifyClients = false,
   }) async {
     try {
-      // 1. Insert update record
-      final update = await _client
+      await _client
           .from('construction_updates')
           .insert({
             'project_id': projectId,
@@ -114,36 +111,21 @@ class ProjectRepository {
             'images': images ?? [],
             'videos': videos ?? [],
             'created_at': DateTime.now().toIso8601String(),
-          })
-          .select()
-          .single();
+          });
 
-      // 2. Update project completion percentage
-      // This method needs to be updated to accept projectId and completionPercentage directly
-      // For now, assuming updateProject(id, {'completion_percentage': completionPercentage})
       await updateProject(
-        projectId, // Assuming projectId is the 'id' parameter for updateProject
+        projectId,
         {'completion_percentage': completionPercentage},
       );
 
-      // 3. Notify clients if requested
       if (notifyClients) {
-        // Fetch project name
         final project = await getProjectById(projectId);
-        
-        // This should clear notify logic, potentially finding all users who reserved units in this project
-        // For now we will just create a generic notification record or use a cloud function trigger
-        // Let's assume we have a function or we loop through users (inefficient for large scale but ok for MVP)
-        // Better: Insert a notification that targets a topic or use a separate loop.
-        // For this implementation, we will skip the loop to avoid timeout and assume backend handles it
-        // Or we can just insert one notification for testing.
       }
     } catch (e) {
       throw Exception('خطأ في إضافة تحديث التنفيذ: ${e.toString()}');
     }
   }
 
-  // Get project units
   Future<List<UnitModel>> getProjectUnits({
     required String projectId,
     String? status,
@@ -163,16 +145,13 @@ class ProjectRepository {
     }
   }
 
-  // Additional methods needed by ProjectService
   Future<ProjectModel> createProject(Map<String, dynamic> data) async {
-    // This is just an alias for addProject for compatibility
     return addProject(data);
   }
 
   Future<String> uploadProjectImage(String projectId, String filePath, String fileName) async {
     try {
       final file = File(filePath);
-      final fileExt = filePath.split('.').last;
       final path = '$projectId/${DateTime.now().millisecondsSinceEpoch}_$fileName';
       
       await _client.storage.from('project-images').upload(
@@ -223,5 +202,100 @@ class ProjectRepository {
     } catch (e) {
       throw Exception('فشل حجز الوحدة: ${e.toString()}');
     }
+  }
+
+  // ========== STREAM-BASED METHODS (Real-time) ==========
+
+  /// Get projects with real-time updates
+  Stream<List<ProjectModel>> getProjectsStream({
+    ProjectStatus? status,
+    bool? featured,
+    String? searchQuery,
+  }) {
+    return _client
+        .from('projects')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .map((data) {
+      var filtered = data;
+
+      // Apply filters
+      if (status != null) {
+        filtered = filtered.where((p) => p['status'] == status.name).toList();
+      }
+      if (featured != null) {
+        filtered = filtered.where((p) => p['featured'] == featured).toList();
+      }
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        filtered = filtered.where((p) => 
+          p['name_ar']?.toString().toLowerCase().contains(searchQuery.toLowerCase()) ?? false
+        ).toList();
+      }
+
+      return filtered.map((json) => ProjectModel.fromJson(json)).toList();
+    });
+  }
+
+  /// Get featured projects with real-time updates
+  Stream<List<ProjectModel>> getFeaturedProjectsStream() {
+    return getProjectsStream(featured: true);
+  }
+
+  /// Get single project by ID with real-time updates
+  Stream<ProjectModel> getProjectByIdStream(String id) {
+    return _client
+        .from('projects')
+        .stream(primaryKey: ['id'])
+        .map((data) {
+          final project = data.firstWhere(
+            (p) => p['id'] == id,
+            orElse: () => throw Exception('المشروع غير موجود'),
+          );
+          return ProjectModel.fromJson(project);
+        });
+  }
+
+  /// Get project units with real-time updates
+  Stream<List<UnitModel>> getProjectUnitsStream({
+    required String projectId,
+    String? status,
+  }) {
+    return _client
+        .from('units')
+        .stream(primaryKey: ['id'])
+        .order('unit_number', ascending: true)
+        .map((data) {
+      var filtered = data.where((u) => u['project_id'] == projectId).toList();
+
+      if (status != null) {
+        filtered = filtered.where((u) => u['status'] == status).toList();
+      }
+
+      return filtered.map((json) => UnitModel.fromJson(json)).toList();
+    });
+  }
+
+  /// Get project stats with real-time updates
+  Stream<Map<String, dynamic>> getProjectStatsStream(String projectId) {
+    return getProjectByIdStream(projectId).map((project) => {
+      'total_units': project.totalUnits,
+      'sold_units': project.soldUnits,
+      'reserved_units': project.reservedUnits,
+      'available_units': project.availableUnits,
+    });
+  }
+
+  /// Get single unit by ID with real-time updates
+  Stream<UnitModel> getUnitByIdStream(String unitId) {
+    return _client
+        .from('units')
+        .stream(primaryKey: ['id'])
+        .map((data) {
+          final unit = data.firstWhere(
+            (u) => u['id'] == unitId,
+            orElse: () => throw Exception('الوحدة غير موجودة'),
+          );
+          return UnitModel.fromJson(unit);
+        });
   }
 }

@@ -10,7 +10,8 @@ class NotificationRepository {
 
   SupabaseClient get _client => _supabaseService.client;
 
-  // Get user notifications
+  // ========== FUTURE-BASED METHODS (Original) ==========
+
   Future<List<NotificationModel>> getNotifications({
     required String userId,
     bool? isRead,
@@ -42,7 +43,6 @@ class NotificationRepository {
     }
   }
 
-  // Get notification by ID
   Future<NotificationModel> getNotificationById(String notificationId) async {
     try {
       final response = await _client
@@ -57,7 +57,6 @@ class NotificationRepository {
     }
   }
 
-  // Mark notification as read
   Future<void> markAsRead(String notificationId) async {
     try {
       await _client
@@ -72,7 +71,6 @@ class NotificationRepository {
     }
   }
 
-  // Mark all as read
   Future<void> markAllAsRead(String userId) async {
     try {
       await _client
@@ -88,7 +86,6 @@ class NotificationRepository {
     }
   }
 
-  // Delete notification
   Future<void> deleteNotification(String notificationId) async {
     try {
       await _client.from('notifications').delete().eq('id', notificationId);
@@ -97,7 +94,6 @@ class NotificationRepository {
     }
   }
 
-  // Get unread count
   Future<int> getUnreadCount(String userId) async {
     try {
       final response = await _client
@@ -113,7 +109,7 @@ class NotificationRepository {
     }
   }
 
-  // Subscribe to real-time notifications
+  @Deprecated('Use getNotificationsStream() instead')
   Stream<List<NotificationModel>> watchNotifications(String userId) {
     return _client
         .from('notifications')
@@ -125,7 +121,6 @@ class NotificationRepository {
         });
   }
 
-  // Create notification (Admin/System)
   Future<NotificationModel> createNotification({
     required String userId,
     required String title,
@@ -169,7 +164,6 @@ class NotificationRepository {
     }
   }
 
-  // Get notifications by type count
   Future<Map<String, int>> getNotificationsByType(String userId) async {
     try {
       final notifications = await getNotifications(userId: userId);
@@ -184,5 +178,66 @@ class NotificationRepository {
     } catch (e) {
       throw Exception('خطأ في تحميل إحصائيات الإشعارات: ${e.toString()}');
     }
+  }
+
+  // ========== STREAM-BASED METHODS (Real-time) ==========
+
+  /// Get notifications with real-time updates
+  Stream<List<NotificationModel>> getNotificationsStream({
+    required String userId,
+    bool? isRead,
+    NotificationType? type,
+    int limit = 50,
+  }) {
+    return _client
+        .from('notifications')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .map((data) {
+      var filtered = data.where((n) => n['user_id'] == userId).toList();
+
+      if (isRead != null) {
+        filtered = filtered.where((n) => n['is_read'] == isRead).toList();
+      }
+
+      if (type != null) {
+        filtered = filtered.where((n) => n['type'] == type.name).toList();
+      }
+
+      final limited = filtered.length > limit ? filtered.take(limit).toList() : filtered;
+      return limited.map((json) => NotificationModel.fromJson(json)).toList();
+    });
+  }
+
+  /// Get notification by ID with real-time updates
+  Stream<NotificationModel> getNotificationByIdStream(String notificationId) {
+    return _client
+        .from('notifications')
+        .stream(primaryKey: ['id'])
+        .map((data) {
+      final notification = data.firstWhere(
+        (n) => n['id'] == notificationId,
+        orElse: () => throw Exception('الإشعار غير موجود'),
+      );
+      return NotificationModel.fromJson(notification);
+    });
+  }
+
+  /// Get unread count with real-time updates
+  Stream<int> getUnreadCountStream(String userId) {
+    return getNotificationsStream(userId: userId, isRead: false)
+        .map((notifications) => notifications.length);
+  }
+
+  /// Get notifications by type with real-time updates
+  Stream<Map<String, int>> getNotificationsByTypeStream(String userId) {
+    return getNotificationsStream(userId: userId).map((notifications) {
+      final counts = <String, int>{};
+      for (var notification in notifications) {
+        final type = notification.type.name;
+        counts[type] = (counts[type] ?? 0) + 1;
+      }
+      return counts;
+    });
   }
 }

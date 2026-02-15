@@ -4,7 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class UserRepository {
   final SupabaseClient _client = Supabase.instance.client;
 
-  // الحصول على دور المستخدم الحالي
+  // ========== FUTURE-BASED METHODS (Original) ==========
+
   Future<String> getCurrentUserRole() async {
     try {
       final currentUser = _client.auth.currentUser;
@@ -22,12 +23,10 @@ class UserRepository {
     }
   }
 
-  // التحقق من الصلاحيات
   Future<bool> hasPermission(String requiredRole) async {
     try {
       final userRole = await getCurrentUserRole();
 
-      // ترتيب الصلاحيات
       const roleHierarchy = ['client', 'admin', 'super_admin'];
 
       final userIndex = roleHierarchy.indexOf(userRole);
@@ -39,7 +38,6 @@ class UserRepository {
     }
   }
 
-  // الحصول على بيانات المستخدم الحالي
   Future<Map<String, dynamic>> getCurrentUserData() async {
     try {
       final currentUser = _client.auth.currentUser;
@@ -57,7 +55,6 @@ class UserRepository {
     }
   }
 
-  // الحصول على جميع المستخدمين (للمسؤولين فقط)
   Future<List<Map<String, dynamic>>> getAllUsers() async {
     try {
       if (!await hasPermission('admin')) {
@@ -75,7 +72,6 @@ class UserRepository {
     }
   }
 
-  // تحديث دور المستخدم (للمسؤولين فقط)
   Future<void> updateUserRole({
     required String userId,
     required String newRole,
@@ -93,7 +89,6 @@ class UserRepository {
           })
           .eq('id', userId);
 
-      // تسجيل النشاط
       await _logActivity(
         userId: _client.auth.currentUser!.id,
         action: 'UPDATE_USER_ROLE',
@@ -105,7 +100,6 @@ class UserRepository {
     }
   }
 
-  // تسجيل النشاط
   Future<void> _logActivity({
     required String userId,
     required String action,
@@ -123,5 +117,60 @@ class UserRepository {
     } catch (e) {
       print('⚠️ خطأ في تسجيل النشاط: $e');
     }
+  }
+
+  // ========== STREAM-BASED METHODS (Real-time) ==========
+
+  /// Get current user data with real-time updates
+  Stream<Map<String, dynamic>> getCurrentUserDataStream() {
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('لم يتم تسجيل الدخول');
+    }
+
+    return _client
+        .from('profiles')
+        .stream(primaryKey: ['id'])
+        .map((data) {
+      final profile = data.firstWhere(
+        (p) => p['id'] == currentUser.id,
+        orElse: () => throw Exception('المستخدم غير موجود'),
+      );
+      return Map<String, dynamic>.from(profile);
+    });
+  }
+
+  /// Get all users with real-time updates (Admin only)
+  Stream<List<Map<String, dynamic>>> getAllUsersStream() async* {
+    if (!await hasPermission('admin')) {
+      throw Exception('غير مصرح لك بالوصول');
+    }
+
+    yield* _client
+        .from('profiles')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .map((data) {
+      return data.map((profile) => Map<String, dynamic>.from(profile)).toList();
+    });
+  }
+
+  /// Get user by ID with real-time updates
+  Stream<Map<String, dynamic>> getUserByIdStream(String userId) {
+    return _client
+        .from('profiles')
+        .stream(primaryKey: ['id'])
+        .map((data) {
+      final profile = data.firstWhere(
+        (p) => p['id'] == userId,
+        orElse: () => throw Exception('المستخدم غير موجود'),
+      );
+      return Map<String, dynamic>.from(profile);
+    });
+  }
+
+  /// Get current user role with real-time updates
+  Stream<String> getCurrentUserRoleStream() {
+    return getCurrentUserDataStream().map((data) => data['role'] as String);
   }
 }

@@ -9,7 +9,12 @@ class RouteNames {
   // Dashboard
   static const String dashboard = '/dashboard'; // Legacy - redirects based on role
   static const String clientDashboard = '/client/dashboard';
-  static const String adminDashboard = '/admin/dashboard';
+  static const String adminDashboard = '/admin-dashboard'; // Modified from /admin/dashboard
+
+  // Dashboard-related routes
+  static const String installments = '/installments'; // Moved from Subscriptions & Installments
+  static const String documents = '/documents'; // Moved from Documents
+  static const String constructionUpdates = '/construction-updates'; // Moved from Construction
 
   // Projects
   static const String projectsList = '/projects';
@@ -34,7 +39,6 @@ class RouteNames {
 
   // Subscriptions & Installments
   static const String subscriptions = '/subscriptions';
-  static const String installments = '/installments';
   static const String installmentDetail = '/installment-detail';
 
   // Units
@@ -43,10 +47,8 @@ class RouteNames {
 
   // Construction
   static const String constructionTracking = '/construction-tracking';
-  static const String constructionUpdates = '/construction-updates';
 
   // Documents
-  static const String documents = '/documents';
   static const String documentViewer = '/document-viewer';
   static const String uploadDocument = '/upload-document';
 
@@ -72,8 +74,18 @@ class RouteNames {
 
   // Admin
   static const String manageClients = '/admin/clients';
+  static const String clientDetails = '/admin/client-details';
   static const String manageProjects = '/admin/projects';
   static const String managePayments = '/admin/payments';
   static const String activityLogs = '/admin/activity-logs';
   static const String reports = '/admin/reports';
+  static const String createClient = '/admin/create-client';
+  static const String editClient = '/admin/edit-client';
+  static const String createContract = '/admin/create-contract';
+  static const String createHandover = '/admin/create-handover';
+  static const String subscriptionsManagement = '/admin/subscriptions-management';
+
+  // Chat
+  static const String chatList = '/chat/list';
+  static const String chatRoom = '/chat/room';
 }

@@ -131,4 +131,87 @@ class InstallmentRepository {
       throw Exception('Failed to fetch upcoming installments: ${e.toString()}');
     }
   }
+
+  // ========== REAL-TIME STREAMS ==========
+
+  /// Stream of all user installments
+  Stream<List<InstallmentModel>> getUserInstallmentsStream(String userId) {
+    return _client
+        .from('installments')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
+        .order('due_date', ascending: true)
+        .map((data) =>
+            data.map((json) => InstallmentModel.fromJson(json)).toList());
+  }
+
+  /// Stream of upcoming installments (next 30 days)
+  Stream<List<InstallmentModel>> getUpcomingInstallmentsStream(String userId) async* {
+    await for (final installments in getUserInstallmentsStream(userId)) {
+      final now = DateTime.now();
+      final future = now.add(const Duration(days: 30));
+      
+      final upcoming = installments
+          .where((installment) =>
+              installment.status == InstallmentStatus.pending &&
+              installment.dueDate.isAfter(now) &&
+              installment.dueDate.isBefore(future))
+          .toList();
+      
+      yield upcoming;
+    }
+  }
+
+  /// Stream of overdue installments
+  Stream<List<InstallmentModel>> getOverdueInstallmentsStream(String userId) async* {
+    await for (final installments in getUserInstallmentsStream(userId)) {
+      final now = DateTime.now();
+      
+      final overdue = installments
+          .where((installment) =>
+              installment.status == InstallmentStatus.pending &&
+              installment.dueDate.isBefore(now))
+          .toList();
+      
+      yield overdue;
+    }
+  }
+
+  /// Stream of installment stats
+  Stream<Map<String, dynamic>> getInstallmentStatsStream(String userId) async* {
+    await for (final installments in getUserInstallmentsStream(userId)) {
+      final totalInstallments = installments.length;
+      final paidInstallments = installments
+          .where((i) => i.status == InstallmentStatus.paid)
+          .length;
+      final pendingInstallments = installments
+          .where((i) => i.status == InstallmentStatus.pending)
+          .length;
+      final overdueInstallments = installments
+          .where((i) =>
+              i.status == InstallmentStatus.pending &&
+              i.dueDate.isBefore(DateTime.now()))
+          .length;
+      final totalAmount = installments.fold<double>(
+          0, (sum, i) => sum + i.amount);
+      final paidAmount = installments
+          .where((i) => i.status == InstallmentStatus.paid)
+          .fold<double>(0, (sum, i) => sum + i.amount);
+      final pendingAmount = installments
+          .where((i) => i.status == InstallmentStatus.pending)
+          .fold<double>(0, (sum, i) => sum + i.amount);
+
+      yield {
+        'total_installments': totalInstallments,
+        'paid_installments': paidInstallments,
+        'pending_installments': pendingInstallments,
+        'overdue_installments': overdueInstallments,
+        'total_amount': totalAmount,
+        'paid_amount': paidAmount,
+        'pending_amount': pendingAmount,
+        'completion_percentage':
+            totalInstallments > 0 ? (paidInstallments / totalInstallments) * 100 : 0.0,
+      };
+    }
+  }
 }

@@ -4,16 +4,15 @@ import 'package:mmm/data/models/contract_model.dart';
 class ContractRepository {
   final _supabase = Supabase.instance.client;
 
-  // Get all contracts with filters
+  // ========== FUTURE-BASED METHODS (Original) ==========
+
   Future<List<ContractModel>> getContracts({
     String? status,
     String? subscriptionId,
     String? userId,
   }) async {
     try {
-      var query = _supabase
-          .from('contracts')
-          .select('*');
+      var query = _supabase.from('contracts').select('*');
 
       if (status != null) {
         query = query.eq('status', status);
@@ -35,7 +34,183 @@ class ContractRepository {
     }
   }
 
-  // Get contracts stream
+  Future<ContractModel?> getContractById(String id) async {
+    try {
+      final data = await _supabase
+          .from('contracts')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+      return ContractModel.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to fetch contract: ${e.toString()}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getContractTemplates({
+    String? type,
+    bool? isActive,
+  }) async {
+    try {
+      var query = _supabase.from('contract_templates').select();
+
+      if (type != null) {
+        query = query.eq('type', type);
+      }
+      if (isActive != null) {
+        query = query.eq('is_active', isActive);
+      }
+
+      return await query.order('created_at', ascending: false);
+    } catch (e) {
+      throw Exception('Failed to fetch contract templates: ${e.toString()}');
+    }
+  }
+
+  Future<ContractModel> createContractFromTemplate({
+    required String subscriptionId,
+    required String templateId,
+    required String userId,
+    Map<String, dynamic>? customFields,
+  }) async {
+    try {
+      final template = await _supabase
+          .from('contract_templates')
+          .select()
+          .eq('id', templateId)
+          .single();
+
+      final data = await _supabase.from('contracts').insert({
+        'subscription_id': subscriptionId,
+        'template_id': templateId,
+        'user_id': userId,
+        'content': template['content'],
+        'terms': template['terms'],
+        'status': 'draft',
+        'custom_fields': customFields,
+      }).select('*').single();
+
+      return ContractModel.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to create contract: ${e.toString()}');
+    }
+  }
+
+  Future<ContractModel> createManualContract({
+    required String userId,
+    String? projectId,
+    required String title,
+    required String content,
+    required String contractNumber,
+    double? amount,
+    Map<String, dynamic>? terms,
+  }) async {
+    try {
+      final data = await _supabase.from('contracts').insert({
+        'user_id': userId,
+        'project_id': projectId,
+        'title': title,
+        'content': content,
+        'contract_number': contractNumber,
+        'status': 'draft',
+        'terms': terms ?? {},
+      }).select('*').single();
+
+      return ContractModel.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to create manual contract: ${e.toString()}');
+    }
+  }
+
+  Future<void> signContract({
+    required String contractId,
+    required String userId,
+    required String signatureData,
+  }) async {
+    try {
+      await _supabase.from('contracts').update({
+        'status': 'signed',
+        'signed_at': DateTime.now().toIso8601String(),
+        'signature_data': signatureData,
+      }).eq('id', contractId);
+    } catch (e) {
+      throw Exception('Failed to sign contract: ${e.toString()}');
+    }
+  }
+
+  Future<void> updateContractStatus({
+    required String contractId,
+    required String status,
+  }) async {
+    try {
+      await _supabase.from('contracts').update({
+        'status': status,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', contractId);
+    } catch (e) {
+      throw Exception('Failed to update contract status: ${e.toString()}');
+    }
+  }
+
+  Future<ContractModel> updateContract({
+    required String contractId,
+    String? title,
+    String? content,
+    double? amount,
+    Map<String, dynamic>? terms,
+  }) async {
+    try {
+      final updates = <String, dynamic>{
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (title != null) updates['title'] = title;
+      if (content != null) updates['content'] = content;
+      if (terms != null) updates['terms'] = terms;
+
+      final data = await _supabase
+          .from('contracts')
+          .update(updates)
+          .eq('id', contractId)
+          .select('*')
+          .single();
+
+      return ContractModel.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to update contract: ${e.toString()}');
+    }
+  }
+
+  Future<void> deleteContract(String id) async {
+    try {
+      await _supabase.from('contracts').delete().eq('id', id);
+    } catch (e) {
+      throw Exception('Failed to delete contract: ${e.toString()}');
+    }
+  }
+
+  Future<Map<String, int>> getContractsCountByStatus() async {
+    try {
+      final data = await _supabase
+          .from('contracts')
+          .select('status')
+          .order('status');
+
+      final Map<String, int> counts = {};
+      for (final item in data) {
+        final status = item['status'] as String;
+        counts[status] = (counts[status] ?? 0) + 1;
+      }
+
+      return counts;
+    } catch (e) {
+      throw Exception('Failed to get contracts count: ${e.toString()}');
+    }
+  }
+
+  // ========== STREAM-BASED METHODS (Real-time) ==========
+
+  /// Get contracts stream (already exists) ✅
   Stream<List<ContractModel>> getContractsStream({
     String? status,
     String? subscriptionId,
@@ -68,190 +243,55 @@ class ContractRepository {
         });
   }
 
-  // Get contract by ID
-  Future<ContractModel?> getContractById(String id) async {
-    try {
-      final data = await _supabase
-          .from('contracts')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-      return ContractModel.fromJson(data);
-    } catch (e) {
-      throw Exception('Failed to fetch contract: ${e.toString()}');
-    }
+  /// Get single contract by ID with real-time updates
+  Stream<ContractModel> getContractByIdStream(String id) {
+    return _supabase
+        .from('contracts')
+        .stream(primaryKey: ['id'])
+        .map((data) {
+          final contract = data.firstWhere(
+            (c) => c['id'] == id,
+            orElse: () => throw Exception('Contract not found'),
+          );
+          return ContractModel.fromJson(contract);
+        });
   }
 
-  // Get contract templates
-  Future<List<Map<String, dynamic>>> getContractTemplates({
+  /// Get contract templates with real-time updates
+  Stream<List<Map<String, dynamic>>> getContractTemplatesStream({
     String? type,
     bool? isActive,
-  }) async {
-    try {
-      var query = _supabase.from('contract_templates').select();
+  }) {
+    return _supabase
+        .from('contract_templates')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .map((data) {
+      var filtered = data;
 
       if (type != null) {
-        query = query.eq('type', type);
+        filtered = filtered.where((t) => t['type'] == type).toList();
       }
       if (isActive != null) {
-        query = query.eq('is_active', isActive);
+        filtered = filtered.where((t) => t['is_active'] == isActive).toList();
       }
 
-      return await query.order('created_at', ascending: false);
-    } catch (e) {
-      throw Exception('Failed to fetch contract templates: ${e.toString()}');
-    }
+      return filtered.map((json) => Map<String, dynamic>.from(json)).toList();
+    });
   }
 
-  // Create contract from template
-  Future<ContractModel> createContractFromTemplate({
-    required String subscriptionId,
-    required String templateId,
-    required String userId,
-    Map<String, dynamic>? customFields,
-  }) async {
-    try {
-      // Get template
-      final template = await _supabase
-          .from('contract_templates')
-          .select()
-          .eq('id', templateId)
-          .single();
-
-      // Create contract
-      final data = await _supabase.from('contracts').insert({
-        'subscription_id': subscriptionId,
-        'template_id': templateId,
-        'user_id': userId,
-        'content': template['content'],
-        'terms': template['terms'],
-        'status': 'draft',
-        'custom_fields': customFields,
-      }).select('*').single();
-
-      return ContractModel.fromJson(data);
-    } catch (e) {
-      throw Exception('Failed to create contract: ${e.toString()}');
-    }
-  }
-
-  // Create manual contract
-  Future<ContractModel> createManualContract({
-    required String userId,
-    String? projectId,
-    required String title,
-    required String content,
-    required String contractNumber,
-    double? amount,
-    Map<String, dynamic>? terms,
-  }) async {
-    try {
-      final data = await _supabase.from('contracts').insert({
-        'user_id': userId,
-        'project_id': projectId,
-        'title': title,
-        'content': content,
-        'contract_number': contractNumber,
-        'status': 'draft',
-        'terms': terms ?? {},
-        // 'amount': amount, // If amount column exists, add it. Schema didn't allow amount in root, maybe in terms or payment_schedule?
-        // Schema checks: title, content, contract_number are required.
-      }).select('*').single();
-
-      return ContractModel.fromJson(data);
-    } catch (e) {
-      throw Exception('Failed to create manual contract: ${e.toString()}');
-    }
-  }
-
-  // Sign contract
-  Future<void> signContract({
-    required String contractId,
-    required String userId,
-    required String signatureData,
-  }) async {
-    try {
-      await _supabase.from('contracts').update({
-        'status': 'signed',
-        'signed_at': DateTime.now().toIso8601String(),
-        'signature_data': signatureData,
-      }).eq('id', contractId);
-    } catch (e) {
-      throw Exception('Failed to sign contract: ${e.toString()}');
-    }
-  }
-
-  // Update contract status
-  Future<void> updateContractStatus({
-    required String contractId,
-    required String status,
-  }) async {
-    try {
-      await _supabase.from('contracts').update({
-        'status': status,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', contractId);
-    } catch (e) {
-      throw Exception('Failed to update contract status: ${e.toString()}');
-    }
-  }
-
-  // Update contract details
-  Future<ContractModel> updateContract({
-    required String contractId,
-    String? title,
-    String? content,
-    double? amount,
-    Map<String, dynamic>? terms,
-  }) async {
-    try {
-      final updates = <String, dynamic>{
-        'updated_at': DateTime.now().toIso8601String(),
-      };
-      if (title != null) updates['title'] = title;
-      if (content != null) updates['content'] = content;
-      if (terms != null) updates['terms'] = terms;
-
-      final data = await _supabase
-          .from('contracts')
-          .update(updates)
-          .eq('id', contractId)
-          .select('*')
-          .single();
-
-      return ContractModel.fromJson(data);
-    } catch (e) {
-      throw Exception('Failed to update contract: ${e.toString()}');
-    }
-  }
-
-  // Delete contract
-  Future<void> deleteContract(String id) async {
-    try {
-      await _supabase.from('contracts').delete().eq('id', id);
-    } catch (e) {
-      throw Exception('Failed to delete contract: ${e.toString()}');
-    }
-  }
-
-  // Get contracts count by status
-  Future<Map<String, int>> getContractsCountByStatus() async {
-    try {
-      final data = await _supabase
-          .from('contracts')
-          .select('status')
-          .order('status');
-
+  /// Get contracts count by status with real-time updates
+  Stream<Map<String, int>> getContractsCountByStatusStream() {
+    return _supabase
+        .from('contracts')
+        .stream(primaryKey: ['id'])
+        .map((data) {
       final Map<String, int> counts = {};
       for (final item in data) {
         final status = item['status'] as String;
         counts[status] = (counts[status] ?? 0) + 1;
       }
-
       return counts;
-    } catch (e) {
-      throw Exception('Failed to get contracts count: ${e.toString()}');
-    }
+    });
   }
 }

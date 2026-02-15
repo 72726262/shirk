@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:mmm/core/constants/colors.dart';
+
 import 'package:mmm/core/constants/dimensions.dart';
 
 class ConstructionReportsUploader extends StatefulWidget {
@@ -14,10 +14,12 @@ class ConstructionReportsUploader extends StatefulWidget {
   });
 
   @override
-  State<ConstructionReportsUploader> createState() => _ConstructionReportsUploaderState();
+  State<ConstructionReportsUploader> createState() =>
+      _ConstructionReportsUploaderState();
 }
 
-class _ConstructionReportsUploaderState extends State<ConstructionReportsUploader> {
+class _ConstructionReportsUploaderState
+    extends State<ConstructionReportsUploader> {
   final List<Map<String, dynamic>> _reports = [];
 
   @override
@@ -30,7 +32,7 @@ class _ConstructionReportsUploaderState extends State<ConstructionReportsUploade
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: Dimensions.spaceM),
-        
+
         // Engineering Report
         _buildReportPicker(
           label: 'تقرير هندسي',
@@ -39,7 +41,7 @@ class _ConstructionReportsUploaderState extends State<ConstructionReportsUploade
           color: Colors.blue,
         ),
         const SizedBox(height: Dimensions.spaceM),
-        
+
         // Financial Report
         _buildReportPicker(
           label: 'تقرير مالي',
@@ -48,7 +50,7 @@ class _ConstructionReportsUploaderState extends State<ConstructionReportsUploade
           color: Colors.green,
         ),
         const SizedBox(height: Dimensions.spaceM),
-        
+
         // Supervision Report
         _buildReportPicker(
           label: 'تقرير إشراف',
@@ -56,7 +58,7 @@ class _ConstructionReportsUploaderState extends State<ConstructionReportsUploade
           icon: Icons.supervisor_account,
           color: Colors.orange,
         ),
-        
+
         // List of selected reports
         if (_reports.isNotEmpty) ...[
           const SizedBox(height: Dimensions.spaceL),
@@ -78,7 +80,7 @@ class _ConstructionReportsUploaderState extends State<ConstructionReportsUploade
     required Color color,
   }) {
     final hasReport = _reports.any((r) => r['type'] == type);
-    
+
     return OutlinedButton.icon(
       icon: Icon(icon, color: hasReport ? color : Colors.grey),
       label: Text(
@@ -139,11 +141,11 @@ class _ConstructionReportsUploaderState extends State<ConstructionReportsUploade
 
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
-        
+
         setState(() {
           // Remove existing report of same type
           _reports.removeWhere((r) => r['type'] == reportType);
-          
+
           // Add new report
           _reports.add({
             'type': reportType,
@@ -151,21 +153,21 @@ class _ConstructionReportsUploaderState extends State<ConstructionReportsUploade
             'file_path': file.path,
             'file_size': file.size,
           });
-          
+
           widget.onReportsSelected(_reports);
         });
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('تم اختيار ${file.name}')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('تم اختيار ${file.name}')));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('فشل اختيار الملف')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('فشل اختيار الملف')));
       }
     }
   }

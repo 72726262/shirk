@@ -42,6 +42,7 @@ class SubscriptionModel extends Equatable {
   final String? contractId;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? projectName;
 
   const SubscriptionModel({
     required this.id,
@@ -56,6 +57,7 @@ class SubscriptionModel extends Equatable {
     this.contractId,
     required this.createdAt,
     required this.updatedAt,
+    this.projectName,
   });
 
   double get remainingAmount => shareAmount - paidAmount;
@@ -82,6 +84,8 @@ class SubscriptionModel extends Equatable {
       contractId: json['contract_id'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      // Handle joined project data if available
+      projectName: json['projects'] != null ? json['projects']['name'] as String? : null,
     );
   }
 
@@ -115,6 +119,7 @@ class SubscriptionModel extends Equatable {
     String? contractId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? projectName,
   }) {
     return SubscriptionModel(
       id: id ?? this.id,
@@ -129,6 +134,7 @@ class SubscriptionModel extends Equatable {
       contractId: contractId ?? this.contractId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      projectName: projectName ?? this.projectName,
     );
   }
 
@@ -146,5 +152,6 @@ class SubscriptionModel extends Equatable {
         contractId,
         createdAt,
         updatedAt,
+        projectName,
       ];
 }

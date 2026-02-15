@@ -11,7 +11,8 @@ class SubscriptionRepository {
 
   SupabaseClient get _client => _supabaseService.client;
 
-  // Get user subscriptions
+  // ========== FUTURE-BASED METHODS (Original) ==========
+
   Future<List<SubscriptionModel>> getUserSubscriptions(String userId) async {
     try {
       final response = await _client
@@ -28,11 +29,9 @@ class SubscriptionRepository {
     }
   }
 
-  // Alias for backward compatibility
   Future<List<SubscriptionModel>> getSubscriptionsByUser(String userId) =>
       getUserSubscriptions(userId);
 
-  // Get subscription by ID
   Future<SubscriptionModel> getSubscriptionById(String subscriptionId) async {
     try {
       final response = await _client
@@ -47,7 +46,6 @@ class SubscriptionRepository {
     }
   }
 
-  // Create subscription (Join project)
   Future<SubscriptionModel> createSubscription({
     required String userId,
     required String projectId,
@@ -83,7 +81,6 @@ class SubscriptionRepository {
     }
   }
 
-  // Update subscription status
   Future<void> updateSubscriptionStatus({
     required String subscriptionId,
     required SubscriptionStatus status,
@@ -101,7 +98,6 @@ class SubscriptionRepository {
     }
   }
 
-  // Sign contract
   Future<void> signContract({
     required String subscriptionId,
     required String signatureUrl,
@@ -121,7 +117,6 @@ class SubscriptionRepository {
     }
   }
 
-  // Upload signature
   Future<String> uploadSignature({
     required String subscriptionId,
     required String signatureData,
@@ -139,7 +134,6 @@ class SubscriptionRepository {
     }
   }
 
-  // Get subscription installments
   Future<List<InstallmentModel>> getInstallments(String subscriptionId) async {
     try {
       final response = await _client
@@ -156,7 +150,6 @@ class SubscriptionRepository {
     }
   }
 
-  // Pay installment
   Future<void> payInstallment({
     required String installmentId,
     required String transactionId,
@@ -172,7 +165,6 @@ class SubscriptionRepository {
           })
           .eq('id', installmentId);
 
-      // Update subscription installments_paid count
       final installment = await _client
           .from('installments')
           .select('subscription_id')
@@ -198,7 +190,6 @@ class SubscriptionRepository {
     }
   }
 
-  // Get active subscriptions count
   Future<int> getActiveSubscriptionsCount(String userId) async {
     try {
       final response = await _client
@@ -214,7 +205,6 @@ class SubscriptionRepository {
     }
   }
 
-  // Get subscription statistics
   Future<Map<String, dynamic>> getSubscriptionStats(String userId) async {
     try {
       final subscriptions = await getUserSubscriptions(userId);
@@ -233,4 +223,132 @@ class SubscriptionRepository {
       throw Exception('خطأ في تحميل إحصائيات الاشتراكات: ${e.toString()}');
     }
   }
+
+  // ========== STREAM-BASED METHODS (Real-time) ==========
+
+  /// Get user subscriptions with real-time updates
+  Stream<List<SubscriptionModel>> getUserSubscriptionsStream(String userId) {
+    return _client
+        .from('subscriptions')
+        .stream(primaryKey: ['id'])
+        .order('joined_at', ascending: false)
+        .map((data) {
+      final filtered = data.where((s) => s['user_id'] == userId).toList();
+      return filtered.map((json) => SubscriptionModel.fromJson(json)).toList();
+    });
+  }
+
+  /// Get single subscription by ID with real-time updates
+  Stream<SubscriptionModel> getSubscriptionByIdStream(String subscriptionId) {
+    return _client
+        .from('subscriptions')
+        .stream(primaryKey: ['id'])
+        .map((data) {
+      final subscription = data.firstWhere(
+        (s) => s['id'] == subscriptionId,
+        orElse: () => throw Exception('الاشتراك غير موجود'),
+      );
+      return SubscriptionModel.fromJson(subscription);
+    });
+  }
+
+  /// Get installments with real-time updates
+  Stream<List<InstallmentModel>> getInstallmentsStream(String subscriptionId) {
+    return _client
+        .from('installments')
+        .stream(primaryKey: ['id'])
+        .order('installment_number', ascending: true)
+        .map((data) {
+      final filtered = data.where((i) => i['subscription_id'] == subscriptionId).toList();
+      return filtered.map((json) => InstallmentModel.fromJson(json)).toList();
+    });
+  }
+
+  /// Get subscription stats with real-time updates
+  Stream<Map<String, dynamic>> getSubscriptionStatsStream(String userId) async* {
+    await for (final subscriptions in getUserSubscriptionsStream(userId)) {
+      final activeCount = subscriptions.where((s) => s.status == SubscriptionStatus.active).length;
+      final pendingCount = subscriptions.where((s) => s.status == SubscriptionStatus.pending).length;
+      final totalInvested = subscriptions.fold(0.0, (sum, s) => sum + s.remainingAmount);
+
+      yield {
+        'total_subscriptions': subscriptions.length,
+        'active_subscriptions': activeCount,
+        'pending_subscriptions': pendingCount,
+        'total_invested': totalInvested,
+      };
+    }
+  }
+
+  /// Get active subscriptions count with real-time updates
+  Stream<int> getActiveSubscriptionsCountStream(String userId) {
+    return getUserSubscriptionsStream(userId).map((subscriptions) {
+      return subscriptions.where((s) => s.status == SubscriptionStatus.active).length;
+    });
+  }
+
+  // ========== ADMIN METHODS ==========
+
+  /// Get all subscriptions stream (Admin only)
+  Stream<List<SubscriptionModel>> getAllSubscriptionsStream() {
+    return _client
+        .from('subscriptions')
+        .stream(primaryKey: ['id'])
+        .order('joined_at', ascending: false)
+        .map((data) =>
+            (data as List).map((json) => SubscriptionModel.fromJson(json)).toList());
+  }
+
+  /// Get pending subscriptions stream (Admin only)
+  Stream<List<SubscriptionModel>> getPendingSubscriptionsStream() {
+    return _client
+        .from('subscriptions')
+        .stream(primaryKey: ['id'])
+        .order('joined_at', ascending: false)
+        .map((data) {
+      final filtered = data.where((s) => s['status'] == 'pending').toList();
+      return filtered.map((json) => SubscriptionModel.fromJson(json)).toList();
+    });
+  }
+
+  /// Approve subscription (Admin only)
+  Future<void> approveSubscription(String subscriptionId) async {
+    try {
+      await _client.from('subscriptions').update({
+        'status': 'active',
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', subscriptionId);
+    } catch (e) {
+      throw Exception('Failed to approve subscription: $e');
+    }
+  }
+
+  /// Reject subscription (Admin only)
+  Future<void> rejectSubscription(String subscriptionId, String? reason) async {
+    try {
+      await _client.from('subscriptions').update({
+        'status': 'cancelled',
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', subscriptionId);
+
+      // TODO: Store rejection reason if needed
+    } catch (e) {
+      throw Exception('Failed to reject subscription: $e');
+    }
+  }
+
+  /// Get pending count for admin badge
+  Future<int> getPendingSubscriptionsCount() async {
+    try {
+      final response = await _client
+          .from('subscriptions')
+          .select('id')
+          .eq('status', 'pending');
+
+      return (response as List).length;
+    } catch (e) {
+      return 0;
+    }
+  }
 }
+

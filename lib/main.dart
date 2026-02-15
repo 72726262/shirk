@@ -19,9 +19,11 @@ import 'package:mmm/data/repositories/auth_repository.dart';
 import 'package:mmm/data/repositories/wallet_repository.dart';
 import 'package:mmm/data/repositories/notification_repository.dart';
 import 'package:mmm/data/repositories/project_repository.dart';
+import 'package:mmm/data/repositories/chat_repository.dart';
 
 // Cubits
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
+import 'package:mmm/presentation/cubits/chat/chat_list_cubit.dart';
 import 'package:mmm/presentation/cubits/wallet/wallet_cubit.dart';
 import 'package:mmm/presentation/cubits/notifications/notifications_cubit.dart';
 import 'package:mmm/presentation/cubits/projects/projects_cubit.dart';
@@ -85,6 +87,7 @@ class SharikApp extends StatelessWidget {
         RepositoryProvider(create: (_) => WalletRepository()),
         RepositoryProvider(create: (_) => ProjectRepository()),
         RepositoryProvider(create: (_) => NotificationRepository()),
+        RepositoryProvider(create: (_) => ChatRepository()),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -139,6 +142,12 @@ class SharikApp extends StatelessWidget {
           BlocProvider(create: (_) => ContractsManagementCubit()), // ✅ Add
           BlocProvider(create: (_) => DocumentsManagementCubit()), // ✅ Add
           BlocProvider(create: (_) => HandoversManagementCubit()), // ✅ Add
+          
+          BlocProvider(
+            create: (context) => ChatListCubit(
+              chatRepository: context.read<ChatRepository>(),
+            )..loadChats(),
+          ),
         ],
         child: MaterialApp(
           title: 'شريك - منصة الاستثمار العقاري',

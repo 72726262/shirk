@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mmm/data/models/user_model.dart';
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
-import 'package:mmm/presentation/screens/projects/join_project_flow/signature_screen.dart';
+import 'package:mmm/presentation/screens/admin/client_details_screen.dart';
+import 'package:mmm/presentation/screens/chat/chat_room_screen.dart';
+import 'package:mmm/presentation/screens/chat/chat_list_screen.dart';
+
 import 'package:mmm/presentation/screens/projects/join_project_flow/signature_screen.dart'
     as new_signature;
 import 'package:mmm/routes/route_names.dart';
@@ -77,6 +81,7 @@ import 'package:mmm/presentation/screens/admin/manage_clients_screen.dart';
 import 'package:mmm/presentation/screens/admin/manage_projects_screen.dart';
 import 'package:mmm/presentation/screens/admin/manage_payments_screen.dart';
 import 'package:mmm/presentation/screens/admin/reports_screen.dart';
+import 'package:mmm/presentation/screens/admin/subscriptions_management_screen.dart';
 
 class RouteGenerator {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -107,7 +112,7 @@ class RouteGenerator {
             try {
               final authCubit = BlocProvider.of<AuthCubit>(context);
               final authState = authCubit.state;
-              
+
               if (authState is Authenticated) {
                 // Route based on user role
                 switch (authState.user.role) {
@@ -329,6 +334,12 @@ class RouteGenerator {
       case RouteNames.manageClients:
         return _fadeRoute(const ManageClientsScreen());
 
+      case RouteNames.clientDetails:
+        if (args is UserModel) {
+          return _slideRoute(ClientDetailsScreen(client: args));
+        }
+        return _errorRoute('بيانات العميل مطلوبة');
+
       case RouteNames.manageProjects:
         return _fadeRoute(const ManageProjectsScreen());
 
@@ -337,6 +348,26 @@ class RouteGenerator {
 
       case RouteNames.reports:
         return _fadeRoute(const ReportsScreen());
+
+      case RouteNames.subscriptionsManagement:
+        return _fadeRoute(const SubscriptionsManagementScreen());
+
+      // Chat routes - placeholder for now
+      case RouteNames.chatList:
+        return _fadeRoute(const ChatListScreen());
+
+      case RouteNames.chatRoom:
+        if (args is String) {
+          return _slideRoute(ChatRoomScreen(chatId: args));
+        } else if (args is Map) {
+          // Support passing both chatId and otherUserId
+          final chatId = args['chatId'] as String;
+          final otherUserId = args['otherUserId'] as String?;
+          return _slideRoute(
+            ChatRoomScreen(chatId: chatId, otherUserId: otherUserId),
+          );
+        }
+        return _errorRoute('معرف المحادثة مفقود');
 
       default:
         return _errorRoute('الصفحة غير موجودة');

@@ -245,4 +245,18 @@ class DocumentRepository {
       throw Exception('خطأ في البحث عن المستندات: ${e.toString()}');
     }
   }
+
+  // ========== REAL-TIME STREAM METHODS ==========
+  
+  /// Get user documents as a real-time stream
+  Stream<List<DocumentModel>> getUserDocumentsStream(String userId) {
+    return _client
+        .from('documents')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
+        .order('created_at', ascending: false)
+        .map((data) => (data as List)
+            .map((json) => DocumentModel.fromJson(json))
+            .toList());
+  }
 }

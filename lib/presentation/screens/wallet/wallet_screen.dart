@@ -27,18 +27,17 @@ class _WalletScreenState extends State<WalletScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
+      // Load wallet - stream will handle real-time updates automatically
       context.read<WalletCubit>().loadWallet(authState.user.id);
-      context.read<WalletCubit>().subscribeToWallet(authState.user.id);
     }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    context.read<WalletCubit>().unsubscribeFromWallet();
+    // WalletCubit.close() will automatically cancel subscriptions
     super.dispose();
   }
 

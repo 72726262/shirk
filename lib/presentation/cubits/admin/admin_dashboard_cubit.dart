@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:mmm/data/repositories/admin_repository.dart'; // ✅ استخدام AdminRepository
+import 'package:mmm/data/repositories/admin_repository.dart';
 import 'package:mmm/core/services/cache_service.dart';
 import 'package:mmm/core/utils/error_handler.dart';
 
@@ -66,53 +67,93 @@ class AdminDashboardError extends AdminDashboardState {
   List<Object?> get props => [message];
 }
 
-// Cubit
+// ========== UPDATED CUBIT WITH STREAM SUPPORT ==========
 class AdminDashboardCubit extends Cubit<AdminDashboardState> {
-  final AdminRepository _adminRepository; // ✅ استخدام AdminRepository
+  final AdminRepository _adminRepository;
+  
+  // Stream subscription for real-time updates
+  StreamSubscription? _statsSubscription;
+  
+  // Cache for null-safe fallback
+  AdminStats? _cachedStats;
 
   AdminDashboardCubit({
     AdminRepository? adminRepository,
   })  : _adminRepository = adminRepository ?? AdminRepository(),
         super(AdminDashboardInitial());
 
-  Future<void> loadDashboard() async {
+  /// Load dashboard with REAL-TIME STREAM support
+  void loadDashboard() {
     emit(AdminDashboardLoading());
-    try {
-      print('📊 جلب إحصائيات Dashboard من Supabase...');
-      
-      // ✅ جلب البيانات الحقيقية من Supabase
-      final dashboardStats = await _adminRepository.getDashboardStats();
-      
-      final stats = AdminStats(
-        totalClients: dashboardStats.totalClients,
-        activeProjects: dashboardStats.activeProjects,
-        totalRevenue: dashboardStats.totalRevenue,
-        pendingPayments: dashboardStats.pendingPayments,
-      );
-
-      print('✅ تم جلب الإحصائيات:');
-      print('   العملاء: ${stats.totalClients}');
-      print('   المشاريع النشطة: ${stats.activeProjects}');
-      print('   الإيرادات: ${stats.totalRevenue}');
-      print('   المدفوعات المعلقة: ${stats.pendingPayments}');
-
-      // Cache dashboard stats for offline access
-      await CacheService().cacheDashboardStats(stats.toJson());
-
-      emit(AdminDashboardLoaded(stats: stats));
-    } catch (e) {
-      print('❌ خطأ في loadDashboard: $e');
-      
-      // Try to load from cache when network fails
-      final cachedStats = CacheService().getCachedDashboardStats();
-      if (cachedStats != null) {
-        final stats = AdminStats.fromJson(cachedStats);
-        emit(AdminDashboardLoaded(stats: stats));
-      } else {
-        emit(AdminDashboardError(ErrorHandler.getErrorMessage(e)));
-      }
-    }
+    
+    // Cancel any previous subscription
+    _statsSubscription?.cancel();
+    
+    // Subscribing to dashboard stats stream
+    
+    // Subscribe to real-time stream
+    _statsSubscription = _adminRepository.getDashboardStatsStream().listen(
+      (dashboardStats) {
+        // Real-time update received
+        
+        final newStats = AdminStats(
+          totalClients: dashboardStats.totalClients,
+          activeProjects: dashboardStats.activeProjects,
+          totalRevenue: dashboardStats.totalRevenue,
+          pendingPayments: dashboardStats.pendingPayments,
+        );
+        
+        // NULL-SAFE FALLBACK LOGIC
+        // If new data seems invalid (all zeros) but we have valid cached data, keep the old data
+        if (newStats.totalClients == 0 && 
+            newStats.activeProjects == 0 &&
+            _cachedStats != null && 
+            (_cachedStats!.totalClients > 0 || _cachedStats!.activeProjects > 0)) {
+          // Skip empty data, keep cached
+          return; // Skip this emission, keep showing cached data
+        }
+        
+        // Stats updated silently
+        
+        // Update cache
+        _cachedStats = newStats;
+        
+        // Cache for offline access
+        CacheService().cacheDashboardStats(newStats.toJson());
+        
+        emit(AdminDashboardLoaded(stats: newStats));
+      },
+      onError: (error) {
+        // Stream error - try cached data
+        
+        // On error, try to show cached data
+        if (_cachedStats != null) {
+          print('📦 عرض البيانات المخبأة بسبب الخطأ');
+          emit(AdminDashboardLoaded(stats: _cachedStats!));
+        } else {
+          // Try cache service as last resort
+          final cachedStatsJson = CacheService().getCachedDashboardStats();
+          if (cachedStatsJson != null) {
+            final stats = AdminStats.fromJson(cachedStatsJson);
+            _cachedStats = stats;
+            emit(AdminDashboardLoaded(stats: stats));
+          } else {
+            emit(AdminDashboardError(ErrorHandler.getErrorMessage(error)));
+          }
+        }
+      },
+    );
   }
 
-  Future<void> refreshDashboard() => loadDashboard();
+  /// Refresh dashboard (same as loadDashboard since we use streams)
+  Future<void> refreshDashboard() async {
+    loadDashboard();
+  }
+
+  @override
+  Future<void> close() {
+    // CRITICAL: Cancel stream subscription to prevent memory leaks
+    _statsSubscription?.cancel();
+    return super.close();
+  }
 }

@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:mmm/core/constants/colors.dart';
 
 /// Skeleton loader for tables
 class TableSkeletonLoader extends StatelessWidget {
   final int rows;
   final int columns;
 
-  const TableSkeletonLoader({
-    super.key,
-    this.rows = 5,
-    this.columns = 5,
-  });
+  const TableSkeletonLoader({super.key, this.rows = 5, this.columns = 5});
 
   @override
   Widget build(BuildContext context) {
