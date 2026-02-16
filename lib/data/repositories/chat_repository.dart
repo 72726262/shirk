@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:mmm/data/models/chat_model.dart';
-import 'package:mmm/data/models/user_model.dart';
+
 import 'package:mmm/data/models/message_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -134,23 +134,27 @@ class ChatRepository {
         // Fallback: If 'messages' is a list and not empty, pick the latest one
         // to populate the chat preview.
         if (json['messages'] != null && (json['messages'] as List).isNotEmpty) {
-           final msgs = json['messages'] as List;
-           // If Supabase returns them ordered, first is likely correct if we ordered in query.
-           // But we didn't order messages in the query above (only chats).
-           // So let's sort safe-side here.
-           msgs.sort((a, b) {
-             final da = DateTime.tryParse(a['created_at'].toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
-             final db = DateTime.tryParse(b['created_at'].toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
-             return db.compareTo(da); // Descending
-           });
-           
-           // We only keep the last message for the list view to save memory/processing if model allows
-           // But ChatModel might expect a list. 
-           // If ChatModel uses 'messages' property, we just leave it as is or trim it.
-           // Let's trim it to top 1 to mimic "last_message" behavior.
-           json['messages'] = [msgs.first];
+          final msgs = json['messages'] as List;
+          // If Supabase returns them ordered, first is likely correct if we ordered in query.
+          // But we didn't order messages in the query above (only chats).
+          // So let's sort safe-side here.
+          msgs.sort((a, b) {
+            final da =
+                DateTime.tryParse(a['created_at'].toString()) ??
+                DateTime.fromMillisecondsSinceEpoch(0);
+            final db =
+                DateTime.tryParse(b['created_at'].toString()) ??
+                DateTime.fromMillisecondsSinceEpoch(0);
+            return db.compareTo(da); // Descending
+          });
+
+          // We only keep the last message for the list view to save memory/processing if model allows
+          // But ChatModel might expect a list.
+          // If ChatModel uses 'messages' property, we just leave it as is or trim it.
+          // Let's trim it to top 1 to mimic "last_message" behavior.
+          json['messages'] = [msgs.first];
         }
-        
+
         return ChatModel.fromJson(json);
       }).toList();
 
@@ -255,6 +259,7 @@ class ChatRepository {
       return {};
     }
   }
+
   /// Delete chat (Leave chat)
   /// This removes the current user from the chat members.
   Future<void> deleteChat(String chatId) async {
@@ -271,20 +276,41 @@ class ChatRepository {
       throw Exception('Failed to delete chat: $e');
     }
   }
+
   /// Listen for new messages globally (for notifications)
+  /// Listen for new messages globally (for notifications)
+  /// Note: This creates a new subscription each time it's listened to.
+  /// The caller is responsible for cancelling the subscription.
   Stream<MessageModel> get onNewMessage {
-    return _client
-        .channel('public:messages:global')
+    final controller = StreamController<MessageModel>();
+
+    // Create a unique channel for this listener to avoid conflicts
+    final channel = _client.channel(
+      'global_messages_${DateTime.now().millisecondsSinceEpoch}',
+    );
+
+    channel
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'messages',
+          callback: (payload) {
+            if (payload.newRecord != null) {
+              try {
+                controller.add(MessageModel.fromJson(payload.newRecord!));
+              } catch (e) {
+                print(e.toString());
+              }
+            }
+          },
         )
-        .map((payload) {
-          if (payload.newRecord == null) {
-            throw Exception('New record is null');
-          }
-          return MessageModel.fromJson(payload.newRecord!);
-        });
+        .subscribe();
+
+    controller.onCancel = () async {
+      await channel.unsubscribe();
+      await controller.close();
+    };
+
+    return controller.stream;
   }
 }

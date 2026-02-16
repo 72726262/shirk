@@ -34,7 +34,7 @@ class SubscriptionModel extends Equatable {
   final String userId;
   final String projectId;
   final String unitId;
-  final double shareAmount;
+  final double investmentAmount; // Renamed from shareAmount to match schema
   final double paidAmount;
   final SubscriptionStatus status;
   final DateTime? joinedAt;
@@ -43,13 +43,16 @@ class SubscriptionModel extends Equatable {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? projectName;
+  final double? downPayment;
+  final int installmentsCount;
+  final int installmentsPaid;
 
   const SubscriptionModel({
     required this.id,
     required this.userId,
     required this.projectId,
     required this.unitId,
-    required this.shareAmount,
+    required this.investmentAmount,
     this.paidAmount = 0.0,
     this.status = SubscriptionStatus.pending,
     this.joinedAt,
@@ -58,20 +61,27 @@ class SubscriptionModel extends Equatable {
     required this.createdAt,
     required this.updatedAt,
     this.projectName,
+    this.downPayment,
+    this.installmentsCount = 0,
+    this.installmentsPaid = 0,
   });
 
-  double get remainingAmount => shareAmount - paidAmount;
-  double get paidPercentage => (paidAmount / shareAmount) * 100;
-  double get investmentAmount => shareAmount;
+  double get remainingAmount => investmentAmount - paidAmount;
+  double get paidPercentage => (investmentAmount > 0) ? (paidAmount / investmentAmount) * 100 : 0;
+  
+  // Getter for backward compatibility if needed, though better to use investmentAmount
+  double get shareAmount => investmentAmount;
 
   factory SubscriptionModel.fromJson(Map<String, dynamic> json) {
     return SubscriptionModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
       projectId: json['project_id'] as String,
-      unitId: json['unit_id'] as String,
-      shareAmount: (json['share_amount'] as num).toDouble(),
-      paidAmount: (json['paid_amount'] as num?)?.toDouble() ?? 0.0,
+      unitId: json['unit_id'] as String? ?? '', 
+      // Handle both investment_amount (schema) and share_amount (legacy)
+      investmentAmount: (json['investment_amount'] as num?)?.toDouble() ?? (json['share_amount'] as num?)?.toDouble() ?? 0.0,
+      // Map paid_amount or default to down_payment
+      paidAmount: (json['paid_amount'] as num?)?.toDouble() ?? (json['down_payment'] as num?)?.toDouble() ?? 0.0,
       status: json['status'] != null
           ? SubscriptionStatus.fromJson(json['status'] as String)
           : SubscriptionStatus.pending,
@@ -84,8 +94,10 @@ class SubscriptionModel extends Equatable {
       contractId: json['contract_id'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
-      // Handle joined project data if available
       projectName: json['projects'] != null ? json['projects']['name'] as String? : null,
+      downPayment: (json['down_payment'] as num?)?.toDouble(),
+      installmentsCount: json['installments_count'] as int? ?? 0,
+      installmentsPaid: json['installments_paid'] as int? ?? 0,
     );
   }
 
@@ -95,7 +107,7 @@ class SubscriptionModel extends Equatable {
       'user_id': userId,
       'project_id': projectId,
       'unit_id': unitId,
-      'share_amount': shareAmount,
+      'investment_amount': investmentAmount,
       'paid_amount': paidAmount,
       'status': status.toJson(),
       'joined_at': joinedAt?.toIso8601String(),
@@ -103,6 +115,9 @@ class SubscriptionModel extends Equatable {
       'contract_id': contractId,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'down_payment': downPayment,
+      'installments_count': installmentsCount,
+      'installments_paid': installmentsPaid,
     };
   }
 
@@ -111,7 +126,7 @@ class SubscriptionModel extends Equatable {
     String? userId,
     String? projectId,
     String? unitId,
-    double? shareAmount,
+    double? investmentAmount,
     double? paidAmount,
     SubscriptionStatus? status,
     DateTime? joinedAt,
@@ -120,13 +135,16 @@ class SubscriptionModel extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? projectName,
+    double? downPayment,
+    int? installmentsCount,
+    int? installmentsPaid,
   }) {
     return SubscriptionModel(
       id: id ?? this.id,
       userId: userId ?? this.userId,
       projectId: projectId ?? this.projectId,
       unitId: unitId ?? this.unitId,
-      shareAmount: shareAmount ?? this.shareAmount,
+      investmentAmount: investmentAmount ?? this.investmentAmount,
       paidAmount: paidAmount ?? this.paidAmount,
       status: status ?? this.status,
       joinedAt: joinedAt ?? this.joinedAt,
@@ -135,6 +153,9 @@ class SubscriptionModel extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       projectName: projectName ?? this.projectName,
+      downPayment: downPayment ?? this.downPayment,
+      installmentsCount: installmentsCount ?? this.installmentsCount,
+      installmentsPaid: installmentsPaid ?? this.installmentsPaid,
     );
   }
 
@@ -144,7 +165,7 @@ class SubscriptionModel extends Equatable {
         userId,
         projectId,
         unitId,
-        shareAmount,
+        investmentAmount,
         paidAmount,
         status,
         joinedAt,
@@ -153,5 +174,8 @@ class SubscriptionModel extends Equatable {
         createdAt,
         updatedAt,
         projectName,
+        downPayment,
+        installmentsCount,
+        installmentsPaid,
       ];
 }

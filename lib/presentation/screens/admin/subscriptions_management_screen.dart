@@ -183,7 +183,7 @@ class SubscriptionsManagementScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'اشتراك #${subscription.id.substring(0, 8)}',
+                        'حجز #${subscription.id.substring(0, 8)}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -303,7 +303,7 @@ class SubscriptionsManagementScreen extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('تأكيد الموافقة'),
-        content: const Text('هل أنت متأكد من الموافقة على هذا الاشتراك؟'),
+        content: const Text('هل أنت متأكد من الموافقة على هذا الحجز؟'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -314,7 +314,7 @@ class SubscriptionsManagementScreen extends StatelessWidget {
               cubit.approveSubscription(subscriptionId);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('تمت الموافقة على الاشتراك')),
+                const SnackBar(content: Text('تمت الموافقة على الحجز')),
               );
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
@@ -335,11 +335,11 @@ class SubscriptionsManagementScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('رفض الاشتراك'),
+        title: const Text('رفض الحجز'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('هل أنت متأكد من رفض هذا الاشتراك؟'),
+            const Text('هل أنت متأكد من رفض هذا الحجز؟'),
             const SizedBox(height: 16),
             TextField(
               decoration: const InputDecoration(
@@ -362,7 +362,7 @@ class SubscriptionsManagementScreen extends StatelessWidget {
               Navigator.pop(context);
               ScaffoldMessenger.of(
                 context,
-              ).showSnackBar(const SnackBar(content: Text('تم رفض الاشتراك')));
+              ).showSnackBar(const SnackBar(content: Text('تم رفض الحجز')));
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('رفض'),

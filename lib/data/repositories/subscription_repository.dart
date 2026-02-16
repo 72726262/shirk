@@ -56,6 +56,7 @@ class SubscriptionRepository {
     int? installmentsCount,
   }) async {
     try {
+      // 1. Create Subscription
       final subscriptionData = {
         'user_id': userId,
         'project_id': projectId,
@@ -75,7 +76,40 @@ class SubscriptionRepository {
           .select('*, projects(*), units(*)')
           .single();
 
-      return SubscriptionModel.fromJson(response);
+      final subscription = SubscriptionModel.fromJson(response);
+
+      // 2. Update Unit Status if unit selected
+      if (unitId != null) {
+        await _client
+            .from('units')
+            .update({'status': 'reserved'})
+            .eq('id', unitId);
+      }
+
+      // 3. Generate Installments if applicable
+      if (installmentsCount != null && installmentsCount > 0 && downPayment != null) {
+        final remainingAmount = investmentAmount - downPayment;
+        final monthlyAmount = remainingAmount / installmentsCount;
+        final now = DateTime.now();
+
+        final List<Map<String, dynamic>> installments = [];
+        for (int i = 0; i < installmentsCount; i++) {
+          installments.add({
+            'subscription_id': subscription.id,
+            'user_id': userId,
+            'installment_number': i + 1,
+            'amount': monthlyAmount,
+            'due_date': DateTime(now.year, now.month + i + 1, now.day).toIso8601String(), // Next month start
+            'status': 'pending',
+            'created_at': now.toIso8601String(),
+            'updated_at': now.toIso8601String(),
+          });
+        }
+        
+        await _client.from('installments').insert(installments);
+      }
+
+      return subscription;
     } catch (e) {
       throw Exception('خطأ في إنشاء الاشتراك: ${e.toString()}');
     }
@@ -126,6 +160,24 @@ class SubscriptionRepository {
         bucketName: 'signatures',
         path: 'subscriptions/$subscriptionId/signature_${DateTime.now().millisecondsSinceEpoch}.png',
         filePath: signatureData,
+      );
+
+      return signatureUrl;
+    } catch (e) {
+      throw Exception('خطأ في رفع التوقيع: ${e.toString()}');
+    }
+  }
+
+  Future<String> uploadSignatureBytes({
+    required String subscriptionId,
+    required List<int> signatureBytes,
+  }) async {
+    try {
+      final signatureUrl = await _supabaseService.uploadBytes(
+        bucketName: 'signatures',
+        path: 'subscriptions/$subscriptionId/signature_${DateTime.now().millisecondsSinceEpoch}.png',
+        bytes: signatureBytes,
+        contentType: 'image/png',
       );
 
       return signatureUrl;
@@ -351,4 +403,3 @@ class SubscriptionRepository {
     }
   }
 }
-

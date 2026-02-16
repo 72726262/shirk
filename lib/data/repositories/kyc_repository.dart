@@ -1,5 +1,3 @@
-// lib/data/repositories/kyc_repository.dart
-import 'dart:typed_data'; // ✅ للويب
 import 'package:image_picker/image_picker.dart'; // ✅ XFile
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -109,7 +107,7 @@ class KycRepository {
   }) async {
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      
+
       // ✅ استخدام file.name بدلاً من file.path للويب
       // على الويب، file.path = "blob:http://..." ولكن file.name = "image.jpg"
       final fileExtension = file.name.split('.').last;
@@ -124,8 +122,8 @@ class KycRepository {
       String contentType = 'image/jpeg'; // default
       if (fileExtension.toLowerCase() == 'png') {
         contentType = 'image/png';
-      } else if (fileExtension.toLowerCase() == 'jpg' || 
-                 fileExtension.toLowerCase() == 'jpeg') {
+      } else if (fileExtension.toLowerCase() == 'jpg' ||
+          fileExtension.toLowerCase() == 'jpeg') {
         contentType = 'image/jpeg';
       } else if (fileExtension.toLowerCase() == 'pdf') {
         contentType = 'application/pdf';
@@ -134,19 +132,23 @@ class KycRepository {
       print('📤 رفع الملف مع contentType: $contentType');
 
       // ✅ رفع الملف مع MIME type الصحيح
-      final response = await _client.storage.from('kyc-documents').uploadBinary(
-        fileName,
-        fileBytes,
-        fileOptions: FileOptions(
-          contentType: contentType, // ✅ Fix MIME type error
-          upsert: false,
-        ),
-      );
+      final response = await _client.storage
+          .from('kyc-documents')
+          .uploadBinary(
+            fileName,
+            fileBytes,
+            fileOptions: FileOptions(
+              contentType: contentType, // ✅ Fix MIME type error
+              upsert: false,
+            ),
+          );
 
       print('✅ تم رفع $documentType بنجاح: $response');
 
       // الحصول على URL العام
-      final publicUrl = _client.storage.from('kyc-documents').getPublicUrl(fileName);
+      final publicUrl = _client.storage
+          .from('kyc-documents')
+          .getPublicUrl(fileName);
 
       print('✅ تم رفع الملف بنجاح: $publicUrl');
       return publicUrl;

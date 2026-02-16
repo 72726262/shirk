@@ -35,6 +35,8 @@ class ChatListLoaded extends ChatListState {
     }).toList();
   }
 
+  int get totalUnreadCount => unreadCounts.values.fold(0, (sum, count) => sum + count);
+
   @override
   List<Object?> get props => [chats, unreadCounts, searchQuery];
 
@@ -64,31 +66,45 @@ class ChatListError extends ChatListState {
 class ChatListCubit extends Cubit<ChatListState> {
   final ChatRepository _chatRepository;
   StreamSubscription? _chatsSubscription;
-  final String _currentUserId;
+  StreamSubscription? _authSubscription;
 
   ChatListCubit({required ChatRepository chatRepository})
     : _chatRepository = chatRepository,
-      _currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '',
-      super(ChatListInitial());
+      super(ChatListInitial()) {
+      // Listen to auth state changes to auto-reload chats on login
+      _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+        if (data.event == AuthChangeEvent.signedIn) {
+          loadChats();
+        } else if (data.event == AuthChangeEvent.signedOut) {
+          emit(ChatListInitial());
+          _chatsSubscription?.cancel();
+        }
+      });
+  }
 
   void loadChats() {
     try {
       emit(ChatListLoading());
+      
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
-      if (_currentUserId.isEmpty) {
+      if (currentUserId == null || currentUserId.isEmpty) {
         emit(ChatListError('User not logged in'));
         return;
       }
 
       _chatsSubscription?.cancel();
       _chatsSubscription = _chatRepository
-          .getUserChatsStream(_currentUserId)
+          .getUserChatsStream(currentUserId)
           .listen(
             (chats) async {
               // Fetch unread counts for all chats
-              final unreadCounts = await _chatRepository.getUnreadCountsForUser(
-                _currentUserId,
-              );
+              Map<String, int> unreadCounts = {};
+              try {
+                unreadCounts = await _chatRepository.getUnreadCountsForUser(currentUserId);
+              } catch (e) {
+                // Ignore error, keep empty map
+              }
 
               // Sort chats client-side to ensure immediate correctness
               chats.sort((a, b) {
@@ -125,19 +141,31 @@ class ChatListCubit extends Cubit<ChatListState> {
     }
   }
 
-  Future<void> refreshUnreadCounts() async {
+  void markChatAsRead(String chatId) {
     if (state is ChatListLoaded) {
       final currentState = state as ChatListLoaded;
+      final updatedCounts = Map<String, int>.from(currentState.unreadCounts);
+      updatedCounts[chatId] = 0;
+      
+      emit(currentState.copyWith(unreadCounts: updatedCounts));
+    }
+  }
+
+  Future<void> refreshUnreadCounts() async {
       try {
+        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+        if (currentUserId == null) return;
+
         final unreadCounts = await _chatRepository.getUnreadCountsForUser(
-          _currentUserId,
+          currentUserId,
         );
-        emit(currentState.copyWith(unreadCounts: unreadCounts));
+        if (state is ChatListLoaded) {
+           final currentState = state as ChatListLoaded;
+           emit(currentState.copyWith(unreadCounts: unreadCounts));
+        }
       } catch (e) {
         // Silently fail for unread counts refresh
-        // print('Error refreshing unread counts: $e');
       }
-    }
   }
 
   Future<void> deleteChat(String chatId) async {
@@ -156,6 +184,7 @@ class ChatListCubit extends Cubit<ChatListState> {
   @override
   Future<void> close() {
     _chatsSubscription?.cancel();
+    _authSubscription?.cancel();
     return super.close();
   }
 }

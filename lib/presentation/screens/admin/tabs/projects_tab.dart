@@ -3,10 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/data/models/project_model.dart';
-import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
+
 import 'package:mmm/presentation/cubits/projects/projects_cubit.dart';
 import 'package:mmm/presentation/screens/admin/dialogs/add_project_dialog.dart';
-import 'package:mmm/presentation/screens/projects/project_detail_full_screen.dart';
+import 'package:mmm/routes/route_names.dart';
 import 'package:shimmer/shimmer.dart';
 
 class ProjectsTab extends StatelessWidget {
@@ -223,11 +223,10 @@ class _ProjectCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(
+        Navigator.pushNamed(
           context,
-          MaterialPageRoute(
-            builder: (context) => ProjectDetailFullScreen(project: project),
-          ),
+          RouteNames.projectDetail,
+          arguments: project.id,
         );
       },
       child: Container(
@@ -413,31 +412,29 @@ class _ProjectCard extends StatelessWidget {
                   // View Details Button
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                ProjectDetailFullScreen(project: project),
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            RouteNames.projectDetail,
+                            arguments: project.id,
+                          );
+                        },
+                        icon: const Icon(Icons.visibility),
+                        label: const Text('عرض التفاصيل'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: Dimensions.spaceM,
                           ),
-                        );
-                      },
-                      icon: const Icon(Icons.visibility),
-                      label: const Text('عرض التفاصيل'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: Dimensions.spaceM,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            Dimensions.radiusM,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              Dimensions.radiusM,
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ),
                 ],
               ),

@@ -161,7 +161,7 @@ class _SubscriptionsTabState extends State<SubscriptionsTab> {
                       icon: Icons.attach_money,
                       label: 'قيمة الاستثمار',
                       value:
-                          '${subscription.shareAmount.toStringAsFixed(0)} ر.س',
+                          '${subscription.investmentAmount.toStringAsFixed(0)} ر.س',
                       color: AppColors.primary,
                     ),
                   ),
@@ -356,7 +356,7 @@ class _SubscriptionsTabState extends State<SubscriptionsTab> {
                   // Subscription Summary
                   _buildDetailItem(
                     'قيمة الاستثمار',
-                    '${subscription.shareAmount.toStringAsFixed(0)} ر.س',
+                    '${subscription.investmentAmount.toStringAsFixed(0)} ر.س',
                   ),
                   _buildDetailItem(
                     'المبلغ المدفوع',

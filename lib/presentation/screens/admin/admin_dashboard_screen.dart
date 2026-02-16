@@ -11,6 +11,7 @@ import 'package:mmm/presentation/cubits/admin/documents_management_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/handovers_management_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/subscriptions_management_cubit.dart';
 import 'package:mmm/data/repositories/subscription_repository.dart';
+
 import 'package:mmm/presentation/cubits/chat/chat_list_cubit.dart';
 import 'package:mmm/data/repositories/chat_repository.dart';
 import 'package:mmm/presentation/cubits/projects/projects_cubit.dart';
@@ -50,8 +51,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     'المستندات',
     'التسليم',
     'الإشعارات',
-    'إدارة الاشتراكات', // Index 9
-    'الرسائل',         // Index 10
+    'الحجوزات', // Index 9
+    'الرسائل', // Index 10
   ];
 
   final List<Widget> _pages = const [
@@ -65,13 +66,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     HandoversManagementTab(),
     NotificationsComposerTab(),
     SubscriptionsManagementScreen(), // Index 9
-    ChatListScreen(),                // Index 10
+    ChatListScreen(), // Index 10
   ];
 
   @override
   void initState() {
     super.initState();
     context.read<AdminDashboardCubit>().loadDashboard();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args != null && args is Map<String, dynamic> && args.containsKey('tab')) {
+      final tabIndex = args['tab'] as int;
+      if (tabIndex >= 0 && tabIndex < _pages.length) {
+        setState(() {
+          _selectedIndex = tabIndex;
+        });
+      }
+    }
   }
 
   void _navigateToPage(int index) {
@@ -102,9 +117,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           )..loadSubscriptions(),
         ),
         BlocProvider(
-          create: (context) => ChatListCubit(
-            chatRepository: ChatRepository(),
-          )..loadChats(),
+          create: (context) =>
+              ChatListCubit(chatRepository: ChatRepository())..loadChats(),
         ),
       ],
       child: Scaffold(

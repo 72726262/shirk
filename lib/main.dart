@@ -20,6 +20,7 @@ import 'package:mmm/data/repositories/wallet_repository.dart';
 import 'package:mmm/data/repositories/notification_repository.dart';
 import 'package:mmm/data/repositories/project_repository.dart';
 import 'package:mmm/data/repositories/chat_repository.dart';
+import 'package:mmm/data/repositories/payments_repository.dart';
 
 // Cubits
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
@@ -41,8 +42,14 @@ import 'package:mmm/presentation/cubits/admin/admin_dashboard_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/contracts_management_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/documents_management_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/handovers_management_cubit.dart';
+import 'package:mmm/presentation/cubits/admin/units_management_cubit.dart';
+import 'package:mmm/data/repositories/units_repository.dart';
 import 'package:mmm/core/services/network_service.dart';
 import 'package:mmm/core/services/cache_service.dart';
+
+import 'package:mmm/presentation/widgets/chat/global_message_listener.dart'; // ✅ Add this import
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,6 +95,9 @@ class SharikApp extends StatelessWidget {
         RepositoryProvider(create: (_) => ProjectRepository()),
         RepositoryProvider(create: (_) => NotificationRepository()),
         RepositoryProvider(create: (_) => ChatRepository()),
+        RepositoryProvider(create: (_) => UnitsRepository()),
+        RepositoryProvider(
+            create: (_) => PaymentsRepository(SupabaseService.instance.client)),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -139,14 +149,20 @@ class SharikApp extends StatelessWidget {
           BlocProvider(create: (_) => AdminDashboardCubit()), // ✅ Fix
           BlocProvider(create: (_) => ClientManagementCubit()), // ✅ Add
 
+          BlocProvider(
+            create: (context) => UnitsManagementCubit(
+              unitsRepository: context.read<UnitsRepository>(),
+            ),
+          ),
+
           BlocProvider(create: (_) => ContractsManagementCubit()), // ✅ Add
           BlocProvider(create: (_) => DocumentsManagementCubit()), // ✅ Add
           BlocProvider(create: (_) => HandoversManagementCubit()), // ✅ Add
-          
+
           BlocProvider(
-            create: (context) => ChatListCubit(
-              chatRepository: context.read<ChatRepository>(),
-            )..loadChats(),
+            create: (context) =>
+                ChatListCubit(chatRepository: context.read<ChatRepository>())
+                  ..loadChats(),
           ),
         ],
         child: MaterialApp(
@@ -165,13 +181,18 @@ class SharikApp extends StatelessWidget {
           darkTheme: AppTheme.darkTheme,
           themeMode: ThemeMode.light,
 
+          navigatorKey: navigatorKey, // ✅ Add navigator key
           onGenerateRoute: RouteGenerator.generateRoute,
           initialRoute: RouteNames.login,
 
           builder: (context, child) {
-            return Directionality(
-              textDirection: TextDirection.rtl,
-              child: child ?? const SizedBox.shrink(),
+            return GlobalMessageListener(
+              // ✅ Wrap with listener
+              navigatorKey: navigatorKey,
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: child ?? const SizedBox.shrink(),
+              ),
             );
           },
         ),

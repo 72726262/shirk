@@ -17,6 +17,7 @@ import 'package:mmm/data/models/document_model.dart';
 import 'package:mmm/data/models/construction_update_model.dart';
 import 'package:mmm/presentation/cubits/dashboard/dashboard_cubit.dart';
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
+import 'package:mmm/presentation/cubits/chat/chat_list_cubit.dart'; // Added
 import 'package:mmm/presentation/widgets/dialogs/kyc_approval_dialog.dart';
 import 'package:mmm/routes/route_names.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -117,10 +118,47 @@ class _ClientDashboardState extends State<ClientDashboard> {
             },
           ),
 
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline),
-            onPressed: () {
-              Navigator.pushNamed(context, RouteNames.chatList);
+          BlocBuilder<ChatListCubit, ChatListState>(
+            builder: (context, state) {
+              int unreadCount = 0;
+              if (state is ChatListLoaded) {
+                unreadCount = state.totalUnreadCount;
+              }
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chat_bubble_outline),
+                    onPressed: () {
+                      Navigator.pushNamed(context, RouteNames.chatList);
+                    },
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '$unreadCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
             },
           ),
         ],
@@ -431,7 +469,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
     }
 
     return SizedBox(
-      height: 220,
+      height: 340,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: projects.length,

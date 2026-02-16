@@ -21,6 +21,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // Force reload chats to ensure unread counts are up-to-date
+    context.read<ChatListCubit>().loadChats();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -117,17 +124,86 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               color: Colors.grey[600],
                             ),
                           ),
+                          if (_searchController.text.isEmpty) ...[
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const UsersListScreen(),
+                                  ),
+                                ).then((_) {
+                                  if (context.mounted) {
+                                    context.read<ChatListCubit>().loadChats();
+                                  }
+                                });
+                              },
+                              icon: const Icon(Icons.add_comment_rounded),
+                              label: const Text('بدء محادثة جديدة'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     );
                   }
 
                   return ListView.separated(
-                    itemCount: chats.length,
+                    itemCount: chats.length + 1, // +1 for "Start New Chat" tile
                     separatorBuilder: (context, index) =>
                         const Divider(height: 1),
                     itemBuilder: (context, index) {
-                      final chat = chats[index];
+                      if (index == 0) {
+                        return ListTile(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const UsersListScreen(),
+                              ),
+                            ).then((_) {
+                              if (context.mounted) {
+                                context.read<ChatListCubit>().loadChats();
+                              }
+                            });
+                          },
+                          leading: CircleAvatar(
+                            backgroundColor:
+                                AppColors.primary.withOpacity(0.1),
+                            child: const Icon(
+                              Icons.person_add,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          title: const Text(
+                            'بدء محادثة جديدة',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          subtitle: const Text('تواصل مع الإدارة والدعم'),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: AppColors.primary,
+                          ),
+                        );
+                      }
+
+                      final chat = chats[index - 1];
                       final unreadCount = unreadCounts[chat.id] ?? 0;
 
                       final currentUserId = Supabase.instance.client.auth.currentUser?.id;
@@ -209,6 +285,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           ).then((_) {
                             // Refresh list when returning from chat room to update order/last message
                             if (context.mounted) {
+                              // Optimistically clear unread count
+                              context.read<ChatListCubit>().markChatAsRead(chat.id);
                               context.read<ChatListCubit>().loadChats();
                             }
                           });

@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
+import 'package:mmm/data/models/unit_model.dart';
+import 'package:mmm/presentation/cubits/join_flow/join_flow_cubit.dart';
+import 'package:mmm/routes/route_names.dart';
+
+enum PaymentPlan { full, installments }
 
 class ContractSummaryScreen extends StatefulWidget {
   final String projectId;
@@ -17,6 +23,7 @@ class ContractSummaryScreen extends StatefulWidget {
 }
 
 class _ContractSummaryScreenState extends State<ContractSummaryScreen> {
+  PaymentPlan _selectedPlan = PaymentPlan.installments;
   bool _agreeToTerms = false;
   bool _agreeToDataPrivacy = false;
   bool _acceptAutoPayments = false;
@@ -25,247 +32,243 @@ class _ContractSummaryScreenState extends State<ContractSummaryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('ملخص العقد')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(Dimensions.spaceL),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Project Summary
-            Container(
+      body: BlocConsumer<JoinFlowCubit, JoinFlowState>(
+        listener: (context, state) {
+          if (state is ContractAccepted) {
+            Navigator.pushNamed(
+              context,
+              RouteNames.payment,
+              arguments: {
+                'subscriptionId': state.subscriptionId,
+                'amount': state.amount,
+              },
+            );
+          }
+          if (state is JoinFlowError) {
+             ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message), backgroundColor: AppColors.error),
+            );
+          }
+        },
+        builder: (context, state) {
+            final selectedUnit = context.read<JoinFlowCubit>().selectedUnit;
+            // if (state is UnitSelectionState) {
+            //    selectedUnit = state.selectedUnit;
+            // }
+            
+            final unitNumber = selectedUnit?.unitNumber ?? widget.unitId;
+            final double unitPrice = selectedUnit?.price ?? 0.0;
+            
+            // Financial Calculations
+            double payNowAmount = 0.0;
+            double futureInstallmentAmount = 0.0;
+            int installmentsCount = 0;
+
+            if (_selectedPlan == PaymentPlan.full) {
+              payNowAmount = unitPrice;
+              futureInstallmentAmount = 0.0;
+              installmentsCount = 0;
+            } else {
+              // 4 Equal Installments
+              payNowAmount = unitPrice / 4;
+              futureInstallmentAmount = unitPrice / 4;
+              installmentsCount = 3;
+            }
+
+            return SingleChildScrollView(
               padding: const EdgeInsets.all(Dimensions.spaceL),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(Dimensions.radiusL),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'ملخص المشروع',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: Dimensions.spaceL),
-                  _buildSummaryItem(
-                    title: 'اسم المشروع',
-                    value: 'برج النخيل السكني',
-                  ),
-                  _buildSummaryItem(
-                    title: 'الوحدة المختارة',
-                    value: 'A101 - شقة 120 م²',
-                  ),
-                  _buildSummaryItem(
-                    title: 'المكان',
-                    value: 'حي النخيل، القاهرة الجديدة',
-                  ),
-                  _buildSummaryItem(
-                    title: 'المطور',
-                    value: 'شركة النخيل العقارية',
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: Dimensions.spaceXL),
-
-            // Financial Summary
-            Container(
-              padding: const EdgeInsets.all(Dimensions.spaceL),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(Dimensions.radiusL),
-                border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'الملخص المالي',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: Dimensions.spaceL),
-                  _buildFinancialItem(
-                    title: 'سعر الوحدة',
-                    value: '1,200,000 ج.م',
-                    isBold: false,
-                  ),
-                  _buildFinancialItem(
-                    title: 'الدفعة الأولى (10%)',
-                    value: '120,000 ج.م',
-                    isBold: false,
-                  ),
-                  _buildFinancialItem(
-                    title: 'المبلغ المتبقي',
-                    value: '1,080,000 ج.م',
-                    isBold: false,
-                  ),
-                  const Divider(height: Dimensions.spaceXL),
-                  _buildFinancialItem(
-                    title: 'المجموع الكلي',
-                    value: '1,200,000 ج.م',
-                    isBold: true,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(height: Dimensions.spaceL),
-                  _buildFinancialItem(
-                    title: 'الدفع على 48 شهر',
-                    value: '22,500 ج.م / شهرياً',
-                    isBold: false,
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: Dimensions.spaceXL),
-
-            // Payment Schedule Preview
-            Container(
-              padding: const EdgeInsets.all(Dimensions.spaceL),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(Dimensions.radiusL),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'جدول الدفعات',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: Dimensions.spaceL),
-                  ...List.generate(4, (index) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: Dimensions.spaceM),
-                      padding: const EdgeInsets.all(Dimensions.spaceM),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(Dimensions.radiusM),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'القسط ${index + 1}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
+              child: Container(
+                  color: AppColors.background, 
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Project Summary
+                      Container(
+                        padding: const EdgeInsets.all(Dimensions.spaceL),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'ملخص المشروع',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: Dimensions.spaceL),
+                            _buildSummaryItem(
+                              title: 'رقم المشروع',
+                              value: widget.projectId,
+                            ),
+                            _buildSummaryItem(
+                              title: 'رقم الوحدة',
+                              value: unitNumber,
+                            ),
+                            if (selectedUnit != null) ...[
+                              _buildSummaryItem(
+                                title: 'المساحة',
+                                value: '${selectedUnit.areaSqm} م²',
                               ),
-                              Text(
-                                '${DateTime.now().add(Duration(days: 30 * index)).day}/${DateTime.now().add(Duration(days: 30 * index)).month}/${DateTime.now().add(Duration(days: 30 * index)).year}',
-                                style: TextStyle(
-                                  color: AppColors.textHint,
-                                  fontSize: 12,
-                                ),
+                              _buildSummaryItem(
+                                title: 'السعر الإجمالي',
+                                value: '${unitPrice.toStringAsFixed(0)} ر.س',
                               ),
                             ],
+                          ],
+                        ),
+                      ),
+            
+                      const SizedBox(height: Dimensions.spaceXL),
+            
+                      // Payment Plan Selection
+                      const Text(
+                        'خطة الدفع',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: Dimensions.spaceM),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildPlanOption(
+                              label: 'دفع كامل',
+                              value: PaymentPlan.full,
+                              description: 'دفعة واحدة (100%)',
+                            ),
                           ),
-                          Text(
-                            '22,500 ج.م',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
+                          const SizedBox(width: Dimensions.spaceM),
+                          Expanded(
+                            child: _buildPlanOption(
+                              label: 'تقسيط',
+                              value: PaymentPlan.installments,
+                              description: '4 دفعات متساوية',
                             ),
                           ),
                         ],
                       ),
-                    );
-                  }),
-                  Align(
-                    child: TextButton(
-                      onPressed: () {
-                        // Show full payment schedule
-                      },
-                      child: const Text('عرض جدول الدفعات الكامل'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: Dimensions.spaceXL),
-
-            // Terms and Conditions
-            Container(
-              padding: const EdgeInsets.all(Dimensions.spaceL),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(Dimensions.radiusL),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'الشروط والأحكام',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: Dimensions.spaceL),
-
-                  // Contract Terms
-                  Container(
-                    height: 200,
-                    padding: const EdgeInsets.all(Dimensions.spaceL),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(Dimensions.radiusM),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: SingleChildScrollView(
-                      child: Text(
-                        _contractTerms,
-                        style: const TextStyle(fontSize: 13, height: 1.5),
+                      const SizedBox(height: Dimensions.spaceXL),
+            
+                      // Financial Summary
+                      Container(
+                        padding: const EdgeInsets.all(Dimensions.spaceL),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                          border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _selectedPlan == PaymentPlan.full ? 'تفاصيل الدفع الكامل' : 'تفاصيل التقسيط (4 دفعات)',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(height: Dimensions.spaceL),
+                            _buildFinancialItem(
+                              title: 'المطلوب دفعه الآن (الدفعة الأولى)',
+                              value: '${payNowAmount.toStringAsFixed(0)} ر.س',
+                              isBold: true,
+                            ),
+                            if (_selectedPlan == PaymentPlan.installments) ...[
+                              const Divider(height: Dimensions.spaceM),
+                              _buildFinancialItem(
+                                title: 'عدد الدفعات المتبقية',
+                                value: '$installmentsCount دفعات',
+                                isBold: false,
+                              ),
+                              _buildFinancialItem(
+                                title: 'قيمة الدفعة القادمة',
+                                value: '${futureInstallmentAmount.toStringAsFixed(0)} ر.س',
+                                isBold: false,
+                              ),
+                            ],
+                            const Divider(height: Dimensions.spaceXL),
+                            _buildFinancialItem(
+                              title: 'المجموع الكلي',
+                              value: '${unitPrice.toStringAsFixed(0)} ر.س',
+                              isBold: true,
+                              color: AppColors.primary,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-
-                  const SizedBox(height: Dimensions.spaceL),
-
-                  // Agreement Checkboxes
-                  Column(
-                    children: [
-                      _buildAgreementCheckbox(
-                        value: _agreeToTerms,
-                        onChanged: (value) {
-                          setState(() {
-                            _agreeToTerms = value!;
-                          });
-                        },
-                        text: 'أوافق على الشروط والأحكام المذكورة أعلاه',
+            
+                      const SizedBox(height: Dimensions.spaceXL),
+            
+                      // Terms and Conditions
+                      Container(
+                        padding: const EdgeInsets.all(Dimensions.spaceL),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'الشروط والأحكام',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: Dimensions.spaceL),
+            
+                            // Contract Terms Text
+                            Container(
+                              height: 200,
+                              padding: const EdgeInsets.all(Dimensions.spaceL),
+                              decoration: BoxDecoration(
+                                color: AppColors.white,
+                                borderRadius: BorderRadius.circular(Dimensions.radiusM),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  _contractTerms,
+                                  style: const TextStyle(fontSize: 13, height: 1.5),
+                                ),
+                              ),
+                            ),
+            
+                            const SizedBox(height: Dimensions.spaceL),
+            
+                            // Agreement Checkboxes
+                            Column(
+                              children: [
+                                _buildAgreementCheckbox(
+                                  value: _agreeToTerms,
+                                  onChanged: (value) => setState(() => _agreeToTerms = value!),
+                                  text: 'أوافق على الشروط والأحكام المذكورة أعلاه',
+                                ),
+                                _buildAgreementCheckbox(
+                                  value: _agreeToDataPrivacy,
+                                  onChanged: (value) => setState(() => _agreeToDataPrivacy = value!),
+                                  text: 'أوافق على سياسة الخصوصية ومعالجة البيانات',
+                                ),
+                                _buildAgreementCheckbox(
+                                  value: _acceptAutoPayments,
+                                  onChanged: (value) => setState(() => _acceptAutoPayments = value!),
+                                  text: 'أوافق على خصم الأقساط تلقائياً من محفظتي',
+                                  isOptional: true,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                      _buildAgreementCheckbox(
-                        value: _agreeToDataPrivacy,
-                        onChanged: (value) {
-                          setState(() {
-                            _agreeToDataPrivacy = value!;
-                          });
-                        },
-                        text: 'أوافق على سياسة الخصوصية ومعالجة البيانات',
-                      ),
-                      _buildAgreementCheckbox(
-                        value: _acceptAutoPayments,
-                        onChanged: (value) {
-                          setState(() {
-                            _acceptAutoPayments = value!;
-                          });
-                        },
-                        text: 'أوافق على خصم الأقساط تلقائياً من محفظتي',
-                        isOptional: true,
-                      ),
+            
+                      const SizedBox(height: Dimensions.spaceXL),
                     ],
                   ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: Dimensions.spaceXL),
-          ],
-        ),
+                ),
+            );
+          },
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(Dimensions.spaceL),
@@ -292,14 +295,11 @@ class _ContractSummaryScreenState extends State<ContractSummaryScreen> {
               child: ElevatedButton(
                 onPressed: _agreeToTerms && _agreeToDataPrivacy
                     ? () {
-                        Navigator.pushNamed(
-                          context,
-                          '/payment',
-                          arguments: {
-                            'projectId': widget.projectId,
-                            'unitId': widget.unitId,
-                          },
-                        );
+                         context.read<JoinFlowCubit>().acceptContract(
+                           widget.projectId,
+                           widget.unitId,
+                           isFullPayment: _selectedPlan == PaymentPlan.full,
+                         );
                       }
                     : null,
                 style: ElevatedButton.styleFrom(
@@ -317,13 +317,42 @@ class _ContractSummaryScreenState extends State<ContractSummaryScreen> {
     );
   }
 
+  Widget _buildPlanOption({
+    required String label,
+    required PaymentPlan value,
+    required String description,
+  }) {
+    final isSelected = _selectedPlan == value;
+    return InkWell(
+      onTap: () => setState(() => _selectedPlan = value),
+      child: Container(
+        padding: const EdgeInsets.all(Dimensions.spaceM),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(Dimensions.radiusM),
+        ),
+        child: Column(
+          children: [
+            Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppColors.primary : AppColors.textPrimary)),
+            const SizedBox(height: 4),
+            Text(description, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary), textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSummaryItem({required String title, required String value}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: Dimensions.spaceS),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: TextStyle(color: AppColors.textSecondary)),
+          Text(title, style: const TextStyle(color: AppColors.textSecondary)),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
@@ -386,7 +415,7 @@ class _ContractSummaryScreenState extends State<ContractSummaryScreen> {
                 if (isOptional)
                   Text(
                     '(اختياري)',
-                    style: TextStyle(color: AppColors.textHint, fontSize: 12),
+                    style: const TextStyle(color: AppColors.textHint, fontSize: 12),
                   ),
               ],
             ),
@@ -402,8 +431,8 @@ class _ContractSummaryScreenState extends State<ContractSummaryScreen> {
 1.2. يعتبر هذا العقد نافذاً من تاريخ توقيعه من الطرفين.
 
 مادة (2): الالتزامات المالية
-2.1. يلتزم المستثمر بسداد الدفعة الأولى بنسبة 10% من إجمالي قيمة الوحدة.
-2.2. يتم سداد المبلغ المتبقي على أقساط شهرية لمدة 48 شهراً.
+2.1. يلتزم المستثمر بسداد الدفعة الأولى أو كامل المبلغ حسب الخطة المختارة.
+2.2. في حالة التقسيط، يتم سداد المبلغ المتبقي على 3 دفعات إضافية متساوية.
 2.3. يلتزم المطور بتسليم الوحدة وفق المواصفات المتفق عليها.
 
 مادة (3): ضمانات المطور
@@ -414,18 +443,9 @@ class _ContractSummaryScreenState extends State<ContractSummaryScreen> {
 مادة (4): التزامات المستثمر
 4.1. يلتزم المستثمر بسداد الأقساط في مواعيدها المحددة.
 4.2. يحق للمطور تطبيق غرامة تأخير في حالة عدم السداد في الموعد.
-4.3. يحق للمستثمر متابعة سير العمل وفق الآليات المحددة.
 
 مادة (5): التسليم والاستلام
 5.1. يتم تسليم الوحدة عند اكتمالها وفق المواصفات المتفق عليها.
 5.2. يتم إعداد محضر استلام مشترك بين الطرفين.
-5.3. يتم صيانة العيوب الظاهرة خلال سنة من تاريخ التسليم.
-
-مادة (6): أحكام ختامية
-6.1. يحق لأي من الطرفين إنهاء العقد في حالة الإخلال الجسيم.
-6.2. يتم تسوية أي نزاعات عن طريق التحكيم.
-6.3. يعتبر هذا العقد سارياً في جميع أحكامه.
-
-بتوقيع هذا العقد، يقر الطرفان باطلاعهما على جميع بنوده وموافقتهما عليها.
 ''';
 }

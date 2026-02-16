@@ -4,6 +4,7 @@ import 'package:mmm/data/models/unit_model.dart';
 import 'package:mmm/data/models/subscription_model.dart';
 import 'package:mmm/data/services/subscription_service.dart';
 import 'package:mmm/data/services/wallet_service.dart';
+import 'package:mmm/data/repositories/project_repository.dart';
 
 // States
 abstract class JoinFlowState extends Equatable {
@@ -128,25 +129,34 @@ class JoinFlowCubit extends Cubit<JoinFlowState> {
   // Store flow data
   String? _projectId;
   UnitModel? _selectedUnit;
+
+  String? get projectId => _projectId;
+  UnitModel? get selectedUnit => _selectedUnit;
+
+  List<UnitModel> _availableUnits = []; // Store available units
   double? _investmentAmount;
   double? _downPayment;
   int? _installmentsCount;
   SubscriptionModel? _subscription;
 
+  final ProjectRepository _projectRepository;
+
   JoinFlowCubit({
     SubscriptionService? subscriptionService,
     WalletService? walletService,
+    ProjectRepository? projectRepository,
   })  : _subscriptionService = subscriptionService ?? SubscriptionService(),
         _walletService = walletService ?? WalletService(),
+        _projectRepository = projectRepository ?? ProjectRepository(),
         super(JoinFlowInitial());
 
   void loadAvailableUnits(String projectId) async {
     _projectId = projectId;
     emit(JoinFlowLoading());
     try {
-      // In real implementation, this would fetch from repository
-      final units = <UnitModel>[];
-      emit(UnitsLoaded(units: units));
+      final units = await _projectRepository.getProjectUnits(projectId: projectId, status: 'available');
+      _availableUnits = units; // Cache locally
+      emit(UnitSelectionState(availableUnits: units));
     } catch (e) {
       emit(JoinFlowError(e.toString()));
     }
@@ -154,20 +164,34 @@ class JoinFlowCubit extends Cubit<JoinFlowState> {
 
   void startFlow(String projectId, List<UnitModel> availableUnits) {
     _projectId = projectId;
+    _availableUnits = availableUnits;
     emit(UnitSelectionState(availableUnits: availableUnits));
   }
 
   void selectUnit(UnitModel unit) {
     _selectedUnit = unit;
-    emit(JoinFlowUnitSelected(selectedUnit: unit));
+    emit(UnitSelectionState(availableUnits: _availableUnits, selectedUnit: unit));
   }
 
-  Future<void> acceptContract(String projectId, String unitId) async {
+  Future<void> acceptContract(String projectId, String unitId, {bool isFullPayment = false}) async {
     emit(JoinFlowLoading());
     try {
-      // Create subscription and get ID
+      _investmentAmount = _selectedUnit?.price ?? 0.0;
+      
+      if (isFullPayment) {
+        // Full Payment: 100% now, 0 installments
+        _downPayment = _investmentAmount;
+        _installmentsCount = 0;
+      } else {
+        // Partial Payment: Split into 4 payments
+        // 1st payment serves as down payment
+        _downPayment = (_investmentAmount ?? 0.0) / 4; 
+        _installmentsCount = 3; // Remaining 3 installments
+      }
+
       final subscriptionId = 'sub_${DateTime.now().millisecondsSinceEpoch}';
-      final amount = _selectedUnit?.price ?? 0.0;
+      final amount = _downPayment ?? 0.0; // Amount to pay now
+      
       emit(ContractAccepted(subscriptionId: subscriptionId, amount: amount));
     } catch (e) {
       emit(JoinFlowError(e.toString()));
@@ -206,8 +230,20 @@ class JoinFlowCubit extends Cubit<JoinFlowState> {
       return;
     }
 
+    if (_investmentAmount == null || _investmentAmount! <= 0) {
+      _investmentAmount = _selectedUnit?.price;
+    }
+
+    if (_investmentAmount == null) {
+       emit(const JoinFlowError('خطأ: لم يتم تحديد مبلغ الاستثمار'));
+       return;
+    }
+
     emit(const PaymentProcessingState('جاري معالجة الدفع...'));
     try {
+      // Skip wallet check if not paying by wallet
+      final skipWalletCheck = paymentMethod != 'wallet';
+
       // Create subscription through service (validates wallet + unit)
       final subscription = await _subscriptionService.createSubscription(
         userId: userId,
@@ -216,6 +252,7 @@ class JoinFlowCubit extends Cubit<JoinFlowState> {
         investmentAmount: _investmentAmount!,
         downPayment: _downPayment,
         installmentsCount: _installmentsCount ?? 0,
+        skipWalletCheck: skipWalletCheck,
       );
 
       _subscription = subscription;
@@ -225,20 +262,12 @@ class JoinFlowCubit extends Cubit<JoinFlowState> {
     }
   }
 
-
-
   Future<void> submitSignature({
     required String subscriptionId,
     required String signatureData,
   }) async {
-    emit(JoinFlowLoading());
-    try {
-      // Submit signature logic
-      await Future.delayed(const Duration(seconds: 1));
-      emit(JoinFlowCompleted());
-    } catch (e) {
-      emit(JoinFlowError(e.toString()));
-    }
+     // Deprecated or can be used for string path
+    await signContract(signatureData);
   }
 
   Future<void> signContract(String signaturePath) async {
@@ -253,6 +282,29 @@ class JoinFlowCubit extends Cubit<JoinFlowState> {
       await _subscriptionService.signContract(
         subscriptionId: _subscription!.id,
         signaturePath: signaturePath,
+      );
+
+      // Reload subscription to get updated status
+      final updatedSubscription = await _subscriptionService.getSubscriptionById(_subscription!.id);
+      
+      emit(JoinFlowCompleteState(updatedSubscription));
+    } catch (e) {
+      emit(JoinFlowError(e.toString()));
+    }
+  }
+
+  Future<void> signContractBytes(List<int> signatureBytes) async {
+    if (_subscription == null) {
+      emit(const JoinFlowError('لا يوجد اشتراك للتوقيع'));
+      return;
+    }
+
+    emit(const PaymentProcessingState('جاري التوقيع...'));
+
+    try {
+      await _subscriptionService.signContractWithBytes(
+        subscriptionId: _subscription!.id,
+        signatureBytes: signatureBytes,
       );
 
       // Reload subscription to get updated status

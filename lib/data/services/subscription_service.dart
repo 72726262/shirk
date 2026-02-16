@@ -37,6 +37,7 @@ class SubscriptionService {
     double? ownershipPercentage,
     double? downPayment,
     int installmentsCount = 0,
+    bool skipWalletCheck = false,
   }) async {
     try {
       // Validate investment amount
@@ -45,7 +46,8 @@ class SubscriptionService {
       }
 
       // Check wallet balance for down payment
-      if (downPayment != null && downPayment > 0) {
+      // Skip check if skipWalletCheck is true (e.g. paying by card)
+      if (!skipWalletCheck && downPayment != null && downPayment > 0) {
         final walletDashboard = await _walletService.getWalletDashboard(userId);
         final availableBalance = walletDashboard['available_balance'] as double;
 
@@ -102,6 +104,28 @@ class SubscriptionService {
     }
   }
 
+  // Sign contract with signature bytes
+  Future<SubscriptionModel> signContractWithBytes({
+    required String subscriptionId,
+    required List<int> signatureBytes,
+  }) async {
+    try {
+      final signatureUrl = await _subscriptionRepository.uploadSignatureBytes(
+        subscriptionId: subscriptionId,
+        signatureBytes: signatureBytes,
+      );
+
+      await _subscriptionRepository.signContract(
+        subscriptionId: subscriptionId,
+        signatureUrl: signatureUrl,
+      );
+
+      return await _subscriptionRepository.getSubscriptionById(subscriptionId);
+    } catch (e) {
+      throw Exception('فشل توقيع العقد: ${e.toString()}');
+    }
+  }
+
   // Create subscription directly (used by JoinFlowCubit)
   Future<SubscriptionModel> createSubscription({
     required String userId,
@@ -111,6 +135,7 @@ class SubscriptionService {
     double? ownershipPercentage,
     double? downPayment,
     int installmentsCount = 0,
+    bool skipWalletCheck = false,
   }) async {
     return joinProject(
       userId: userId,
@@ -120,6 +145,7 @@ class SubscriptionService {
       ownershipPercentage: ownershipPercentage,
       downPayment: downPayment,
       installmentsCount: installmentsCount,
+      skipWalletCheck: skipWalletCheck,
     );
   }
 

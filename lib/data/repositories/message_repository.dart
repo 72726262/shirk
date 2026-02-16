@@ -302,6 +302,22 @@ class MessageRepository {
     }
   }
 
+  /// Mark multiple messages as read (Bulk)
+  Future<void> markMessagesAsRead(List<String> messageIds) async {
+    if (messageIds.isEmpty) return;
+    try {
+      await _client
+          .from('messages')
+          .update({
+            'is_read': true,
+            'read_at': DateTime.now().toIso8601String(),
+          })
+          .inFilter('id', messageIds);
+    } catch (e) {
+      throw Exception('Failed to mark messages as read: $e');
+    }
+  }
+
   /// Get unread count for a chat
   Future<int> getUnreadCount(String chatId, String userId) async {
     try {

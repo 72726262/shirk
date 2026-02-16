@@ -56,7 +56,7 @@ class StorageService {
           .from(projectImagesBucket)
           .upload(fileName, compressedFile ?? File(filePath));
 
-      return _supabase.storage.from(projectImagesBucket).getPublicUrl(uploadPath);
+      return _supabase.storage.from(projectImagesBucket).getPublicUrl(fileName);
     } catch (e) {
       throw Exception('فشل رفع صورة المشروع: ${e.toString()}');
     }
@@ -84,7 +84,7 @@ class StorageService {
           .from(constructionMediaBucket)
           .upload(fileName, fileToUpload ?? File(filePath));
 
-      return _supabase.storage.from(constructionMediaBucket).getPublicUrl(uploadPath);
+      return _supabase.storage.from(constructionMediaBucket).getPublicUrl(fileName);
     } catch (e) {
       throw Exception('فشل رفع وسائط البناء: ${e.toString()}');
     }
@@ -179,7 +179,7 @@ class StorageService {
           .from(avatarsBucket)
           .upload(fileName, compressedFile ?? File(filePath));
 
-      return _supabase.storage.from(avatarsBucket).getPublicUrl(uploadPath);
+      return _supabase.storage.from(avatarsBucket).getPublicUrl(fileName);
     } catch (e) {
       throw Exception('فشل رفع الصورة الشخصية: ${e.toString()}');
     }

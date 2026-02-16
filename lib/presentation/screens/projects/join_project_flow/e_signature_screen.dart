@@ -1,16 +1,17 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
+import 'package:mmm/presentation/cubits/join_flow/join_flow_cubit.dart';
+import 'package:mmm/routes/route_names.dart';
 
 class ESignatureScreen extends StatefulWidget {
-  final String projectId;
-  final String unitId;
+  final String subscriptionId;
 
   const ESignatureScreen({
     super.key,
-    required this.projectId,
-    required this.unitId,
+    required this.subscriptionId,
   });
 
   @override
@@ -25,186 +26,220 @@ class _ESignatureScreenState extends State<ESignatureScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('التوقيع الإلكتروني')),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Contract Preview
-            Container(
-              padding: const EdgeInsets.all(Dimensions.spaceL),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary.withOpacity(0.1),
-                    AppColors.primary.withOpacity(0.05),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.contrast,
-                      size: 40,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: Dimensions.spaceL),
-                  const Text(
-                    'عقد شراكة المشروع',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: Dimensions.spaceS),
-                  Text(
-                    'برج النخيل السكني - الوحدة A101',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
+      body: BlocConsumer<JoinFlowCubit, JoinFlowState>(
+        listener: (context, state) {
+          if (state is JoinFlowCompleteState) {
+            Navigator.pop(context); // Close loading/bottom sheet if open
+            _showSignatureSuccess();
+          }
+          if (state is JoinFlowError) {
+            Navigator.pop(context); // Close loading if open
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message), backgroundColor: AppColors.error),
+            );
+          }
+          if (state is PaymentProcessingState) {
+            // Optional: Loading is shown in UI via isSubmitting
+          }
+        },
+        builder: (context, state) {
+          final isSubmitting = state is PaymentProcessingState || state is JoinFlowLoading;
 
-            // Signature Area
-            Padding(
-              padding: const EdgeInsets.all(Dimensions.spaceL),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'التوقيع الإلكتروني',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: Dimensions.spaceS),
-                  Text(
-                    'قم بالتوقيع في المنطقة أدناه لتأكيد قبولك للعقد',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: Dimensions.spaceXL),
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                if (isSubmitting)
+                  const LinearProgressIndicator(),
 
-                  // Signature Pad
-                  Container(
-                    padding: const EdgeInsets.all(Dimensions.spaceL),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(Dimensions.radiusL),
-                      border: Border.all(color: AppColors.border),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.shadow,
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
+                // Contract Preview
+                Container(
+                  padding: const EdgeInsets.all(Dimensions.spaceL),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primary.withOpacity(0.1),
+                        AppColors.primary.withOpacity(0.05),
                       ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    child: Column(
-                      children: [
-                        // Signature Preview
-                        if (_signatureImage != null)
-                          Container(
-                            margin: const EdgeInsets.only(
-                              bottom: Dimensions.spaceL,
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.contrast,
+                          size: 40,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: Dimensions.spaceL),
+                      const Text(
+                        'عقد شراكة المشروع',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: Dimensions.spaceS),
+                      Text(
+                        'برج النخيل السكني - الوحدة A101',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Signature Area
+                Padding(
+                  padding: const EdgeInsets.all(Dimensions.spaceL),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'التوقيع الإلكتروني',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: Dimensions.spaceS),
+                      Text(
+                        'قم بالتوقيع في المنطقة أدناه لتأكيد قبولك للعقد',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: Dimensions.spaceXL),
+
+                      // Signature Pad
+                      Container(
+                        padding: const EdgeInsets.all(Dimensions.spaceL),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                          border: Border.all(color: AppColors.border),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.shadow,
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                            padding: const EdgeInsets.all(Dimensions.spaceL),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: AppColors.border),
-                              borderRadius: BorderRadius.circular(
-                                Dimensions.radiusM,
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // Signature Preview
+                            if (_signatureImage != null)
+                              Container(
+                                margin: const EdgeInsets.only(
+                                  bottom: Dimensions.spaceL,
+                                ),
+                                padding: const EdgeInsets.all(Dimensions.spaceL),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: AppColors.border),
+                                  borderRadius: BorderRadius.circular(
+                                    Dimensions.radiusM,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Text(
+                                      'التوقيع المدخل',
+                                      style: TextStyle(fontWeight: FontWeight.w600),
+                                    ),
+                                    const SizedBox(height: Dimensions.spaceS),
+                                    if (_signatureImage!.isNotEmpty)
+                                      Image.memory(
+                                        _signatureImage!,
+                                        height: 60,
+                                        fit: BoxFit.contain,
+                                      )
+                                    else
+                                       const Text('تم التسجيل (محاكاة)'),
+                                  ],
+                                ),
+                              ),
+
+                            // Signature Canvas
+                             GestureDetector(
+                              onTap: isSubmitting ? null : () {
+                                // Mock signature for now
+                                 setState(() {
+                                  // Create a dummy non-empty list to simulate signature bytes
+                                  _signatureImage = Uint8List.fromList(List.generate(100, (index) => index % 255));
+                                  _isSigning = true; 
+                                });
+                              },
+                              child: Container(
+                                height: 200,
+                                color: Colors.grey[100],
+                                child: const Center(child: Text('اضغط هنا للتوقيع (محاكاة)')),
+                              ),
+                             ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: Dimensions.spaceXL),
+
+                      // Contract Terms Summary
+                      Container(
+                        padding: const EdgeInsets.all(Dimensions.spaceL),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'ملخص البنود الرئيسية',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: Dimensions.spaceL),
+                            _buildTermItem('المبلغ الإجمالي', '1,200,000 ج.م'),
+                            _buildTermItem('الدفعة الأولى', '120,000 ج.م (10%)'),
+                            _buildTermItem('مدة السداد', '48 شهراً'),
+                            _buildTermItem('القسط الشهري', '22,500 ج.م'),
+                            _buildTermItem('تاريخ التسليم المتوقع', 'يونيو 2025'),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: Dimensions.spaceXL),
+
+                      // Legal Notice
+                      Container(
+                        padding: const EdgeInsets.all(Dimensions.spaceL),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                          border: Border.all(
+                            color: AppColors.warning.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.gavel, color: AppColors.warning),
+                            const SizedBox(width: Dimensions.spaceL),
+                            Expanded(
+                              child: Text(
+                                'التوقيع الإلكتروني له نفس القوة القانونية للتوقيع اليدوي وفقاً للقوانين المحلية والدولية',
+                                style: TextStyle(
+                                  color: AppColors.warning,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
-                            child: Column(
-                              children: [
-                                const Text(
-                                  'التوقيع المدخل',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                const SizedBox(height: Dimensions.spaceS),
-                                Image.memory(
-                                  _signatureImage!,
-                                  height: 60,
-                                  fit: BoxFit.contain,
-                                ),
-                              ],
-                            ),
-                          ),
-
-                        // Signature Canvas
-                        // SignaturePadWidget(
-                        //   onChanged: (signature) {
-                        //     setState(() {
-                        //       _signatureImage = signature;
-                        //     });
-                        //   },
-                        //   height: 200,
-                        // ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: Dimensions.spaceXL),
-
-                  // Contract Terms Summary
-                  Container(
-                    padding: const EdgeInsets.all(Dimensions.spaceL),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(Dimensions.radiusL),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'ملخص البنود الرئيسية',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          ],
                         ),
-                        const SizedBox(height: Dimensions.spaceL),
-                        _buildTermItem('المبلغ الإجمالي', '1,200,000 ج.م'),
-                        _buildTermItem('الدفعة الأولى', '120,000 ج.م (10%)'),
-                        _buildTermItem('مدة السداد', '48 شهراً'),
-                        _buildTermItem('القسط الشهري', '22,500 ج.م'),
-                        _buildTermItem('تاريخ التسليم المتوقع', 'يونيو 2025'),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: Dimensions.spaceXL),
-
-                  // Legal Notice
-                  Container(
-                    padding: const EdgeInsets.all(Dimensions.spaceL),
-                    decoration: BoxDecoration(
-                      color: AppColors.warning.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(Dimensions.radiusL),
-                      border: Border.all(
-                        color: AppColors.warning.withOpacity(0.3),
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.gavel, color: AppColors.warning),
-                        const SizedBox(width: Dimensions.spaceL),
-                        Expanded(
-                          child: Text(
-                            'التوقيع الإلكتروني له نفس القوة القانونية للتوقيع اليدوي وفقاً للقوانين المحلية والدولية',
-                            style: TextStyle(
-                              color: AppColors.warning,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(Dimensions.spaceL),
@@ -252,7 +287,7 @@ class _ESignatureScreenState extends State<ESignatureScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _signatureImage != null && _isSigning
+                onPressed: _isSigning
                     ? () {
                         _confirmSignature();
                       }
@@ -276,7 +311,7 @@ class _ESignatureScreenState extends State<ESignatureScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (_signatureImage != null && _isSigning) ...[
+                    if (_isSigning) ...[
                       const SizedBox(width: Dimensions.spaceS),
                       Container(
                         width: 24,
@@ -364,8 +399,11 @@ class _ESignatureScreenState extends State<ESignatureScreen> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pop(context);
-                        _showSignatureSuccess();
+                         // Call Cubit to sign
+                         if (_signatureImage != null) {
+                           context.read<JoinFlowCubit>().signContractBytes(_signatureImage!);
+                           Navigator.pop(context); // Close sheet, wait for listener
+                         }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -379,9 +417,11 @@ class _ESignatureScreenState extends State<ESignatureScreen> {
               const SizedBox(height: Dimensions.spaceL),
               TextButton(
                 onPressed: () {
-                  // Use fingerprint instead
-                  Navigator.pop(context);
-                  _showSignatureSuccess();
+                  // Use fingerprint instead - Mock
+                  if (_signatureImage != null) {
+                    context.read<JoinFlowCubit>().signContractBytes(_signatureImage!);
+                    Navigator.pop(context); // Close sheet
+                  }
                 },
                 child: const Text('استخدام بصمة الإصبع'),
               ),
@@ -514,12 +554,14 @@ class _ESignatureScreenState extends State<ESignatureScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(
+                      
+                      final cubit = context.read<JoinFlowCubit>();
+                       Navigator.pushNamed(
                         context,
-                        '/confirmation',
+                        RouteNames.joinConfirmation,
                         arguments: {
-                          'projectId': widget.projectId,
-                          'unitId': widget.unitId,
+                          'projectId': cubit.projectId,
+                          'unitId': cubit.selectedUnit?.id,
                         },
                       );
                     },

@@ -39,11 +39,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ),
       body: BlocConsumer<JoinFlowCubit, JoinFlowState>(
         listener: (context, state) {
-          if (state is PaymentCompleted) {
+          if (state is SignatureRequiredState) {
             Navigator.pushNamed(
               context,
               RouteNames.eSignature,
-              arguments: {'subscriptionId': widget.subscriptionId},
+              arguments: {'subscriptionId': state.subscription.id},
             );
           }
           if (state is JoinFlowError) {

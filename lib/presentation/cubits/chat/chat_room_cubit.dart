@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart'; // Add this for debugPrint
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/data/models/message_model.dart';
 import 'package:mmm/data/repositories/message_repository.dart';
@@ -97,13 +98,16 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
   }
 
   Future<void> _markMessagesAsRead(List<MessageModel> messages) async {
-    for (final message in messages) {
-      if (!message.isRead && message.senderId != _currentUserId) {
-        try {
-          await _messageRepository.markAsRead(message.id);
-        } catch (e) {
-          // Ignore errors for mark as read
-        }
+    final unreadMessageIds = messages
+        .where((m) => !m.isRead && m.senderId != _currentUserId)
+        .map((m) => m.id)
+        .toList();
+
+    if (unreadMessageIds.isNotEmpty) {
+      try {
+        await _messageRepository.markMessagesAsRead(unreadMessageIds);
+      } catch (e) {
+        debugPrint('Error marking messages as read: $e');
       }
     }
   }
@@ -113,6 +117,10 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
 
     if (state is ChatRoomLoaded) {
       final currentState = state as ChatRoomLoaded;
+      
+      // Proactively mark existing unread messages as read when sending
+      // This handles the case where the user entered the chat but the initial mark-as-read failed
+      _markMessagesAsRead(currentState.messages);
 
       // Optimistic Update
       final tempMessage = MessageModel(

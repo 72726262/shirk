@@ -6,8 +6,9 @@ import 'package:mmm/presentation/screens/admin/client_details_screen.dart';
 import 'package:mmm/presentation/screens/chat/chat_room_screen.dart';
 import 'package:mmm/presentation/screens/chat/chat_list_screen.dart';
 
-import 'package:mmm/presentation/screens/projects/join_project_flow/signature_screen.dart'
+import 'package:mmm/presentation/screens/projects/join_project_flow/e_signature_screen.dart'
     as new_signature;
+import 'package:mmm/presentation/screens/projects/join_project_flow/confirmation_screen.dart';
 import 'package:mmm/routes/route_names.dart';
 import 'package:mmm/data/models/project_model.dart';
 import 'package:mmm/data/models/installment_model.dart';
@@ -190,16 +191,26 @@ class RouteGenerator {
         }
         return _errorRoute('بيانات الدفع مطلوبة');
 
-      case RouteNames.signature:
+      case RouteNames.eSignature:
         if (args is Map) {
           return _slideRoute(
-            new_signature.SignatureScreen(
-              // الملف الجديد
+            new_signature.ESignatureScreen(
               subscriptionId: args['subscriptionId'],
             ),
           );
         }
         return _errorRoute('بيانات التوقيع مطلوبة');
+
+      case RouteNames.joinConfirmation:
+        if (args is Map) {
+          return _fadeRoute(
+            ConfirmationScreen(
+              projectId: args['projectId'],
+              unitId: args['unitId'],
+            ),
+          );
+        }
+        return _errorRoute('Project ID and Unit ID required');
 
       // Wallet
       case RouteNames.wallet:

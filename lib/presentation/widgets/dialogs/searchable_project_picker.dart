@@ -195,7 +195,7 @@ class _SearchableProjectPickerState extends State<SearchableProjectPicker> {
                             crossAxisCount: 2,
                             crossAxisSpacing: Dimensions.spaceM,
                             mainAxisSpacing: Dimensions.spaceM,
-                            childAspectRatio: 0.85,
+                            childAspectRatio: 0.75,
                           ),
                       itemCount: _filteredProjects.length,
                       itemBuilder: (context, index) {
@@ -231,7 +231,7 @@ class _SearchableProjectPickerState extends State<SearchableProjectPicker> {
                               children: [
                                 // Project Image
                                 Expanded(
-                                  flex: 2,
+                                  flex: 3,
                                   child: Container(
                                     decoration: BoxDecoration(
                                       borderRadius: const BorderRadius.only(
@@ -264,7 +264,7 @@ class _SearchableProjectPickerState extends State<SearchableProjectPicker> {
                                         ? const Center(
                                             child: Icon(
                                               Icons.business,
-                                              size: 40,
+                                              size: 32,
                                               color: AppColors.gray400,
                                             ),
                                           )
@@ -274,91 +274,87 @@ class _SearchableProjectPickerState extends State<SearchableProjectPicker> {
 
                                 // Project Details
                                 Expanded(
-                                  child: LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      return SingleChildScrollView(
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(
-                                            Dimensions.spaceM,
+                                  flex: 2,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(
+                                      Dimensions.spaceS,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        // Project Name
+                                        Text(
+                                          project.name,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.textPrimary,
                                           ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              // Project Name
-                                              Text(
-                                                project.name,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: AppColors.textPrimary,
-                                                ),
-                                              ),
+                                        ),
 
-                                              // Location & Status
-                                              const SizedBox(height: 8),
-                                              if (project.location != null)
-                                                Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.location_on,
-                                                      size: 12,
-                                                      color:
-                                                          AppColors.textSecondary,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Expanded(
-                                                      child: Text(
-                                                        project.location!,
-                                                        maxLines: 1,
-                                                        overflow:
-                                                            TextOverflow.ellipsis,
-                                                        style: const TextStyle(
-                                                          fontSize: 11,
-                                                          color: AppColors
-                                                              .textSecondary,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              const SizedBox(height: 4),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: _getStatusColor(
-                                                    project.status.toString() ??
-                                                        '',
-                                                  ).withOpacity(0.1),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        Dimensions.radiusS,
-                                                      ),
-                                                ),
+                                        // Location
+                                        if (project.location != null)
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.location_on,
+                                                size: 10,
+                                                color:
+                                                    AppColors.textSecondary,
+                                              ),
+                                              const SizedBox(width: 2),
+                                              Expanded(
                                                 child: Text(
-                                                  project.status.toString() ??
-                                                      'نشط',
-                                                  style: TextStyle(
+                                                  project.location!,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
                                                     fontSize: 10,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: _getStatusColor(
-                                                      project.status.toString() ??
-                                                          '',
-                                                    ),
+                                                    color: AppColors
+                                                        .textSecondary,
                                                   ),
                                                 ),
                                               ),
                                             ],
                                           ),
+                                          
+                                        // Status
+                                        Container(
+                                          padding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 6,
+                                                vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _getStatusColor(
+                                              project.status.toString() ??
+                                                  '',
+                                            ).withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(
+                                                  Dimensions.radiusS,
+                                                ),
+                                          ),
+                                          child: Text(
+                                            project.status.toString() ??
+                                                'نشط',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w600,
+                                              color: _getStatusColor(
+                                                project.status.toString() ??
+                                                    '',
+                                              ),
+                                            ),
+                                          ),
                                         ),
-                                      );
-                                    },
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],

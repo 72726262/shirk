@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
+import 'package:mmm/presentation/cubits/chat/chat_list_cubit.dart'; // Added
+import 'package:mmm/presentation/screens/profile/profile_screen.dart';
 import 'dart:ui';
 
 class AdminDrawer extends StatelessWidget {
@@ -48,7 +50,17 @@ class AdminDrawer extends StatelessWidget {
                 children: [
                   _buildDrawerHeader(context),
                   const SizedBox(height: 20),
-                  ..._buildNavigationItems(context),
+                  BlocBuilder<ChatListCubit, ChatListState>(
+                    builder: (context, chatState) {
+                      int unreadCount = 0;
+                      if (chatState is ChatListLoaded) {
+                        unreadCount = chatState.totalUnreadCount;
+                      }
+                      return Column(
+                        children: _buildNavigationItems(context, unreadCount),
+                      );
+                    },
+                  ),
                   const Divider(color: Colors.white24, height: 40),
                   _buildFooter(context),
                 ],
@@ -61,108 +73,139 @@ class AdminDrawer extends StatelessWidget {
   }
 
   Widget _buildDrawerHeader(BuildContext context) {
-    return Container(
-      height: 180,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primary.withOpacity(0.8),
-            const Color(0xFF6C63FF).withOpacity(0.6),
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ProfileScreen()),
+        );
+      },
+      child: Container(
+        height: 180,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.primary.withOpacity(0.8),
+              const Color(0xFF6C63FF).withOpacity(0.6),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
           ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // 3D Background Pattern
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _GridPainter(),
+        child: Stack(
+          children: [
+            // 3D Background Pattern
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _GridPainter(),
+              ),
             ),
-          ),
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Avatar with 3D effect
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.white,
-                        Color(0xFFE0E0E0),
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Avatar with 3D effect
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.white,
+                          Color(0xFFE0E0E0),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
+                        ),
+                        BoxShadow(
+                          color: Colors.white.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(-5, -5),
+                        ),
                       ],
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
-                      ),
-                      BoxShadow(
-                        color: Colors.white.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(-5, -5),
-                      ),
-                    ],
+                    child: BlocBuilder<AuthCubit, AuthState>(
+                      builder: (context, state) {
+                        if (state is Authenticated && state.user.avatarUrl != null) {
+                          return ClipOval(
+                            child: Image.network(
+                              state.user.avatarUrl!,
+                              fit: BoxFit.cover,
+                            ),
+                          );
+                        }
+                        return const Icon(
+                          Icons.admin_panel_settings,
+                          size: 35,
+                          color: AppColors.primary,
+                        );
+                      },
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.admin_panel_settings,
-                    size: 35,
-                    color: AppColors.primary,
+                  const SizedBox(height: 12),
+                  // Title with glow effect
+                  BlocBuilder<AuthCubit, AuthState>(
+                    builder: (context, state) {
+                      String name = 'لوحة التحكم';
+                      if (state is Authenticated) {
+                        name = state.user.fullName ?? 'لوحة التحكم';
+                      }
+                      return Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              color: Colors.white30,
+                              blurRadius: 10,
+                              offset: Offset(0, 0),
+                            ),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      );
+                    },
                   ),
-                ),
-                const SizedBox(height: 12),
-                // Title with glow effect
-                const Text(
-                  'لوحة التحكم',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    shadows: [
-                      Shadow(
-                        color: Colors.white30,
-                        blurRadius: 10,
-                        offset: Offset(0, 0),
-                      ),
-                    ],
+                  const SizedBox(height: 2),
+                  const Text(
+                    'إدارة النظام',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white70,
+                      letterSpacing: 1,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'إدارة النظام',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withOpacity(0.8),
-                    letterSpacing: 1,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  List<Widget> _buildNavigationItems(BuildContext context) {
+  List<Widget> _buildNavigationItems(BuildContext context, int unreadCount) {
     final items = [
       _DrawerItem(icon: Icons.dashboard, label: 'الرئيسية', index: 0),
       _DrawerItem(icon: Icons.business, label: 'المشاريع', index: 1),
@@ -173,8 +216,8 @@ class AdminDrawer extends StatelessWidget {
       _DrawerItem(icon: Icons.folder, label: 'المستندات', index: 6),
       _DrawerItem(icon: Icons.key, label: 'التسليم', index: 7),
       _DrawerItem(icon: Icons.notifications, label: 'الإشعارات', index: 8),
-      _DrawerItem(icon: Icons.assignment, label: 'إدارة الاشتراكات', index: 9, badge: 0), // Will add real count later
-      _DrawerItem(icon: Icons.chat_bubble, label: 'الرسائل', index: 10),
+      _DrawerItem(icon: Icons.bookmark_added, label: 'الحجوزات', index: 9, badge: 0),
+      _DrawerItem(icon: Icons.chat_bubble, label: 'الرسائل', index: 10, badge: unreadCount),
     ];
 
     return items.map((item) => _buildDrawerItem(context, item)).toList();
