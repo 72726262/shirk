@@ -5,76 +5,127 @@ import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/data/models/project_model.dart';
 import 'package:mmm/data/models/unit_model.dart';
 import 'package:mmm/presentation/cubits/join_flow/join_flow_cubit.dart';
-import 'package:mmm/routes/route_names.dart';
+import 'package:mmm/presentation/widgets/custom/standard_unit_card.dart';
+import 'package:mmm/presentation/widgets/common/custom_text_field.dart';
 
 class SelectUnitScreen extends StatefulWidget {
-  final String projectId;
-  final ProjectModel? project; // اختياري
+  final ProjectModel project;
 
-  const SelectUnitScreen({super.key, required this.projectId, this.project});
+  const SelectUnitScreen({super.key, required this.project});
 
   @override
   State<SelectUnitScreen> createState() => _SelectUnitScreenState();
 }
 
 class _SelectUnitScreenState extends State<SelectUnitScreen> {
-  bool _viewMode = false; // false = grid, true = list
+  final TextEditingController _searchController = TextEditingController();
+  String _selectedFilter = 'available'; // Default to available for investment
 
   @override
   void initState() {
     super.initState();
-    context.read<JoinFlowCubit>().loadAvailableUnits(widget.projectId);
+    context.read<JoinFlowCubit>().loadAvailableUnits(widget.project.id);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<UnitModel> _filterUnits(List<UnitModel> units) {
+    return units.where((unit) {
+      // 1. Filter by Status (unless 'all')
+      if (_selectedFilter != 'all' && unit.status.name != _selectedFilter) {
+        return false;
+      }
+      
+      // 2. Filter by Search
+      if (_searchController.text.isNotEmpty) {
+        final query = _searchController.text.toLowerCase();
+        return unit.unitNumber.toLowerCase().contains(query);
+      }
+      
+      return true;
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('اختيار الوحدة'),
-        actions: [
-          IconButton(
-            icon: Icon(_viewMode ? Icons.grid_view : Icons.list),
-            onPressed: () {
-              setState(() {
-                _viewMode = !_viewMode;
-              });
-            },
-          ),
-        ],
-      ),
-      body: BlocConsumer<JoinFlowCubit, JoinFlowState>(
-        listener: (context, state) {
-          if (state is JoinFlowError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.error,
-              ),
-            );
-          }
-        },
+      backgroundColor: AppColors.background,
+      appBar: AppBar(title: const Text('اختيار الوحدة')),
+      body: BlocBuilder<JoinFlowCubit, JoinFlowState>(
         builder: (context, state) {
           if (state is JoinFlowLoading) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (state is UnitSelectionState) {
-            final units = state.availableUnits;
-            final selectedUnit = state.selectedUnit;
+          if (state is JoinFlowError) {
+            return Center(child: Text(state.message));
+          }
 
-            if (units.isEmpty) {
-              return const Center(child: Text('لا توجد وحدات متاحة'));
-            }
+          if (state is UnitSelectionState) {
+            final filteredUnits = _filterUnits(state.availableUnits);
 
             return Column(
               children: [
-                Expanded(
-                  child: _viewMode
-                      ? _buildUnitsList(units, selectedUnit)
-                      : _buildUnitsGrid(units, selectedUnit),
+                // Search and Filters
+                Container(
+                  padding: const EdgeInsets.all(Dimensions.spaceM),
+                  color: Colors.white,
+                  child: Column(
+                    children: [
+                      CustomTextField(
+                        controller: _searchController,
+                        label: 'بحث',
+                        showLabel: false,
+                        hint: 'بحث برقم الوحدة...',
+                        prefixIcon: Icons.search,
+                        onChanged: (val) => setState(() {}),
+                      ),
+                      const SizedBox(height: Dimensions.spaceS),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildFilterChip('all', 'الكل'),
+                            const SizedBox(width: 8),
+                            _buildFilterChip('available', 'متاح'),
+                            const SizedBox(width: 8),
+                            _buildFilterChip('reserved', 'محجوز'),
+                            const SizedBox(width: 8),
+                            _buildFilterChip('sold', 'مباع'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                if (selectedUnit != null)
-                  _buildSelectedUnitSummary(context, selectedUnit),
+
+                // Units Grid
+                Expanded(
+                  child: filteredUnits.isEmpty
+                      ? const Center(child: Text('لا توجد وحدات مطابقة'))
+                      : GridView.builder(
+                          padding: const EdgeInsets.all(Dimensions.spaceM),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.70, // Adjust based on card content
+                            crossAxisSpacing: Dimensions.spaceM,
+                            mainAxisSpacing: Dimensions.spaceM,
+                          ),
+                          itemCount: filteredUnits.length,
+                          itemBuilder: (context, index) {
+                            return StandardUnitCard(
+                              unit: filteredUnits[index],
+                              project: widget.project,
+                              // No edit/delete for client flow here
+                              // The Card handles navigation to details via "Details & Booking" button
+                            );
+                          },
+                        ),
+                ),
               ],
             );
           }
@@ -85,158 +136,24 @@ class _SelectUnitScreenState extends State<SelectUnitScreen> {
     );
   }
 
-  Widget _buildUnitsGrid(List<UnitModel> units, UnitModel? selectedUnit) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(Dimensions.spaceL),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: Dimensions.spaceL,
-        mainAxisSpacing: Dimensions.spaceL,
-        childAspectRatio: 0.9,
-      ),
-      itemCount: units.length,
-      itemBuilder: (context, index) {
-        final unit = units[index];
-        final isSelected = selectedUnit?.id == unit.id;
-        final isAvailable =
-            unit.status == 'available'; // Assuming 'available' string or Enum
-
-        return GestureDetector(
-          onTap: isAvailable
-              ? () {
-                  context.read<JoinFlowCubit>().selectUnit(unit);
-                }
-              : null,
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(Dimensions.radiusL),
-              border: Border.all(
-                color: isSelected ? AppColors.primary : AppColors.border,
-                width: isSelected ? 2 : 1,
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: AppColors.shadow,
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Placeholder Image (since unit model might not have image yet)
-                Container(
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: AppColors.gray200,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(Dimensions.radiusL),
-                      topRight: Radius.circular(Dimensions.radiusL),
-                    ),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.apartment,
-                      size: 40,
-                      color: AppColors.textHint,
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(Dimensions.spaceM),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Unit ${unit.unitNumber}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        '${unit.price} SAR',
-                        style: const TextStyle(color: AppColors.primary),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+  Widget _buildFilterChip(String value, String label) {
+    final isSelected = _selectedFilter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (bool selected) {
+        if (selected) {
+          setState(() {
+            _selectedFilter = value;
+          });
+        }
       },
-    );
-  }
-
-  Widget _buildUnitsList(List<UnitModel> units, UnitModel? selectedUnit) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(Dimensions.spaceL),
-      itemCount: units.length,
-      itemBuilder: (context, index) {
-        final unit = units[index];
-        final isSelected = selectedUnit?.id == unit.id;
-        return ListTile(
-          title: Text('Unit ${unit.unitNumber}'),
-          subtitle: Text('${unit.price} SAR'),
-          selected: isSelected,
-          onTap: () => context.read<JoinFlowCubit>().selectUnit(unit),
-        );
-      },
-    );
-  }
-
-  Widget _buildSelectedUnitSummary(BuildContext context, UnitModel unit) {
-    return Container(
-      padding: const EdgeInsets.all(Dimensions.spaceL),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Unit Selected',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-                Text(
-                  unit.unitNumber,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                RouteNames.contractSummary,
-                arguments: {'projectId': widget.projectId, 'unitId': unit.id},
-              );
-            },
-            child: const Text('Continue'),
-          ),
-        ],
+      selectedColor: AppColors.primary,
+      backgroundColor: Colors.white,
+      side: isSelected ? BorderSide.none : const BorderSide(color: AppColors.border),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : AppColors.textPrimary,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
       ),
     );
   }

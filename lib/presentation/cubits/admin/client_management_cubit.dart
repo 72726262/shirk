@@ -62,10 +62,12 @@ class ClientManagementCubit extends Cubit<ClientManagementState> {
           .getClientsStream(kycStatus: kycStatus, searchQuery: searchQuery)
           .listen(
             (clients) {
+              if (isClosed) return; // ✅ منع emit بعد إغلاق الـ Cubit
               print('✅ تم استقبال تحديث: ${clients.length} عميل');
               emit(ClientManagementLoaded(clients));
             },
             onError: (error) {
+              if (isClosed) return;
               print('❌ خطأ في stream العملاء: $error');
               emit(
                 ClientManagementError('فشل تحميل العملاء: ${error.toString()}'),

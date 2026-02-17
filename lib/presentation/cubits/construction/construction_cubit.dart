@@ -74,6 +74,26 @@ class ConstructionCubit extends Cubit<ConstructionState> {
     }
   }
 
+  Future<void> loadUserUpdates(String userId) async {
+    emit(ConstructionLoading());
+    try {
+      final updates = await _constructionService.getUserConstructionUpdates(userId);
+      
+      // Calculate a simple timeline and summaries for the user view if needed, 
+      // or just pass empty/default values since the main view is a list.
+      // For now, we reuse ConstructionLoaded but with limited data populated.
+      
+      emit(ConstructionLoaded(
+        updates: updates,
+        latestUpdate: updates.isNotEmpty ? updates.first : null,
+        timeline: {}, // Not needed for simple list
+        progressSummary: {}, // Not needed for simple list
+      ));
+    } catch (e) {
+      emit(ConstructionError(e.toString()));
+    }
+  }
+
   void subscribeToUpdates(String projectId) {
     _updatesSubscription?.cancel();
     _updatesSubscription = _constructionService

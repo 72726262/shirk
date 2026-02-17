@@ -6,7 +6,7 @@ class ChatStorageService {
   final SupabaseClient _client;
 
   ChatStorageService({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+    : _client = client ?? Supabase.instance.client;
 
   /// Upload image to chat-images bucket
   Future<Map<String, dynamic>> uploadImage({
@@ -23,8 +23,10 @@ class ChatStorageService {
       // 1. Upload file
       final bytes = await imageFile.readAsBytes();
       final mimeType = _getMimeType(imageFile.path);
-      
-      await _client.storage.from('chat-images').uploadBinary(
+
+      await _client.storage
+          .from('chat-images')
+          .uploadBinary(
             storagePath,
             bytes,
             fileOptions: FileOptions(
@@ -35,14 +37,16 @@ class ChatStorageService {
           );
 
       // 2. Get public URL
-      final publicUrl = _client.storage.from('chat-images').getPublicUrl(storagePath);
+      final publicUrl = _client.storage
+          .from('chat-images')
+          .getPublicUrl(storagePath);
 
       // 3. Get file metadata
       final fileSize = await imageFile.length();
 
       return {
         'media_url': publicUrl,
-        'media_url': publicUrl,
+
         'file_name': fileName,
         'file_size': fileSize,
         'storage_path': storagePath,
@@ -72,7 +76,9 @@ class ChatStorageService {
       final bytes = await file.readAsBytes();
       final mimeType = _getMimeType(file.path);
 
-      await _client.storage.from('chat-files').uploadBinary(
+      await _client.storage
+          .from('chat-files')
+          .uploadBinary(
             storagePath,
             bytes,
             fileOptions: FileOptions(
@@ -82,7 +88,9 @@ class ChatStorageService {
             ),
           );
 
-      final publicUrl = _client.storage.from('chat-files').getPublicUrl(storagePath);
+      final publicUrl = _client.storage
+          .from('chat-files')
+          .getPublicUrl(storagePath);
       final fileSize = await file.length();
 
       return {
@@ -117,18 +125,18 @@ class ChatStorageService {
     try {
       // Upload video
       final videoData = await uploadFile(
-        file: videoFile, 
-        chatId: chatId, 
+        file: videoFile,
+        chatId: chatId,
         userId: userId,
-        onProgress: onProgress
+        onProgress: onProgress,
       );
 
       String? thumbnailUrl;
       if (thumbnailFile != null) {
         final thumbData = await uploadImage(
-          imageFile: thumbnailFile, 
-          chatId: chatId, 
-          userId: userId
+          imageFile: thumbnailFile,
+          chatId: chatId,
+          userId: userId,
         );
         thumbnailUrl = thumbData['media_url'];
       }
@@ -140,10 +148,10 @@ class ChatStorageService {
           ...videoData['media_metadata'] as Map<String, dynamic>,
           'type': 'video',
           'duration': 0, // ideally get duration
-        }
+        },
       };
     } catch (e) {
-       throw Exception('Failed to upload video: $e');
+      throw Exception('Failed to upload video: $e');
     }
   }
 

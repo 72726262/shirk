@@ -167,11 +167,6 @@ class ChatRepository {
     }
   }
 
-  void dispose() {
-    _chatsController.close();
-    _chatsSubscription?.unsubscribe();
-  }
-
   // ... (createOrGetChat, getChatById, getUnreadCountsForUser methods remain similar but reusing _fetchChats logic if needed)
 
   /// Create or get private chat between two users
@@ -281,14 +276,105 @@ class ChatRepository {
   /// Listen for new messages globally (for notifications)
   /// Note: This creates a new subscription each time it's listened to.
   /// The caller is responsible for cancelling the subscription.
+  /// Get ALL chats for Admin (ignoring membership)
+  Stream<List<ChatModel>> getAdminChatsStream(String adminId) {
+    _initAdminChatsSubscription(adminId);
+    return _chatsController.stream;
+  }
+
+  Future<void> _initAdminChatsSubscription(String adminId) async {
+    await _fetchAdminChats();
+
+    _chatsSubscription = _client
+        .channel('public:admin_chats')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'chats',
+          callback: (_) => _fetchAdminChats(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'messages',
+          callback: (_) => _fetchAdminChats(),
+        )
+        .subscribe();
+  }
+
+  Future<void> _fetchAdminChats() async {
+    try {
+      final chatsData = await _client
+          .from('chats')
+          .select('''
+            *,
+            chat_members(
+              *,
+              profiles(*)
+            ),
+            messages(
+              *,
+              profiles(*)
+            )
+          ''')
+          .order('last_message_at', ascending: false);
+
+      final chats = (chatsData as List).map((json) {
+        if (json['messages'] != null && (json['messages'] as List).isNotEmpty) {
+          final msgs = json['messages'] as List;
+          msgs.sort((a, b) {
+            final da =
+                DateTime.tryParse(a['created_at'].toString()) ??
+                DateTime.fromMillisecondsSinceEpoch(0);
+            final db =
+                DateTime.tryParse(b['created_at'].toString()) ??
+                DateTime.fromMillisecondsSinceEpoch(0);
+            return db.compareTo(da);
+          });
+          json['messages'] = [msgs.first];
+        }
+        return ChatModel.fromJson(json);
+      }).toList();
+
+      if (!_chatsController.isClosed) {
+        _chatsController.add(chats);
+      }
+    } catch (e) {
+      debugPrint('Error fetching admin chats: $e');
+    }
+  }
+
+  /// Get unread counts for Admin (Active unread messages from non-admins)
+  Future<Map<String, int>> getUnreadCountsForAdmin(String adminId) async {
+    try {
+      // Fetch all unread messages that were NOT sent by the current admin
+      // This is an approximation. Ideally we check if sender is 'user'.
+      final response = await _client
+          .from('messages')
+          .select('chat_id')
+          .eq('is_read', false)
+          .neq('sender_id', adminId);
+
+      final Map<String, int> counts = {};
+
+      for (final item in response as List) {
+        final chatId = item['chat_id'] as String;
+        counts[chatId] = (counts[chatId] ?? 0) + 1;
+      }
+
+      return counts;
+    } catch (e) {
+      debugPrint('Error fetching admin unread counts: $e');
+      return {};
+    }
+  }
+
+  /// Listen for new messages globally (for notifications)
   Stream<MessageModel> get onNewMessage {
     final controller = StreamController<MessageModel>();
-
-    // Create a unique channel for this listener to avoid conflicts
     final channel = _client.channel(
       'global_messages_${DateTime.now().millisecondsSinceEpoch}',
     );
-
     channel
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
@@ -299,7 +385,7 @@ class ChatRepository {
               try {
                 controller.add(MessageModel.fromJson(payload.newRecord!));
               } catch (e) {
-                print(e.toString());
+                print(e);
               }
             }
           },
@@ -310,7 +396,11 @@ class ChatRepository {
       await channel.unsubscribe();
       await controller.close();
     };
-
     return controller.stream;
+  }
+
+  void dispose() {
+    _chatsController.close();
+    _chatsSubscription?.unsubscribe();
   }
 }

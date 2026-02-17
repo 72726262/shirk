@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mmm/presentation/screens/splash/splash_screen.dart'; // Import SplashScreen
+import 'package:mmm/data/models/subscription_model.dart';
 import 'package:mmm/data/models/user_model.dart';
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
 import 'package:mmm/presentation/screens/admin/client_details_screen.dart';
@@ -48,6 +50,7 @@ import 'package:mmm/presentation/screens/construction/construction_updates_scree
 
 // Subscriptions & Installments
 import 'package:mmm/presentation/screens/subscriptions/subscriptions_screen.dart';
+import 'package:mmm/presentation/screens/subscriptions/subscription_detail_screen.dart';
 import 'package:mmm/presentation/screens/installments/installments_screen.dart';
 import 'package:mmm/presentation/screens/installments/installment_detail_screen.dart';
 
@@ -90,6 +93,9 @@ class RouteGenerator {
 
     switch (settings.name) {
       // Auth Routes
+      case RouteNames.splash:
+        return _fadeRoute(const SplashScreen());
+
       case RouteNames.login:
         return _fadeRoute(const LoginScreen());
 
@@ -165,7 +171,7 @@ class RouteGenerator {
       // Join Flow
       case RouteNames.selectUnit:
         if (args is ProjectModel) {
-          return _slideRoute(SelectUnitScreen(projectId: args.id));
+          return _slideRoute(SelectUnitScreen(project: args));
         }
         return _errorRoute('المشروع مطلوب');
 
@@ -225,9 +231,25 @@ class RouteGenerator {
       case RouteNames.transactionHistory:
         return _slideRoute(const TransactionHistoryScreen());
 
+      case RouteNames.transactions:
+        return _slideRoute(const TransactionHistoryScreen());
+
       // Subscriptions & Installments
       case RouteNames.subscriptions:
         return _fadeRoute(const SubscriptionsScreen());
+
+      case RouteNames.subscriptionDetail:
+        if (args is SubscriptionModel) {
+          return _slideRoute(
+            SubscriptionDetailScreen(
+              subscriptionId: args.id,
+              subscription: args,
+            ),
+          );
+        } else if (args is String) {
+          return _slideRoute(SubscriptionDetailScreen(subscriptionId: args));
+        }
+        return _errorRoute('بيانات الاشتراك مطلوبة');
 
       case RouteNames.installments:
         if (args is String?) {

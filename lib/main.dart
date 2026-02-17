@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'package:device_preview/device_preview.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -47,7 +48,8 @@ import 'package:mmm/data/repositories/units_repository.dart';
 import 'package:mmm/core/services/network_service.dart';
 import 'package:mmm/core/services/cache_service.dart';
 
-import 'package:mmm/presentation/widgets/chat/global_message_listener.dart'; // ✅ Add this import
+import 'package:mmm/presentation/widgets/chat/global_message_listener.dart';
+import 'package:mmm/core/utils/global_route_observer.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -78,7 +80,8 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(const SharikApp());
+  runApp(DevicePreview(enabled: true, builder: (context) => const SharikApp()));
+  // runApp(const SharikApp());
 }
 
 class SharikApp extends StatelessWidget {
@@ -97,7 +100,8 @@ class SharikApp extends StatelessWidget {
         RepositoryProvider(create: (_) => ChatRepository()),
         RepositoryProvider(create: (_) => UnitsRepository()),
         RepositoryProvider(
-            create: (_) => PaymentsRepository(SupabaseService.instance.client)),
+          create: (_) => PaymentsRepository(SupabaseService.instance.client),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -177,20 +181,32 @@ class SharikApp extends StatelessWidget {
             GlobalCupertinoLocalizations.delegate,
           ],
 
+          locale: const Locale('ar', 'SA'), // Force Arabic RTL
+
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: ThemeMode.light,
 
-          navigatorKey: navigatorKey, // ✅ Add navigator key
+          navigatorKey: navigatorKey,
+          navigatorObservers: [GlobalRouteObserver()],
           onGenerateRoute: RouteGenerator.generateRoute,
-          initialRoute: RouteNames.login,
+          initialRoute: RouteNames.splash,
 
           builder: (context, child) {
-            return GlobalMessageListener(
-              // ✅ Wrap with listener
-              navigatorKey: navigatorKey,
-              child: Directionality(
-                textDirection: TextDirection.rtl,
+            return BlocListener<AuthCubit, AuthState>(
+              listener: (context, state) {
+                if (state is Unauthenticated) {
+                  // Schedule navigation after the current frame to avoid layout errors
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    navigatorKey.currentState?.pushNamedAndRemoveUntil(
+                      RouteNames.login,
+                      (route) => false,
+                    );
+                  });
+                }
+              },
+              child: GlobalMessageListener(
+                navigatorKey: navigatorKey,
                 child: child ?? const SizedBox.shrink(),
               ),
             );
@@ -198,5 +214,42 @@ class SharikApp extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+double responsiveWidth({
+  required BuildContext context,
+  required double fontSize,
+}) {
+  double screenWidth = MediaQuery.of(context).size.width;
+  double font;
+  if (screenWidth < 600) {
+    font = (screenWidth / 400) * fontSize;
+    return font.clamp(fontSize * 0.8, fontSize * 1.2);
+  } else if (screenWidth < 900) {
+    font = (screenWidth / 700) * fontSize;
+    return font.clamp(fontSize * 0.8, fontSize * 1.2);
+  } else {
+    font = (screenWidth / 1000) * fontSize;
+    return font.clamp(fontSize * 0.8, fontSize * 1.2);
+  }
+}
+
+double responsiveHeight({
+  required BuildContext context,
+  required double height,
+}) {
+  double screenWidth = MediaQuery.of(context).size.width;
+  double calculatedHeight;
+
+  if (screenWidth < 600) {
+    calculatedHeight = (screenWidth / 400) * height;
+    return calculatedHeight.clamp(height * 0.8, height * 1.2);
+  } else if (screenWidth < 900) {
+    calculatedHeight = (screenWidth / 700) * height;
+    return calculatedHeight.clamp(height * 0.8, height * 1.2);
+  } else {
+    calculatedHeight = (screenWidth / 1000) * height;
+    return calculatedHeight.clamp(height * 0.8, height * 1.2);
   }
 }

@@ -93,7 +93,7 @@ class ProjectsTab extends StatelessWidget {
           );
         },
         icon: const Icon(Icons.add),
-        label: const Text('مشروع جديد'),
+        label: const Text('مشروع جديد', style: TextStyle(fontSize: 20)),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
@@ -232,13 +232,13 @@ class _ProjectCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: Dimensions.spaceL),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color.fromARGB(29, 97, 96, 96),
           borderRadius: BorderRadius.circular(Dimensions.radiusL),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: const Color.fromARGB(255, 0, 0, 0).withOpacity(0.08),
               blurRadius: 12,
-              offset: const Offset(0, 4),
+              offset: const Offset(6, 6),
             ),
           ],
         ),
@@ -249,7 +249,7 @@ class _ProjectCard extends StatelessWidget {
             Stack(
               children: [
                 Container(
-                  height: 180,
+                  height: 90,
                   decoration: BoxDecoration(
                     color: AppColors.gray200,
                     borderRadius: const BorderRadius.only(
@@ -266,7 +266,7 @@ class _ProjectCard extends StatelessWidget {
                           )
                         : null,
                   ),
-                  child: (project.imageUrl == null || project.imageUrl!.isEmpty)
+                  child: (project.imageUrl == null || project.imageUrl.isEmpty)
                       ? const Center(
                           child: Icon(
                             Icons.business,
@@ -412,29 +412,29 @@ class _ProjectCard extends StatelessWidget {
                   // View Details Button
                   SizedBox(
                     width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pushNamed(
-                            context,
-                            RouteNames.projectDetail,
-                            arguments: project.id,
-                          );
-                        },
-                        icon: const Icon(Icons.visibility),
-                        label: const Text('عرض التفاصيل'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: Dimensions.spaceM,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              Dimensions.radiusM,
-                            ),
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          RouteNames.projectDetail,
+                          arguments: project.id,
+                        );
+                      },
+                      icon: const Icon(Icons.visibility),
+                      label: const Text('عرض التفاصيل'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: Dimensions.spaceM,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            Dimensions.radiusM,
                           ),
                         ),
                       ),
+                    ),
                   ),
                 ],
               ),

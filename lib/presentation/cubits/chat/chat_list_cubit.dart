@@ -82,7 +82,7 @@ class ChatListCubit extends Cubit<ChatListState> {
       });
   }
 
-  void loadChats() {
+  Future<void> loadChats() async {
     try {
       emit(ChatListLoading());
       
@@ -93,19 +93,34 @@ class ChatListCubit extends Cubit<ChatListState> {
         return;
       }
 
-      _chatsSubscription?.cancel();
-      _chatsSubscription = _chatRepository
-          .getUserChatsStream(currentUserId)
-          .listen(
-            (chats) async {
-              // Fetch unread counts for all chats
-              Map<String, int> unreadCounts = {};
-              try {
-                unreadCounts = await _chatRepository.getUnreadCountsForUser(currentUserId);
-              } catch (e) {
-                // Ignore error, keep empty map
-              }
+      // Fetch User Role
+      String? role;
+      try {
+        final profileRes = await Supabase.instance.client
+            .from('profiles')
+            .select('role')
+            .eq('id', currentUserId)
+            .single();
+        role = profileRes['role'];
+      } catch (e) {
+        debugPrint('Error fetching role in ChatListCubit: $e');
+        // Fallback to 'user' if fails
+        role = 'user';
+      }
 
+      final isAdmin = role == 'admin' || role == 'super_admin';
+
+      _chatsSubscription?.cancel();
+      
+      Stream<List<ChatModel>> chatsStream;
+      if (isAdmin) {
+        chatsStream = _chatRepository.getAdminChatsStream(currentUserId);
+      } else {
+        chatsStream = _chatRepository.getUserChatsStream(currentUserId);
+      }
+
+      _chatsSubscription = chatsStream.listen(
+            (chats) async {
               // Sort chats client-side to ensure immediate correctness
               chats.sort((a, b) {
                 final dateA = a.lastMessageAt ?? a.createdAt;
@@ -113,24 +128,39 @@ class ChatListCubit extends Cubit<ChatListState> {
                 return dateB.compareTo(dateA); // Descending
               });
 
+              // Emit initial state with empty unread counts to show data immediately
               if (state is ChatListLoaded) {
-                final currentState = state as ChatListLoaded;
-                emit(
-                  currentState.copyWith(
-                    chats: chats,
-                    unreadCounts: unreadCounts,
-                  ),
-                );
+                 final currentState = state as ChatListLoaded;
+                 emit(currentState.copyWith(chats: chats));
               } else {
-                emit(ChatListLoaded(chats: chats, unreadCounts: unreadCounts));
+                 emit(ChatListLoaded(chats: chats, unreadCounts: {}));
+              }
+
+              // Fetch unread counts asynchronously based on role
+              try {
+                Map<String, int> unreadCounts;
+                if (isAdmin) {
+                  unreadCounts = await _chatRepository.getUnreadCountsForAdmin(currentUserId);
+                } else {
+                  unreadCounts = await _chatRepository.getUnreadCountsForUser(currentUserId);
+                }
+                
+                if (!isClosed && state is ChatListLoaded) {
+                   final currentState = state as ChatListLoaded;
+                   emit(currentState.copyWith(unreadCounts: unreadCounts));
+                }
+              } catch (e) {
+                // Ignore error
+                debugPrint('⚠️ Error fetching unread counts: $e');
               }
             },
             onError: (error) {
-              emit(ChatListError('Failed to load chats: $error'));
+              debugPrint('❌ Error in chat stream: $error');
+              if (!isClosed) emit(ChatListError('Failed to load chats: $error'));
             },
           );
     } catch (e) {
-      emit(ChatListError('Error initializing chat list: $e'));
+      if (!isClosed) emit(ChatListError('Error initializing chat list: $e'));
     }
   }
 
@@ -156,15 +186,32 @@ class ChatListCubit extends Cubit<ChatListState> {
         final currentUserId = Supabase.instance.client.auth.currentUser?.id;
         if (currentUserId == null) return;
 
-        final unreadCounts = await _chatRepository.getUnreadCountsForUser(
-          currentUserId,
-        );
+        // Check role to determine which unread count method to use
+        // We fetching it again to be safe, or we could rely on a cached value if we introduce one.
+        // For robustness, let's quick-fetch or assume if we are in admin dashboard logic (but this is a generic cubit).
+        final profileRes = await Supabase.instance.client
+            .from('profiles')
+            .select('role')
+            .eq('id', currentUserId)
+            .single();
+        final role = profileRes['role'];
+        final isAdmin = role == 'admin' || role == 'super_admin';
+
+        Map<String, int> unreadCounts;
+        if (isAdmin) {
+          unreadCounts = await _chatRepository.getUnreadCountsForAdmin(currentUserId);
+        } else {
+          unreadCounts = await _chatRepository.getUnreadCountsForUser(
+            currentUserId,
+          );
+        }
+        
         if (state is ChatListLoaded) {
            final currentState = state as ChatListLoaded;
            emit(currentState.copyWith(unreadCounts: unreadCounts));
         }
       } catch (e) {
-        // Silently fail for unread counts refresh
+        debugPrint('Error refreshing unread counts: $e');
       }
   }
 

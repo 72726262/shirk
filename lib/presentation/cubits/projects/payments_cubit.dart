@@ -59,4 +59,15 @@ class PaymentsCubit extends Cubit<PaymentsState> {
       emit(PaymentsError(e.toString()));
     }
   }
+
+  Future<void> loadAllUserTransactions(String userId) async {
+    emit(PaymentsLoading());
+    try {
+      final data = await _paymentsRepository.getUserTransactions(userId);
+      final payments = data.map((json) => InstallmentModel.fromJson(json)).toList();
+      emit(PaymentsLoaded(payments));
+    } catch (e) {
+      emit(PaymentsError(e.toString()));
+    }
+  }
 }

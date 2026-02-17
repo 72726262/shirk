@@ -24,6 +24,8 @@ class InstallmentModel extends Equatable {
   final DateTime updatedAt;
 
   final String? clientName;
+  final String? projectName;
+  final String? unitNumber;
 
   const InstallmentModel({
     required this.id,
@@ -40,6 +42,8 @@ class InstallmentModel extends Equatable {
     required this.createdAt,
     required this.updatedAt,
     this.clientName,
+    this.projectName,
+    this.unitNumber,
   });
 
   factory InstallmentModel.fromJson(Map<String, dynamic> json) {
@@ -48,6 +52,20 @@ class InstallmentModel extends Equatable {
     if (json['subscriptions'] != null && 
         json['subscriptions']['profiles'] != null) {
       extractedName = json['subscriptions']['profiles']['full_name'];
+    }
+
+    // Extract project name if available
+    String? extractedProject;
+    if (json['subscriptions'] != null && 
+        json['subscriptions']['projects'] != null) {
+      extractedProject = json['subscriptions']['projects']['name'];
+    }
+
+    // Extract unit number if available
+    String? extractedUnit;
+    if (json['subscriptions'] != null && 
+        json['subscriptions']['units'] != null) {
+      extractedUnit = json['subscriptions']['units']['unit_number'];
     }
 
     return InstallmentModel(
@@ -72,6 +90,8 @@ class InstallmentModel extends Equatable {
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       clientName: extractedName,
+      projectName: extractedProject,
+      unitNumber: extractedUnit,
     );
   }
 
@@ -112,5 +132,8 @@ class InstallmentModel extends Equatable {
         lateFeeApplied,
         createdAt,
         updatedAt,
+        clientName,
+        projectName,
+        unitNumber,
       ];
 }

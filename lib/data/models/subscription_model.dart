@@ -1,4 +1,6 @@
 import 'package:equatable/equatable.dart';
+import 'package:mmm/data/models/project_model.dart';
+import 'package:mmm/data/models/unit_model.dart';
 
 enum SubscriptionStatus {
   pending,
@@ -43,6 +45,8 @@ class SubscriptionModel extends Equatable {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? projectName;
+  final ProjectModel? project;
+  final UnitModel? unit;
   final double? downPayment;
   final int installmentsCount;
   final int installmentsPaid;
@@ -61,6 +65,8 @@ class SubscriptionModel extends Equatable {
     required this.createdAt,
     required this.updatedAt,
     this.projectName,
+    this.project,
+    this.unit,
     this.downPayment,
     this.installmentsCount = 0,
     this.installmentsPaid = 0,
@@ -95,6 +101,8 @@ class SubscriptionModel extends Equatable {
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       projectName: json['projects'] != null ? json['projects']['name'] as String? : null,
+      project: json['projects'] != null ? ProjectModel.fromJson(json['projects']) : null,
+      unit: json['units'] != null ? UnitModel.fromJson(json['units']) : null,
       downPayment: (json['down_payment'] as num?)?.toDouble(),
       installmentsCount: json['installments_count'] as int? ?? 0,
       installmentsPaid: json['installments_paid'] as int? ?? 0,
@@ -118,6 +126,7 @@ class SubscriptionModel extends Equatable {
       'down_payment': downPayment,
       'installments_count': installmentsCount,
       'installments_paid': installmentsPaid,
+      // We generally don't serialize project/unit back to DB here as they are relations
     };
   }
 
@@ -135,6 +144,8 @@ class SubscriptionModel extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? projectName,
+    ProjectModel? project,
+    UnitModel? unit,
     double? downPayment,
     int? installmentsCount,
     int? installmentsPaid,
@@ -153,6 +164,8 @@ class SubscriptionModel extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       projectName: projectName ?? this.projectName,
+      project: project ?? this.project,
+      unit: unit ?? this.unit,
       downPayment: downPayment ?? this.downPayment,
       installmentsCount: installmentsCount ?? this.installmentsCount,
       installmentsPaid: installmentsPaid ?? this.installmentsPaid,
@@ -174,6 +187,8 @@ class SubscriptionModel extends Equatable {
         createdAt,
         updatedAt,
         projectName,
+        project,
+        unit,
         downPayment,
         installmentsCount,
         installmentsPaid,

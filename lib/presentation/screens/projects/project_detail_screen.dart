@@ -264,36 +264,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
             return Row(
               children: [
-                if (!isAdmin)
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          RouteNames.selectUnit,
-                          arguments: project,
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: Dimensions.spaceM,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(Dimensions.radiusL),
-                        ),
-                      ),
-                      child: const Text(
-                        'استثمر الآن',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                if (isAdmin) ...[
-                  if (!isAdmin) const SizedBox(width: Dimensions.spaceM),
+                // Remove Invest Now button as requested by user
+                if (isAdmin)
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () {
@@ -320,7 +292,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                       ),
                     ),
                   ),
-                ],
               ],
             );
           },

@@ -87,7 +87,7 @@ class ProjectCard extends StatelessWidget {
           children: [
             // Project Image
             Container(
-              height: 140, // Slightly reduced from 160
+              height: 120, // Reduced from 140 to 120
               width: double.infinity,
               decoration: BoxDecoration(
                 borderRadius: const BorderRadius.only(
@@ -111,11 +111,11 @@ class ProjectCard extends StatelessWidget {
                 children: [
                   // Status Badge
                   Positioned(
-                    top: Dimensions.spaceM,
-                    left: Dimensions.spaceM,
+                    top: Dimensions.spaceS, // Reduced from M
+                    left: Dimensions.spaceS, // Reduced from M
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: Dimensions.spaceM,
+                        horizontal: Dimensions.spaceS,
                         vertical: Dimensions.spaceXS,
                       ),
                       decoration: BoxDecoration(
@@ -128,7 +128,7 @@ class ProjectCard extends StatelessWidget {
                         status,
                         style: const TextStyle(
                           color: AppColors.white,
-                          fontSize: 12,
+                          fontSize: 10, // Reduced font size
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -140,16 +140,16 @@ class ProjectCard extends StatelessWidget {
 
             // Project Details
             Padding(
-              padding: const EdgeInsets.all(Dimensions.spaceM), // Reduced padding
+              padding: const EdgeInsets.all(Dimensions.spaceS), // Reduced from M
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Title
                   Text(
                     title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
-                          fontSize: 16,
+                          fontSize: 14, // Slightly smaller
                         ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -162,7 +162,7 @@ class ProjectCard extends StatelessWidget {
                     children: [
                       const Icon(
                         Icons.location_on_outlined,
-                        size: 14,
+                        size: 12, // Smaller icon
                         color: AppColors.textSecondary,
                       ),
                       const SizedBox(width: Dimensions.spaceXS),
@@ -171,10 +171,10 @@ class ProjectCard extends StatelessWidget {
                           location,
                           style: Theme.of(context)
                               .textTheme
-                              .bodyMedium
+                              .bodySmall
                               ?.copyWith(
                                 color: AppColors.textSecondary,
-                                fontSize: 12,
+                                fontSize: 11,
                               ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -183,7 +183,7 @@ class ProjectCard extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: Dimensions.spaceM),
+                  const SizedBox(height: Dimensions.spaceS), // Reduced from M
 
                   // Progress Bar
                   Column(
@@ -199,30 +199,30 @@ class ProjectCard extends StatelessWidget {
                                 .bodySmall
                                 ?.copyWith(
                                     color: AppColors.textSecondary,
-                                    fontSize: 12),
+                                    fontSize: 10),
                           ),
                           Text(
                             '${progress.toStringAsFixed(0)}%',
                             style: const TextStyle(
                               color: AppColors.primary,
                               fontWeight: FontWeight.w600,
-                              fontSize: 12,
+                              fontSize: 10,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       LinearProgressIndicator(
                         value: progress / 100,
                         backgroundColor: AppColors.gray200,
                         color: AppColors.primary,
-                        minHeight: 4,
+                        minHeight: 3, // Thinner
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: Dimensions.spaceM),
+                  const SizedBox(height: Dimensions.spaceS), // Reduced from M
 
                   // Price and Units
                   Row(
@@ -239,13 +239,13 @@ class ProjectCard extends StatelessWidget {
                                   .bodySmall
                                   ?.copyWith(
                                     color: AppColors.textSecondary,
-                                    fontSize: 11,
+                                    fontSize: 10,
                                   ),
                             ),
                             Text(
                               price,
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 12, // Smaller
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primary,
                               ),
@@ -255,7 +255,7 @@ class ProjectCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: Dimensions.spaceS),
+                      const SizedBox(width: Dimensions.spaceXS),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
@@ -267,13 +267,13 @@ class ProjectCard extends StatelessWidget {
                                   .bodySmall
                                   ?.copyWith(
                                     color: AppColors.textSecondary,
-                                    fontSize: 11,
+                                    fontSize: 10,
                                   ),
                             ),
                             Text(
                               '$availableUnits وحدة',
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 12, // Smaller
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.accent,
                               ),
@@ -286,12 +286,12 @@ class ProjectCard extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: Dimensions.spaceM),
+                  const SizedBox(height: Dimensions.spaceS), // Reduced from M
 
                   // View Details Button
                   SizedBox(
                     width: double.infinity,
-                    height: 36,
+                    height: 32, // Reduced height
                     child: OutlinedButton(
                       onPressed: onTap,
                       style: OutlinedButton.styleFrom(
@@ -299,13 +299,13 @@ class ProjectCard extends StatelessWidget {
                         side: const BorderSide(color: AppColors.primary),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(
-                            Dimensions.radiusM,
+                            Dimensions.radiusS,
                           ),
                         ),
                         padding: EdgeInsets.zero,
                       ),
                       child: const Text('عرض التفاصيل',
-                          style: TextStyle(fontSize: 12)),
+                          style: TextStyle(fontSize: 11)),
                     ),
                   ),
                 ],

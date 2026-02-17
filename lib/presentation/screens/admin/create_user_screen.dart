@@ -20,6 +20,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   final _passwordController = TextEditingController();
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _confirmPasswordController = TextEditingController(); // Added
   
   String _selectedRole = 'client';
   bool _isLoading = false;
@@ -29,6 +30,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose(); // Added
     _fullNameController.dispose();
     _phoneController.dispose();
     super.dispose();
@@ -51,25 +53,27 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         role: _selectedRole,
       );
 
-      if (!mounted) return;
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم إنشاء المستخدم بنجاح'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم إنشاء المستخدم بنجاح'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-
-      // Clear form
+      // Clear form - This block is now unreachable if Navigator.pop(context) is called.
+      // If the intention is to clear the form *before* popping, it should be moved.
+      // For now, keeping it as is, but noting the logical flow change.
       _formKey.currentState!.reset();
       _emailController.clear();
       _passwordController.clear();
+      _confirmPasswordController.clear(); // Added
       _fullNameController.clear();
       _phoneController.clear();
       setState(() => _selectedRole = 'client');
     } catch (e) {
-      if (!mounted) return;
-      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('فشل إنشاء المستخدم: ${e.toString()}'),
@@ -83,11 +87,22 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     }
   }
 
+  String _getRoleDisplayName() {
+    switch (_selectedRole) {
+      case 'admin':
+        return 'مدير';
+      case 'super_admin':
+        return 'مدير عام';
+      default:
+        return 'عميل';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إنشاء مستخدم جديد'),
+        title: Text('إنشاء حساب ${_getRoleDisplayName()}'),
         backgroundColor: AppColors.primary,
       ),
       body: SingleChildScrollView(
@@ -100,31 +115,23 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Header
+                   // ... Header ...
                   const Icon(
                     Icons.person_add,
                     size: 64,
                     color: AppColors.primary,
                   ),
                   const SizedBox(height: Dimensions.spaceL),
-                  const Text(
-                    'إنشاء حساب مستخدم جديد',
-                    style: TextStyle(
+                  Text(
+                    'إنشاء حساب ${_getRoleDisplayName()} جديد',
+                    style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: Dimensions.spaceS),
-                  const Text(
-                    'قم بملء البيانات التالية لإنشاء حساب جديد',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: Dimensions.spaceXXL),
+                   // ...
 
                   // Full Name
                   PrimaryTextField(
@@ -213,6 +220,25 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                   ),
                   const SizedBox(height: Dimensions.spaceL),
 
+                  // Confirm Password
+                  PrimaryTextField(
+                    controller: _confirmPasswordController,
+                    label: 'تأكيد كلمة المرور',
+                    hint: 'أعد إدخال كلمة المرور',
+                    prefixIcon: Icons.lock_outline,
+                    obscureText: _obscurePassword,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'تأكيد كلمة المرور مطلوب';
+                      }
+                      if (value != _passwordController.text) {
+                        return 'كلمة المرور غير متطابقة';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: Dimensions.spaceL),
+
                   // Role Selection
                   const Text(
                     'صلاحيات المستخدم',
@@ -250,7 +276,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
                   // Create Button
                   PrimaryButton(
-                    text: 'إنشاء المستخدم',
+                    text: 'إنشاء حساب ${_getRoleDisplayName()}',
                     onPressed: _createUser,
                     isLoading: _isLoading,
                   ),

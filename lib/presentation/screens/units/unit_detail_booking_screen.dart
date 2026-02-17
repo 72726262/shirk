@@ -169,8 +169,9 @@ class UnitDetailBookingScreen extends StatelessWidget {
                   PrimaryButton(
                     text: 'متابعة الحجز',
                     onPressed: () {
-                      // Update Cubit
-                      context.read<JoinFlowCubit>().selectUnit(unit);
+                      // Update Cubit with Project ID and Unit
+                      context.read<JoinFlowCubit>().initBooking(project.id, unit);
+                      
                       // Navigate to Contract Summary
                       Navigator.pushNamed(
                         context,

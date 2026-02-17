@@ -34,29 +34,31 @@ class KycCubit extends Cubit<KycState> {
         incomeProofFile: incomeProofFile,
       );
 
-      emit(KycSubmittedSuccessfully());
+      if (!isClosed) emit(KycSubmittedSuccessfully());
     } catch (e) {
-      emit(KycError(message: e.toString()));
+      if (!isClosed) emit(KycError(message: e.toString()));
     }
   }
 
   // الحصول على حالة التحقق
   Future<void> getKycStatus(String userId) async {
     try {
-      emit(KycLoading());
+      if (!isClosed) emit(KycLoading());
 
       final status = await kycRepository.getKycStatus(userId);
 
-      emit(
-        KycStatusLoaded(
-          status: status['status'] as String,
-          submittedAt: status['submittedAt'] as String?,
-          reviewedAt: status['reviewedAt'] as String?,
-          rejectionReason: status['rejectionReason'] as String?,
-        ),
-      );
+      if (!isClosed) {
+        emit(
+          KycStatusLoaded(
+            status: status['status'] as String,
+            submittedAt: status['submittedAt'] as String?,
+            reviewedAt: status['reviewedAt'] as String?,
+            rejectionReason: status['rejectionReason'] as String?,
+          ),
+        );
+      }
     } catch (e) {
-      emit(KycError(message: 'فشل الحصول على حالة التحقق'));
+      if (!isClosed) emit(KycError(message: 'فشل الحصول على حالة التحقق'));
     }
   }
 }

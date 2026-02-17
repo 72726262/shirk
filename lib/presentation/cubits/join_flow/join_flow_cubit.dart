@@ -173,6 +173,13 @@ class JoinFlowCubit extends Cubit<JoinFlowState> {
     emit(UnitSelectionState(availableUnits: _availableUnits, selectedUnit: unit));
   }
 
+  void initBooking(String projectId, UnitModel unit) {
+    _projectId = projectId;
+    _selectedUnit = unit;
+    // We might not have all available units here, but that's fine for booking flow
+    emit(UnitSelectionState(availableUnits: const [], selectedUnit: unit));
+  }
+
   Future<void> acceptContract(String projectId, String unitId, {bool isFullPayment = false}) async {
     emit(JoinFlowLoading());
     try {

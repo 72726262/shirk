@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
+import 'package:mmm/main.dart';
 import 'package:mmm/presentation/cubits/admin/admin_dashboard_cubit.dart';
 
 class OverviewTab extends StatelessWidget {
@@ -32,24 +35,28 @@ class OverviewTab extends StatelessWidget {
                   state.stats.totalClients.toString(),
                   Icons.people,
                   AppColors.primary,
+                  context,
                 ),
                 _buildStatCard(
                   'المشاريع النشطة',
                   state.stats.activeProjects.toString(),
                   Icons.business,
                   AppColors.success,
+                  context,
                 ),
                 _buildStatCard(
                   'إجمالي الإيرادات',
                   '${state.stats.totalRevenue} ر.س',
                   Icons.attach_money,
                   AppColors.warning,
+                  context,
                 ),
                 _buildStatCard(
                   'المدفوعات المعلقة',
                   state.stats.pendingPayments.toString(),
                   Icons.pending,
                   AppColors.error,
+                  context,
                 ),
               ],
             ),
@@ -66,15 +73,16 @@ class OverviewTab extends StatelessWidget {
     String value,
     IconData icon,
     Color color,
+    BuildContext context,
   ) {
     return Container(
       padding: const EdgeInsets.all(Dimensions.spaceM),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: const Color.fromARGB(255, 226, 224, 224),
         borderRadius: BorderRadius.circular(Dimensions.radiusL),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadow.withOpacity(0.05),
+            color: Color.fromARGB(255, 0, 0, 0).withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -97,7 +105,7 @@ class OverviewTab extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: responsiveHeight(context: context, height: 2)),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
@@ -107,7 +115,7 @@ class OverviewTab extends StatelessWidget {
                 color: AppColors.textSecondary,
               ),
               textAlign: TextAlign.center,
-              maxLines: 1,
+              maxLines: 2,
             ),
           ),
         ],

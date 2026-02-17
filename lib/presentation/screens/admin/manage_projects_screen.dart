@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
-import 'package:mmm/presentation/widgets/common/primary_button.dart';
+
 import 'package:mmm/presentation/cubits/admin/admin_cubit.dart';
 import 'package:mmm/routes/route_names.dart';
 
@@ -58,23 +58,42 @@ class _ManageProjectsScreenState extends State<ManageProjectsScreen> {
                         width: 60,
                         height: 60,
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(Dimensions.radiusM),
+                          borderRadius: BorderRadius.circular(
+                            Dimensions.radiusM,
+                          ),
                           image: project.imageUrl != null
-                              ? DecorationImage(image: NetworkImage(project.imageUrl!), fit: BoxFit.cover)
+                              ? DecorationImage(
+                                  image: NetworkImage(project.imageUrl!),
+                                  fit: BoxFit.cover,
+                                )
                               : null,
                           color: AppColors.gray200,
                         ),
-                        child: project.imageUrl == null ? const Icon(Icons.business) : null,
+                        child: project.imageUrl == null
+                            ? const Icon(Icons.business)
+                            : null,
                       ),
                       title: Text(project.name),
-                      subtitle: Text('${project.unitsCount} وحدة • ${project.status}'),
+                      subtitle: Text(
+                        '${project.unitsCount} وحدة • ${project.status}',
+                      ),
                       trailing: PopupMenuButton(
                         itemBuilder: (context) => [
-                          const PopupMenuItem(value: 'edit', child: Text('تعديل')),
-                          const PopupMenuItem(value: 'units', child: Text('الوحدات')),
-                          const PopupMenuItem(value: 'delete', child: Text('حذف')),
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Text('تعديل'),
+                          ),
+                          const PopupMenuItem(
+                            value: 'units',
+                            child: Text('الوحدات'),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Text('حذف'),
+                          ),
                         ],
-                        onSelected: (value) => _handleProjectAction(value.toString(), project.id),
+                        onSelected: (value) =>
+                            _handleProjectAction(value.toString(), project.id),
                       ),
                     ),
                   );
@@ -92,7 +111,11 @@ class _ManageProjectsScreenState extends State<ManageProjectsScreen> {
   void _handleProjectAction(String action, String projectId) {
     switch (action) {
       case 'edit':
-        Navigator.pushNamed(context, RouteNames.editProject, arguments: projectId);
+        Navigator.pushNamed(
+          context,
+          RouteNames.editProject,
+          arguments: projectId,
+        );
         break;
       case 'delete':
         _showDeleteConfirmation(projectId);
@@ -107,7 +130,10 @@ class _ManageProjectsScreenState extends State<ManageProjectsScreen> {
         title: const Text('تأكيد الحذف'),
         content: const Text('هل أنت متأكد من حذف هذا المشروع؟'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
           TextButton(
             onPressed: () {
               context.read<AdminCubit>().deleteProject(projectId);

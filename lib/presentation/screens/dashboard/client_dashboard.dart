@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
+import 'package:mmm/data/models/subscription_model.dart';
 import 'package:mmm/data/models/user_model.dart';
 import 'package:mmm/presentation/widgets/custom/premium_wallet_card.dart';
 import 'package:mmm/presentation/widgets/custom/project_card.dart';
@@ -9,11 +11,11 @@ import 'package:mmm/presentation/widgets/skeleton/skeleton_card.dart';
 import 'package:mmm/presentation/widgets/skeleton/skeleton_list.dart';
 import 'package:mmm/presentation/widgets/common/error_widget.dart'
     as error_widgets;
-import 'package:mmm/data/models/wallet_model.dart';
+
 import 'package:mmm/data/models/project_model.dart';
 import 'package:mmm/data/models/notification_model.dart';
 import 'package:mmm/data/models/installment_model.dart';
-import 'package:mmm/data/models/document_model.dart';
+
 import 'package:mmm/data/models/construction_update_model.dart';
 import 'package:mmm/presentation/cubits/dashboard/dashboard_cubit.dart';
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
@@ -61,119 +63,150 @@ class _ClientDashboardState extends State<ClientDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text('لوحة التحكم'),
-        backgroundColor: AppColors.primary,
-        elevation: 0,
-        actions: [
-          BlocBuilder<DashboardCubit, DashboardState>(
-            builder: (context, state) {
-              final unreadCount = state is DashboardLoaded
-                  ? state.unreadNotificationCount
-                  : 0;
-              return Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications_outlined),
-                    onPressed: () {
-                      Navigator.pushNamed(context, RouteNames.notifications);
-                    },
-                  ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        child: Text(
-                          '$unreadCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+    return PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) async {
+          if (didPop) return;
+          await SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+        },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          title: const Text('لوحة التحكم'),
+          backgroundColor: AppColors.primary,
+          elevation: 0,
+          actions: [
+            BlocBuilder<DashboardCubit, DashboardState>(
+              builder: (context, state) {
+                final unreadCount = state is DashboardLoaded
+                    ? state.unreadNotificationCount
+                    : 0;
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined),
+                      onPressed: () {
+                        Navigator.pushNamed(context, RouteNames.notifications);
+                      },
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
                           ),
-                          textAlign: TextAlign.center,
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
-                    ),
-                ],
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.account_circle_outlined),
-            onPressed: () {
-              Navigator.pushNamed(context, RouteNames.profile);
-            },
-          ),
+                  ],
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.account_circle_outlined),
+              onPressed: () {
+                Navigator.pushNamed(context, RouteNames.profile);
+              },
+            ),
 
-          BlocBuilder<ChatListCubit, ChatListState>(
-            builder: (context, state) {
-              int unreadCount = 0;
-              if (state is ChatListLoaded) {
-                unreadCount = state.totalUnreadCount;
-              }
-              return Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.chat_bubble_outline),
-                    onPressed: () {
-                      Navigator.pushNamed(context, RouteNames.chatList);
-                    },
-                  ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        child: Text(
-                          '$unreadCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+            BlocBuilder<ChatListCubit, ChatListState>(
+              builder: (context, state) {
+                int unreadCount = 0;
+                if (state is ChatListLoaded) {
+                  unreadCount = state.totalUnreadCount;
+                }
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: Padding(
+                        padding: const EdgeInsets.only(left: 10.0),
+                        child: const Icon(Icons.chat),
+                      ),
+                      onPressed: () {
+                        Navigator.pushNamed(context, RouteNames.chatList);
+                      },
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
                           ),
-                          textAlign: TextAlign.center,
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+        body: BlocConsumer<DashboardCubit, DashboardState>(
+          listener: (context, state) {
+            if (state is DashboardError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.red,
+                  action: SnackBarAction(
+                    label: 'إعادة المحاولة',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      final authState = context.read<AuthCubit>().state;
+                      if (authState is Authenticated) {
+                        context.read<DashboardCubit>().loadDashboard(
+                          authState.user.id,
+                        );
+                      }
+                    },
+                  ),
+                ),
               );
-            },
-          ),
-        ],
-      ),
-      body: BlocConsumer<DashboardCubit, DashboardState>(
-        listener: (context, state) {
-          if (state is DashboardError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.red,
-                action: SnackBarAction(
-                  label: 'إعادة المحاولة',
-                  textColor: Colors.white,
-                  onPressed: () {
+            }
+          },
+          builder: (context, state) {
+            if (state is DashboardLoading) {
+              return _buildLoadingState();
+            }
+
+            if (state is DashboardError) {
+              return Center(
+                child: error_widgets.CustomErrorWidget(
+                  message: state.message,
+                  onRetry: () {
                     final authState = context.read<AuthCubit>().state;
                     if (authState is Authenticated) {
                       context.read<DashboardCubit>().loadDashboard(
@@ -182,47 +215,26 @@ class _ClientDashboardState extends State<ClientDashboard> {
                     }
                   },
                 ),
-              ),
-            );
-          }
-        },
-        builder: (context, state) {
-          if (state is DashboardLoading) {
-            return _buildLoadingState();
-          }
+              );
+            }
 
-          if (state is DashboardError) {
-            return Center(
-              child: error_widgets.CustomErrorWidget(
-                message: state.message,
-                onRetry: () {
+            if (state is DashboardLoaded) {
+              return RefreshIndicator(
+                onRefresh: () async {
                   final authState = context.read<AuthCubit>().state;
                   if (authState is Authenticated) {
-                    context.read<DashboardCubit>().loadDashboard(
+                    await context.read<DashboardCubit>().refreshDashboard(
                       authState.user.id,
                     );
                   }
                 },
-              ),
-            );
-          }
+                child: _buildContent(state),
+              );
+            }
 
-          if (state is DashboardLoaded) {
-            return RefreshIndicator(
-              onRefresh: () async {
-                final authState = context.read<AuthCubit>().state;
-                if (authState is Authenticated) {
-                  await context.read<DashboardCubit>().refreshDashboard(
-                    authState.user.id,
-                  );
-                }
-              },
-              child: _buildContent(state),
-            );
-          }
-
-          return const SizedBox.shrink();
-        },
+            return const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }
@@ -296,11 +308,15 @@ class _ClientDashboardState extends State<ClientDashboard> {
           const SizedBox(height: Dimensions.spaceXXL),
 
           // My Projects Section
-          _buildSectionHeader('مشاريعي', () {
-            Navigator.pushNamed(context, RouteNames.projectsList);
+          _buildSectionHeader('استثماراتي', () {
+            // Renamed from 'مشاريعي'
+            Navigator.pushNamed(
+              context,
+              RouteNames.subscriptions,
+            ); // Navigate to Subscriptions instead of Projects List
           }),
           const SizedBox(height: Dimensions.spaceL),
-          _buildMyProjectsSection(state.myProjects),
+          _buildMyProjectsSection(state.mySubscriptions),
 
           // Latest Construction Updates
           if ((state.latestUpdates ?? []).isNotEmpty) ...[
@@ -439,8 +455,8 @@ class _ClientDashboardState extends State<ClientDashboard> {
     );
   }
 
-  Widget _buildMyProjectsSection(List<ProjectModel> projects) {
-    if (projects.isEmpty) {
+  Widget _buildMyProjectsSection(List<SubscriptionModel> subscriptions) {
+    if (subscriptions.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(Dimensions.spaceXXL),
         decoration: BoxDecoration(
@@ -450,18 +466,18 @@ class _ClientDashboardState extends State<ClientDashboard> {
         child: Column(
           children: [
             const Icon(
-              Icons.construction,
+              Icons.key, // Changed icon to represent ownership/unit
               size: 64,
               color: AppColors.textSecondary,
             ),
             const SizedBox(height: Dimensions.spaceM),
-            const Text('لا توجد مشاريع حالياً'),
+            const Text('لم تقم بالاستثمار في أي وحدة بعد'),
             const SizedBox(height: Dimensions.spaceM),
             ElevatedButton(
               onPressed: () {
                 Navigator.pushNamed(context, RouteNames.projectsList);
               },
-              child: const Text('تصفح المشاريع'),
+              child: const Text('تصفح المشاريع المتاحة'),
             ),
           ],
         ),
@@ -469,35 +485,235 @@ class _ClientDashboardState extends State<ClientDashboard> {
     }
 
     return SizedBox(
-      height: 340,
+      height: 380, // Increased height for detailed card
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: projects.length,
+        itemCount: subscriptions.length,
         itemBuilder: (context, index) {
-          final project = projects[index];
+          final subscription = subscriptions[index];
+          final project = subscription.project;
+          final unit = subscription.unit;
+
+          if (project == null) return const SizedBox();
+
           return Container(
-            width: 280,
+            width: 300,
             margin: EdgeInsets.only(
-              left: index == projects.length - 1 ? 0 : Dimensions.spaceM,
+              left: index == subscriptions.length - 1 ? 0 : Dimensions.spaceM,
             ),
-            child: ProjectCard(
-              imageUrl:
-                  project.imageUrl ?? 'https://via.placeholder.com/300x200',
-              title: project.name,
-              location: project.location,
-              progress: project.completionPercentage ?? 0.0,
-              status: _getStatusText(
-                project.status,
-              ), // تأكد أن هذه الدالة موجودة
-              price: '${project.minInvestment} ر.س',
-              availableUnits: project.availableUnits ?? 0,
+            child: InkWell(
               onTap: () {
                 Navigator.pushNamed(
                   context,
-                  RouteNames.projectDetail,
-                  arguments: project.id,
+                  RouteNames.subscriptionDetail,
+                  arguments: subscription,
                 );
               },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Image Header
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(Dimensions.radiusL),
+                          ),
+                          child: Image.network(
+                            project.imageUrl ??
+                                'https://via.placeholder.com/300x200',
+                            height: 160,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(color: Colors.grey[200], height: 160),
+                          ),
+                        ),
+                        Positioned(
+                          top: 10,
+                          left: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(
+                                Dimensions.radiusS,
+                              ),
+                            ),
+                            child: Text(
+                              _getStatusText(project.status),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(
+                                Dimensions.radiusS,
+                              ),
+                            ),
+                            child: const Text(
+                              'استثماري',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Content
+                    Padding(
+                      padding: const EdgeInsets.all(Dimensions.spaceM),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            project.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on_outlined,
+                                size: 14,
+                                color: AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  project.location,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: Dimensions.spaceL),
+
+                          // Unit Info
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'الوحدة',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  Text(
+                                    '#${unit?.unitNumber ?? 'غير محدد'}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  const Text(
+                                    'الحالة',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  Text(
+                                    subscription.status ==
+                                            SubscriptionStatus.active
+                                        ? 'نشط'
+                                        : 'قيد الانتظار',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color:
+                                          subscription.status ==
+                                              SubscriptionStatus.active
+                                          ? AppColors.success
+                                          : AppColors.warning,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: Dimensions.spaceM),
+                          // Investment Value
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'قيمة الاستثمار:',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                Text(
+                                  '${subscription.investmentAmount.toStringAsFixed(0)} ر.س',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
         },

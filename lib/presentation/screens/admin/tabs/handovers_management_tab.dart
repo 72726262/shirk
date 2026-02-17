@@ -43,8 +43,15 @@ class _HandoversManagementTabState extends State<HandoversManagementTab> {
             context.read<HandoversManagementCubit>().loadHandovers();
           }
         },
-        label: const Text('إنشاء تسليم'),
-        icon: const Icon(Icons.add),
+        label: const Text(
+          'إنشاء تسليم',
+          style: TextStyle(
+            fontSize: 20,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        icon: const Icon(Icons.add, size: 20, color: Colors.white),
         backgroundColor: AppColors.primary,
       ),
       body: Column(
@@ -73,7 +80,7 @@ class _HandoversManagementTabState extends State<HandoversManagementTab> {
                       );
                       context.read<HandoversManagementCubit>().loadHandovers();
                     } else if (state is HandoverUpdatedSuccessfully) {
-                       ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('تم تحديث التسليم بنجاح'),
                           backgroundColor: AppColors.success,
@@ -81,7 +88,7 @@ class _HandoversManagementTabState extends State<HandoversManagementTab> {
                       );
                       context.read<HandoversManagementCubit>().loadHandovers();
                     } else if (state is HandoverDeletedSuccessfully) {
-                       ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('تم حذف التسليم بنجاح'),
                           backgroundColor: AppColors.success,
@@ -227,13 +234,13 @@ class _HandoversManagementTabState extends State<HandoversManagementTab> {
               icon: const Icon(Icons.more_vert, color: AppColors.textSecondary),
               onSelected: (value) {
                 if (value == 'edit') {
-                   // Reuse CreateHandoverScreen for editing? Or create new one?
-                   // For now, let's show a "Not Implemented" or better, navigate to Create screen with data
-                   // But CreateScreen might not support editing mode yet.
-                   // Let's implement delete first as it is easier.
-                   ScaffoldMessenger.of(context).showSnackBar(
-                     const SnackBar(content: Text('تعديل التسليم قيد التطوير')),
-                   );
+                  // Reuse CreateHandoverScreen for editing? Or create new one?
+                  // For now, let's show a "Not Implemented" or better, navigate to Create screen with data
+                  // But CreateScreen might not support editing mode yet.
+                  // Let's implement delete first as it is easier.
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تعديل التسليم قيد التطوير')),
+                  );
                 } else if (value == 'delete') {
                   showDialog(
                     context: context,
@@ -249,8 +256,10 @@ class _HandoversManagementTabState extends State<HandoversManagementTab> {
                         ),
                         TextButton(
                           onPressed: () {
-                             context.read<HandoversManagementCubit>().deleteHandover(handover.id);
-                             Navigator.pop(context);
+                            context
+                                .read<HandoversManagementCubit>()
+                                .deleteHandover(handover.id);
+                            Navigator.pop(context);
                           },
                           style: TextButton.styleFrom(
                             foregroundColor: AppColors.error,

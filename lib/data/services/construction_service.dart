@@ -61,6 +61,10 @@ class ConstructionService {
   }
 
   // Admin: Create construction update with media uploads
+  Future<List<ConstructionUpdateModel>> getUserConstructionUpdates(String userId) async {
+    return _constructionRepository.getUserConstructionUpdates(userId);
+  }
+
   Future<ConstructionUpdateModel> createUpdate({
     required String projectId,
     required String title,
@@ -79,63 +83,8 @@ class ConstructionService {
     bool notifyClients = true,
   }) async {
     try {
-      // Upload photos to construction-media bucket
-      List<String>? photoUrls;
-      if (photosPaths != null && photosPaths.isNotEmpty) {
-        photoUrls = [];
-        for (final photoPath in photosPaths) {
-          final url = await _storageService.uploadConstructionMedia(
-            photoPath,
-            projectId,
-            isVideo: false,
-          );
-          photoUrls.add(url);
-        }
-      }
-
-      // Upload videos to construction-media bucket
-      List<String>? videoUrls;
-      if (videosPaths != null && videosPaths.isNotEmpty) {
-        videoUrls = [];
-        for (final videoPath in videosPaths) {
-          final url = await _storageService.uploadConstructionMedia(
-            videoPath,
-            projectId,
-            isVideo: true,
-          );
-          videoUrls.add(url);
-        }
-      }
-
-      // Upload reports to reports bucket
-      String? engineeringReportUrl;
-      if (engineeringReportPath != null) {
-        engineeringReportUrl = await _storageService.uploadReport(
-          engineeringReportPath,
-          projectId,
-          'engineering',
-        );
-      }
-
-      String? financialReportUrl;
-      if (financialReportPath != null) {
-        financialReportUrl = await _storageService.uploadReport(
-          financialReportPath,
-          projectId,
-          'financial',
-        );
-      }
-
-      String? supervisionReportUrl;
-      if (supervisionReportPath != null) {
-        supervisionReportUrl = await _storageService.uploadReport(
-          supervisionReportPath,
-          projectId,
-          'supervision',
-        );
-      }
-
-      return await _constructionRepository.createUpdate(
+      // 1. Create the update record first to get the ID
+      final update = await _constructionRepository.createUpdate(
         projectId: projectId,
         title: title,
         titleAr: titleAr,
@@ -144,14 +93,61 @@ class ConstructionService {
         type: type,
         completionPercentage: completionPercentage,
         weekNumber: weekNumber,
-        photos: photoUrls,
-        videos: videoUrls,
-        engineeringReportUrl: engineeringReportUrl,
-        financialReportUrl: financialReportUrl,
-        supervisionReportUrl: supervisionReportUrl,
         isPublic: isPublic,
         notifyClients: notifyClients,
       );
+
+      // 2. Upload photos to construction-media bucket
+      if (photosPaths != null && photosPaths.isNotEmpty) {
+        await _constructionRepository.uploadProgressMedia(
+          projectId: projectId,
+          updateId: update.id,
+          filePaths: photosPaths,
+          mediaType: 'photo',
+        );
+      }
+
+      // 3. Upload videos to construction-media bucket
+      if (videosPaths != null && videosPaths.isNotEmpty) {
+        await _constructionRepository.uploadProgressMedia(
+          projectId: projectId,
+          updateId: update.id,
+          filePaths: videosPaths,
+          mediaType: 'video',
+        );
+      }
+
+      // 4. Upload reports to reports bucket
+      if (engineeringReportPath != null) {
+        await _constructionRepository.uploadReport(
+          updateId: update.id,
+          filePath: engineeringReportPath,
+          reportType: 'engineering',
+        );
+      }
+
+      if (financialReportPath != null) {
+        await _constructionRepository.uploadReport(
+          updateId: update.id,
+          filePath: financialReportPath,
+          reportType: 'financial',
+        );
+      }
+
+      if (supervisionReportPath != null) {
+        await _constructionRepository.uploadReport(
+          updateId: update.id,
+          filePath: supervisionReportPath,
+          reportType: 'supervision',
+        );
+      }
+
+      // 5. Notify subscribers if requested
+      if (notifyClients) {
+        await _constructionRepository.notifySubscribers(projectId, titleAr, update.id);
+      }
+
+      return update;
     } catch (e) {
       throw Exception('فشل إنشاء التحديث: ${e.toString()}');
     }

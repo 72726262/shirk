@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
-import 'package:mmm/presentation/cubits/chat/chat_list_cubit.dart'; // Added
+import 'package:mmm/presentation/cubits/chat/chat_list_cubit.dart';
 import 'package:mmm/presentation/screens/profile/profile_screen.dart';
-import 'dart:ui';
 
 class AdminDrawer extends StatelessWidget {
   final int selectedIndex;
@@ -19,54 +18,34 @@ class AdminDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
-              Color(0xFF0F3460),
-            ],
-          ),
+      // Modern shape with rounded corners on the right side
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          bottomLeft: Radius.circular(20),
         ),
-        child: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white.withOpacity(0.1),
-                    Colors.white.withOpacity(0.05),
-                  ],
-                ),
-              ),
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  _buildDrawerHeader(context),
-                  const SizedBox(height: 20),
-                  BlocBuilder<ChatListCubit, ChatListState>(
-                    builder: (context, chatState) {
-                      int unreadCount = 0;
-                      if (chatState is ChatListLoaded) {
-                        unreadCount = chatState.totalUnreadCount;
-                      }
-                      return Column(
-                        children: _buildNavigationItems(context, unreadCount),
-                      );
-                    },
-                  ),
-                  const Divider(color: Colors.white24, height: 40),
-                  _buildFooter(context),
-                ],
+      ),
+      child: Material(
+        color: const Color(0xFF1A1A2E), // Deep clean background
+        child: Column(
+          children: [
+            _buildDrawerHeader(context),
+            Expanded(
+              child: BlocBuilder<ChatListCubit, ChatListState>(
+                builder: (context, chatState) {
+                  int unreadCount = 0;
+                  if (chatState is ChatListLoaded) {
+                    unreadCount = chatState.totalUnreadCount;
+                  }
+                  return ListView(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    children: _buildNavigationItems(context, unreadCount),
+                  );
+                },
               ),
             ),
-          ),
+            _buildFooter(context),
+          ],
         ),
       ),
     );
@@ -82,122 +61,110 @@ class AdminDrawer extends StatelessWidget {
         );
       },
       child: Container(
-        height: 180,
+        padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.primary.withOpacity(0.8),
-              const Color(0xFF6C63FF).withOpacity(0.6),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+          color: AppColors.primary.withOpacity(0.1),
+          border: Border(
+            bottom: BorderSide(
+              color: Colors.white.withOpacity(0.05),
             ),
-          ],
+          ),
         ),
-        child: Stack(
+        child: Row(
           children: [
-            // 3D Background Pattern
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _GridPainter(),
+            // User Avatar
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.5),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: BlocBuilder<AuthCubit, AuthState>(
+                builder: (context, state) {
+                  if (state is Authenticated && state.user.avatarUrl != null) {
+                    return ClipOval(
+                      child: Image.network(
+                        state.user.avatarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.person,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    );
+                  }
+                  return const Icon(
+                    Icons.admin_panel_settings,
+                    color: AppColors.primary,
+                    size: 30,
+                  );
+                },
               ),
             ),
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(20.0),
+            const SizedBox(width: 16),
+            // User Info
+            Expanded(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Avatar with 3D effect
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.white,
-                          Color(0xFFE0E0E0),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 15,
-                          offset: const Offset(0, 8),
-                        ),
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(-5, -5),
-                        ),
-                      ],
-                    ),
-                    child: BlocBuilder<AuthCubit, AuthState>(
-                      builder: (context, state) {
-                        if (state is Authenticated && state.user.avatarUrl != null) {
-                          return ClipOval(
-                            child: Image.network(
-                              state.user.avatarUrl!,
-                              fit: BoxFit.cover,
-                            ),
-                          );
-                        }
-                        return const Icon(
-                          Icons.admin_panel_settings,
-                          size: 35,
-                          color: AppColors.primary,
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Title with glow effect
                   BlocBuilder<AuthCubit, AuthState>(
                     builder: (context, state) {
                       String name = 'لوحة التحكم';
                       if (state is Authenticated) {
-                        name = state.user.fullName ?? 'لوحة التحكم';
+                        name = state.user.fullName ?? 'المسؤول';
                       }
                       return Text(
                         name,
                         style: const TextStyle(
-                          fontSize: 24,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
-                          shadows: [
-                            Shadow(
-                              color: Colors.white30,
-                              blurRadius: 10,
-                              offset: Offset(0, 0),
-                            ),
-                          ],
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       );
                     },
                   ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'إدارة النظام',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white70,
-                      letterSpacing: 1,
-                    ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.success,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'نشط الآن',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white.withOpacity(0.3),
+              size: 16,
             ),
           ],
         ),
@@ -207,17 +174,23 @@ class AdminDrawer extends StatelessWidget {
 
   List<Widget> _buildNavigationItems(BuildContext context, int unreadCount) {
     final items = [
-      _DrawerItem(icon: Icons.dashboard, label: 'الرئيسية', index: 0),
-      _DrawerItem(icon: Icons.business, label: 'المشاريع', index: 1),
-      _DrawerItem(icon: Icons.people, label: 'العملاء', index: 2),
-      _DrawerItem(icon: Icons.payment, label: 'المدفوعات', index: 3),
-      _DrawerItem(icon: Icons.construction, label: 'التنفيذ', index: 4),
-      _DrawerItem(icon: Icons.description, label: 'العقود', index: 5),
-      _DrawerItem(icon: Icons.folder, label: 'المستندات', index: 6),
-      _DrawerItem(icon: Icons.key, label: 'التسليم', index: 7),
-      _DrawerItem(icon: Icons.notifications, label: 'الإشعارات', index: 8),
-      _DrawerItem(icon: Icons.bookmark_added, label: 'الحجوزات', index: 9, badge: 0),
-      _DrawerItem(icon: Icons.chat_bubble, label: 'الرسائل', index: 10, badge: unreadCount),
+      _DrawerItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'الرئيسية', index: 0),
+      _DrawerItem(icon: Icons.business_outlined, activeIcon: Icons.business, label: 'المشاريع', index: 1),
+      _DrawerItem(icon: Icons.people_outline, activeIcon: Icons.people, label: 'العملاء', index: 2),
+      _DrawerItem(icon: Icons.payment_outlined, activeIcon: Icons.payment, label: 'المدفوعات', index: 3),
+      _DrawerItem(icon: Icons.construction_outlined, activeIcon: Icons.construction, label: 'التنفيذ', index: 4),
+      _DrawerItem(icon: Icons.description_outlined, activeIcon: Icons.description, label: 'العقود', index: 5),
+      _DrawerItem(icon: Icons.folder_open, activeIcon: Icons.folder, label: 'المستندات', index: 6),
+      _DrawerItem(icon: Icons.vpn_key_outlined, activeIcon: Icons.vpn_key, label: 'التسليم', index: 7),
+      _DrawerItem(icon: Icons.notifications_outlined, activeIcon: Icons.notifications, label: 'الإشعارات', index: 8),
+      _DrawerItem(icon: Icons.bookmark_border, activeIcon: Icons.bookmark, label: 'الحجوزات', index: 9),
+      _DrawerItem(
+        icon: Icons.chat_bubble_outline,
+        activeIcon: Icons.chat_bubble,
+        label: 'الرسائل',
+        index: 10,
+        badge: unreadCount,
+      ),
     ];
 
     return items.map((item) => _buildDrawerItem(context, item)).toList();
@@ -226,144 +199,65 @@ class AdminDrawer extends StatelessWidget {
   Widget _buildDrawerItem(BuildContext context, _DrawerItem item) {
     final isSelected = selectedIndex == item.index;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            onItemSelected(item.index);
-            Navigator.pop(context);
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: isSelected
-                  ? LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.primary.withOpacity(0.9),
-                        const Color(0xFF6C63FF).withOpacity(0.8),
-                      ],
-                    )
-                  : null,
-              color: isSelected ? null : Colors.white.withOpacity(0.05),
-              boxShadow: isSelected
-                  ? [
+      child: InkWell(
+        onTap: () {
+          onItemSelected(item.index);
+          Navigator.pop(context);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary.withOpacity(0.15) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: isSelected
+                ? Border.all(color: AppColors.primary.withOpacity(0.3))
+                : null,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isSelected ? item.activeIcon : item.icon,
+                color: isSelected ? AppColors.primary : Colors.white70,
+                size: 24,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  item.label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected ? Colors.white : Colors.white70,
+                  ),
+                ),
+              ),
+              if (item.badge != null && item.badge! > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
                       BoxShadow(
                         color: AppColors.primary.withOpacity(0.4),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                        spreadRadius: 2,
-                      ),
-                      BoxShadow(
-                        color: const Color(0xFF6C63FF).withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 5,
+                        blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
                     ],
-              border: Border.all(
-                color: isSelected
-                    ? Colors.white.withOpacity(0.3)
-                    : Colors.white.withOpacity(0.1),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                // Icon with gradient
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: isSelected
-                        ? const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Colors.white,
-                              Color(0xFFE0E0E0),
-                            ],
-                          )
-                        : null,
-                    color: isSelected ? null : Colors.white.withOpacity(0.1),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: Colors.white.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : null,
                   ),
-                  child: Icon(
-                    item.icon,
-                    color: isSelected ? AppColors.primary : Colors.white70,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // Label
-                Expanded(
                   child: Text(
-                    item.label,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    item.badge.toString(),
+                    style: const TextStyle(
                       color: Colors.white,
-                      letterSpacing: 0.5,
-                      shadows: isSelected
-                          ? [
-                              const Shadow(
-                                color: Colors.white30,
-                                blurRadius: 5,
-                                offset: Offset(0, 0),
-                              ),
-                            ]
-                          : null,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                // Badge for notifications
-                if (item.badge != null && item.badge! > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      item.badge.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                // Arrow indicator for selected
-                if (isSelected)
-                  const Icon(
-                    Icons.arrow_forward_ios,
-                    size: 16,
-                    color: Colors.white,
-                  ),
-              ],
-            ),
+            ],
           ),
         ),
       ),
@@ -371,67 +265,49 @@ class AdminDrawer extends StatelessWidget {
   }
 
   Widget _buildFooter(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      // decoration: BoxDecoration(
+      //   border: Border(
+      //     top: BorderSide(color: Colors.white.withOpacity(0.05)),
+      //   ),
+      // ),
       child: Column(
         children: [
-          // Logout button with 3D effect
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                context.read<AuthCubit>().signOut();
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.error.withOpacity(0.8),
-                      AppColors.error.withOpacity(0.6),
-                    ],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.error.withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+          InkWell(
+            onTap: () {
+              context.read<AuthCubit>().signOut();
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.logout, color: AppColors.error, size: 20),
+                  const SizedBox(width: 12),
+                  Text(
+                    'تسجيل الخروج',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withOpacity(0.9),
                     ),
-                  ],
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.2),
-                    width: 1,
                   ),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.logout, color: Colors.white, size: 20),
-                    SizedBox(width: 12),
-                    Text(
-                      'تسجيل الخروج',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
           const SizedBox(height: 16),
-          // Version info
           Text(
             'الإصدار 1.0.0',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withOpacity(0.3),
             ),
           ),
         ],
@@ -442,48 +318,16 @@ class AdminDrawer extends StatelessWidget {
 
 class _DrawerItem {
   final IconData icon;
+  final IconData activeIcon;
   final String label;
   final int index;
   final int? badge;
 
   _DrawerItem({
     required this.icon,
+    required this.activeIcon,
     required this.label,
     required this.index,
     this.badge,
   });
-}
-
-// 3D Grid Pattern Painter
-class _GridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
-
-    const spacing = 30.0;
-
-    // Draw vertical lines
-    for (double x = 0; x < size.width; x += spacing) {
-      canvas.drawLine(
-        Offset(x, 0),
-        Offset(x, size.height),
-        paint,
-      );
-    }
-
-    // Draw horizontal lines
-    for (double y = 0; y < size.height; y += spacing) {
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

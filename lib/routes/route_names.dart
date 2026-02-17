@@ -1,6 +1,8 @@
 class RouteNames {
   // Auth Routes
 
+  // Auth Routes
+  static const String splash = '/splash';
   static const String login = '/login';
   static const String register = '/register';
   static const String verifyPhone = '/verify-phone';
@@ -39,6 +41,7 @@ class RouteNames {
 
   // Subscriptions & Installments
   static const String subscriptions = '/subscriptions';
+  static const String subscriptionDetail = '/subscription-detail';
   static const String installmentDetail = '/installment-detail';
 
   // Units

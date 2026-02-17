@@ -66,7 +66,9 @@ class _CreateHandoverScreenState extends State<CreateHandoverScreen> {
       if (_selectedSubscriptionId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('لم يتم العثور على اشتراك لهذا العميل في المشروع المحدد'),
+            content: Text(
+              'لم يتم العثور على اشتراك لهذا العميل في المشروع المحدد',
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -131,19 +133,19 @@ class _CreateHandoverScreenState extends State<CreateHandoverScreen> {
   Future<void> _checkSubscription() async {
     if (_selectedClientId != null && _selectedProjectId != null) {
       setState(() => _isLoading = true);
-      
+
       final subId = await context
           .read<HandoversManagementCubit>()
           .getSubscriptionId(_selectedClientId!, _selectedProjectId!);
-      
+
       if (mounted) {
         setState(() {
           _selectedSubscriptionId = subId;
           _isLoading = false;
         });
-        
+
         if (subId == null && !context.mounted) return;
-        
+
         if (subId == null) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -178,7 +180,10 @@ class _CreateHandoverScreenState extends State<CreateHandoverScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إنشاء عملية تسليم جديدة'),
+        title: const Text(
+          'إنشاء عملية تسليم جديدة',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),

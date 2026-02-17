@@ -25,10 +25,18 @@ class SupabaseService {
     return _supabase!;
   }
 
+  static String? _url;
+  static String? _anonKey;
+
+  static String get supabaseUrl => _url!;
+  static String get supabaseAnonKey => _anonKey!;
+
   static Future<void> initialize({
     required String url,
     required String anonKey,
   }) async {
+    _url = url;
+    _anonKey = anonKey;
     await Supabase.initialize(
       url: url,
       anonKey: anonKey,

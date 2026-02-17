@@ -38,8 +38,15 @@ class _DocumentsManagementTabState extends State<DocumentsManagementTab> {
             ),
           );
         },
-        label: const Text('رفع مستند'),
-        icon: const Icon(Icons.upload_file),
+        label: const Text(
+          'رفع مستند',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Colors.white,
+          ),
+        ),
+        icon: const Icon(Icons.upload_file, color: Colors.white),
         backgroundColor: AppColors.primary,
       ),
       body: Column(
@@ -226,7 +233,11 @@ class _DocumentsManagementTabState extends State<DocumentsManagementTab> {
                         value: 'edit',
                         child: Row(
                           children: [
-                            Icon(Icons.edit, size: 18, color: AppColors.primary),
+                            Icon(
+                              Icons.edit,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
                             SizedBox(width: Dimensions.spaceS),
                             Text('تعديل'),
                           ],
@@ -405,9 +416,7 @@ class _DocumentsManagementTabState extends State<DocumentsManagementTab> {
     // Navigate to edit document screen
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => UploadDocumentScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => UploadDocumentScreen()),
     );
   }
 

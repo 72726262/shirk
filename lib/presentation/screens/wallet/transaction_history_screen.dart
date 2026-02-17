@@ -22,7 +22,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     super.initState();
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
-      context.read<WalletCubit>().loadTransactions(userId: authState.user.id);
+      context.read<WalletCubit>().loadWallet(authState.user.id);
     }
   }
 

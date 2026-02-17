@@ -11,7 +11,9 @@ import 'package:mmm/presentation/widgets/skeleton_loaders.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ChatListScreen extends StatefulWidget {
-  const ChatListScreen({super.key});
+  final bool showAppBar;
+
+  const ChatListScreen({super.key, this.showAppBar = true});
 
   @override
   State<ChatListScreen> createState() => _ChatListScreenState();
@@ -37,6 +39,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
+      appBar: widget.showAppBar
+          ? AppBar(
+              title: const Text(
+                'المحادثات',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              backgroundColor: AppColors.primary,
+            )
+          : null,
       body: Column(
         children: [
           // Search Bar
@@ -180,8 +196,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             });
                           },
                           leading: CircleAvatar(
-                            backgroundColor:
-                                AppColors.primary.withOpacity(0.1),
+                            backgroundColor: AppColors.primary.withOpacity(0.1),
                             child: const Icon(
                               Icons.person_add,
                               color: AppColors.primary,
@@ -206,7 +221,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       final chat = chats[index - 1];
                       final unreadCount = unreadCounts[chat.id] ?? 0;
 
-                      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+                      final currentUserId =
+                          Supabase.instance.client.auth.currentUser?.id;
                       final otherMember = chat.members.firstWhere(
                         (m) => m.id != currentUserId,
                         orElse: () => chat.members.isNotEmpty
@@ -222,13 +238,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       );
 
                       final isPrivate = chat.type == ChatType.private;
-                      final displayTitle = isPrivate 
+                      final displayTitle = isPrivate
                           ? (otherMember.fullName ?? 'مستخدم')
                           : (chat.title ?? 'محادثة');
-                      final displayAvatar = isPrivate 
-                          ? otherMember.avatarUrl 
+                      final displayAvatar = isPrivate
+                          ? otherMember.avatarUrl
                           : chat.avatarUrl;
-                      
+
                       String lastMessagePreview = 'اضغط للعرض...';
                       if (chat.lastMessage != null) {
                         if (chat.lastMessage!.isImage) {
@@ -286,7 +302,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             // Refresh list when returning from chat room to update order/last message
                             if (context.mounted) {
                               // Optimistically clear unread count
-                              context.read<ChatListCubit>().markChatAsRead(chat.id);
+                              context.read<ChatListCubit>().markChatAsRead(
+                                chat.id,
+                              );
                               context.read<ChatListCubit>().loadChats();
                             }
                           });
@@ -374,7 +392,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                             if (chat.lastMessageAt != null)
+                            if (chat.lastMessageAt != null)
                               Text(
                                 _formatDate(chat.lastMessageAt!),
                                 style: TextStyle(
@@ -418,7 +436,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           });
         },
         backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add_comment_rounded),
+        child: const Icon(Icons.add_comment_rounded, color: Colors.white),
       ),
     );
   }

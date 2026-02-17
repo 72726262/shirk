@@ -152,56 +152,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         const SizedBox(height: Dimensions.spaceL),
 
-                        // Role Selection
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'نوع الحساب',
-                              style: TextStyle(fontWeight: FontWeight.w500),
-                            ),
-                            const SizedBox(height: Dimensions.spaceXS),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.white,
-                                borderRadius: BorderRadius.circular(Dimensions.radiusM),
-                                border: Border.all(color: AppColors.border),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.shadow,
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: DropdownButtonFormField<UserRole>(
-                                value: _selectedRole,
-                                decoration: InputDecoration(
-                                  border: InputBorder.none,
-                                  prefixIcon: const Icon(
-                                    Icons.admin_panel_settings,
-                                    color: AppColors.primary,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: Dimensions.spaceL,
-                                    vertical: Dimensions.spaceM,
-                                  ),
-                                ),
-                                items: UserRole.values.map((role) {
-                                  return DropdownMenuItem(
-                                    value: role,
-                                    child: Text(role.displayName),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedRole = value!;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
+
 
                         const SizedBox(height: Dimensions.spaceL),
 
@@ -641,13 +592,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-      // Call AuthCubit for registration
+        // Call AuthCubit for registration
       context.read<AuthCubit>().signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         fullName: _nameController.text.trim(),
         phone: _phoneController.text.trim(),
-        role: _selectedRole.value,
+        role: 'client', // Force client role
       );
     }
   }

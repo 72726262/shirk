@@ -1,5 +1,6 @@
 // lib/presentation/cubits/auth/auth_cubit.dart
 import 'package:equatable/equatable.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/data/models/user_model.dart';
 import 'package:mmm/data/repositories/auth_repository.dart';
@@ -37,6 +38,7 @@ class AuthCubit extends Cubit<AuthState> {
       // Use the actual role from the user object
       emit(Authenticated(user: user, role: user.role));
     } catch (e) {
+      print(e.toString());
       emit(AuthError(message: 'فشل تسجيل الدخول: ${e.toString()}'));
     }
   }
@@ -117,7 +119,7 @@ class AuthCubit extends Cubit<AuthState> {
 
       final currentUser = (state as Authenticated).user;
       final user = await authRepository.getUserProfile(currentUser.id);
-      
+
       if (user != null) {
         emit(Authenticated(user: user, role: user.role));
       }

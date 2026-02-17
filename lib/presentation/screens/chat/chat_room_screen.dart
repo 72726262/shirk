@@ -33,6 +33,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   Map<String, dynamic>? _otherUserProfile;
   bool _isLoadingProfile = false;
+  File? _selectedImage; // Added state for selected image
 
   @override
   void initState() {
@@ -85,14 +86,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     }
   }
 
-  Future<void> _pickImage(ChatRoomCubit cubit) async {
+  Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 70,
     );
 
     if (image != null && mounted) {
-      cubit.sendImageMessage(File(image.path));
+      setState(() {
+        _selectedImage = File(image.path);
+      });
     }
   }
 
@@ -725,9 +728,49 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     ],
                   ),
                   child: SafeArea(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (_selectedImage != null)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey[300]!),
+                            ),
+                            child: Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    _selectedImage!,
+                                    height: 60,
+                                    width: 60,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'جاهز للإرسال',
+                                    style: TextStyle(
+                                      color: Colors.grey[700],
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () => setState(() => _selectedImage = null),
+                                  icon: const Icon(Icons.close, color: Colors.red),
+                                ),
+                              ],
+                            ),
+                          ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
                         Container(
                           margin: const EdgeInsets.only(bottom: 2),
                           decoration: BoxDecoration(
@@ -766,7 +809,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                         title: const Text('معرض الصور'),
                                         onTap: () {
                                           Navigator.pop(cntx);
-                                          _pickImage(cubit);
+                                          _pickImage();
                                         },
                                       ),
                                       ListTile(
@@ -881,17 +924,27 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                     ? null
                                     : () {
                                         final content = _messageController.text;
-                                        if (content.trim().isNotEmpty) {
-                                          context
-                                              .read<ChatRoomCubit>()
-                                              .sendTextMessage(content);
+                                        final cubit = context.read<ChatRoomCubit>();
+
+                                        if (_selectedImage != null) {
+                                          cubit.sendImageMessage(
+                                            _selectedImage!,
+                                            caption: content.trim().isEmpty ? null : content,
+                                          );
+                                          setState(() {
+                                            _selectedImage = null;
+                                            _messageController.clear();
+                                          });
+                                        } else if (content.trim().isNotEmpty) {
+                                          cubit.sendTextMessage(content);
                                           _messageController.clear();
-                                          // _scrollToBottom will be handled by list update
                                         }
                                       },
                               ),
                             );
                           },
+                        ),
+                      ],
                         ),
                       ],
                     ),

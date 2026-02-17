@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 
@@ -12,8 +13,6 @@ import 'package:mmm/presentation/cubits/admin/handovers_management_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/subscriptions_management_cubit.dart';
 import 'package:mmm/data/repositories/subscription_repository.dart';
 
-import 'package:mmm/presentation/cubits/chat/chat_list_cubit.dart';
-import 'package:mmm/data/repositories/chat_repository.dart';
 import 'package:mmm/presentation/cubits/projects/projects_cubit.dart';
 import 'package:mmm/presentation/screens/admin/tabs/projects_tab.dart';
 import 'package:mmm/presentation/screens/admin/tabs/clients_management_tab.dart';
@@ -24,8 +23,7 @@ import 'package:mmm/presentation/screens/admin/tabs/overview_tab.dart';
 import 'package:mmm/presentation/screens/admin/tabs/contracts_management_tab.dart';
 import 'package:mmm/presentation/screens/admin/tabs/documents_management_tab.dart';
 import 'package:mmm/presentation/screens/admin/tabs/handovers_management_tab.dart';
-import 'package:mmm/presentation/screens/admin/activity_logs_screen.dart';
-import 'package:mmm/presentation/screens/admin/reports_screen.dart';
+
 import 'package:mmm/presentation/screens/admin/create_user_screen.dart';
 import 'package:mmm/presentation/screens/admin/subscriptions_management_screen.dart';
 import 'package:mmm/presentation/screens/chat/chat_list_screen.dart';
@@ -66,7 +64,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     HandoversManagementTab(),
     NotificationsComposerTab(),
     SubscriptionsManagementScreen(), // Index 9
-    ChatListScreen(), // Index 10
+    ChatListScreen(showAppBar: false), // Index 10
   ];
 
   @override
@@ -79,7 +77,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments;
-    if (args != null && args is Map<String, dynamic> && args.containsKey('tab')) {
+    if (args != null &&
+        args is Map<String, dynamic> &&
+        args.containsKey('tab')) {
       final tabIndex = args['tab'] as int;
       if (tabIndex >= 0 && tabIndex < _pages.length) {
         setState(() {
@@ -116,74 +116,59 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             subscriptionRepository: SubscriptionRepository(),
           )..loadSubscriptions(),
         ),
-        BlocProvider(
-          create: (context) =>
-              ChatListCubit(chatRepository: ChatRepository())..loadChats(),
-        ),
       ],
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: Text(_pageTitles[_selectedIndex]),
-          backgroundColor: AppColors.primary,
-          elevation: 0,
-          iconTheme: const IconThemeData(color: Colors.white),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.person_add),
-              tooltip: 'إنشاء مستخدم',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CreateUserScreen()),
-                );
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.analytics),
-              tooltip: 'التقارير',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ReportsScreen()),
-                );
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.history),
-              tooltip: 'سجل الأنشطة',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ActivityLogsScreen()),
-                );
-              },
-            ),
-          ],
-        ),
-        drawer: AdminDrawer(
-          selectedIndex: _selectedIndex,
-          onItemSelected: _navigateToPage,
-        ),
-        body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          switchInCurve: Curves.easeInOut,
-          switchOutCurve: Curves.easeInOut,
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0.02, 0),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
+
+      child: PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) async {
+          if (didPop) return;
+          // Exit the app immediately
+          await SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            title: Text(_pageTitles[_selectedIndex]),
+            backgroundColor: AppColors.primary,
+            elevation: 0,
+            iconTheme: const IconThemeData(color: Colors.white),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.person_add),
+                tooltip: 'إنشاء مستخدم',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CreateUserScreen()),
+                  );
+                },
               ),
-            );
-          },
-          child: KeyedSubtree(
-            key: ValueKey<int>(_selectedIndex),
-            child: _pages[_selectedIndex],
+            ],
+          ),
+          drawer: AdminDrawer(
+            selectedIndex: _selectedIndex,
+            onItemSelected: _navigateToPage,
+          ),
+          body: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.02, 0),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: KeyedSubtree(
+              key: ValueKey<int>(_selectedIndex),
+              child: _pages[_selectedIndex],
+            ),
           ),
         ),
       ),

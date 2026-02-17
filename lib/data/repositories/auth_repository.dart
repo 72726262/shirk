@@ -1,4 +1,5 @@
 import 'package:mmm/data/models/user_model.dart';
+import 'package:mmm/data/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthRepository {
@@ -348,29 +349,69 @@ class AuthRepository {
         throw Exception('الاسم الكامل مطلوب');
       }
 
-      print('👤 Admin: إنشاء مستخدم جديد: ${email.trim()}');
+      print('👤 Admin: إنشاء مستخدم جديد: ${email.trim()} Using Temp Client');
+      
+      final url = SupabaseService.supabaseUrl;
+      final key = SupabaseService.supabaseAnonKey;
+      
+      print('🔍 URL available: ${url.isNotEmpty}');
+      print('🔍 Key available: ${key.isNotEmpty}');
 
-      // إنشاء حساب جديد في auth
-      final response = await _client.auth.admin.createUser(
-        AdminUserAttributes(
-          email: email.trim(),
-          password: password,
-          emailConfirm: true, // تأكيد البريد تلقائياً
-          userMetadata: {
-            'full_name': fullName.trim(),
-            'phone': phone.trim(),
-            'role': role,
-          },
+      // 1. Create a temporary SupabaseClient with MemoryStorage
+      // Use SupabaseService static getters for credentials
+      final tempClient = SupabaseClient(
+        url,
+        key,
+        authOptions: AuthClientOptions(
+          // Use pkceAsyncStorage for custom storage
+          pkceAsyncStorage: MemoryStorage(),
+          authFlowType: AuthFlowType.pkce, 
         ),
+      );
+      
+      print('🛠️ tempClient created successfully');
+
+      // 2. Sign Up (This handles password hashing correctly)
+      print('🚀 Attempting signUp...');
+      final response = await tempClient.auth.signUp(
+        email: email.trim(),
+        password: password,
+        data: {
+          'full_name': fullName.trim(),
+          'phone': phone.trim(),
+          'role': role,
+        },
       );
 
       if (response.user != null) {
-        print('✅ تم إنشاء الحساب في Auth');
+        print('✅ تم إنشاء الحساب في Auth (Temp Client): ${response.user!.id}');
 
-        // الانتظار قليلاً لـ trigger
-        await Future.delayed(const Duration(milliseconds: 500));
+        // 3. Confirm the user manually via RPC (Since we don't have email verification flow)
+        try {
+          await _client.rpc(
+            'admin_confirm_user_email',
+            params: {'p_user_id': response.user!.id},
+          );
+          print('✅ تمت تأكيد البريد الإلكتروني للمستخدم الجديد');
+        } catch (e) {
+          print('⚠️ فشل تأكيد المستخدم تلقائياً: $e');
+          // Don't fail the whole process, but warn.
+          // Probably need to apply SQL.
+          if (e.toString().contains('function admin_confirm_user_email') ||
+              e.toString().contains('does not exist')) {
+            // We can rethrow to alert admin to run SQL
+            throw Exception(
+              '⚠️ تم إنشاء المستخدم، ولكن فشل التفعيل التلقائي.\n\n'
+              'يرجى تنفيذ ملف SQL التالي في Supabase Dashboard لتفعيل هذه الميزة:\n'
+              'admin_confirm_user.sql',
+            );
+          }
+        }
 
-        // التأكد من إنشاء الملف الشخصي
+        // 4. Wait for Profile Trigger (if any) or existing logic
+        await Future.delayed(const Duration(milliseconds: 1000));
+
+        // 5. Ensure Profile Exists (Fallback)
         final profile = await _getOrCreateProfile(
           userId: response.user!.id,
           email: email.trim(),
@@ -379,19 +420,10 @@ class AuthRepository {
           role: role,
         );
 
-        // إنشاء محفظة للمستخدم الجديد
-        try {
-          await _client.from('wallets').insert({
-            'user_id': response.user!.id,
-            'balance': 0.0,
-            'reserved_amount': 0.0,
-          });
-          print('✅ تم إنشاء المحفظة');
-        } catch (e) {
-          print('⚠️ خطأ في إنشاء المحفظة (قد تكون موجودة): $e');
-        }
+        // 6. Dispose temp client (not strictly necessary as it's GC'd, but good practice if dispose existed)
+        // tempClient.dispose();
 
-        print('🎉 تم إنشاء المستخدم بنجاح (Admin)');
+        print('🎉 تم إنشاء المستخدم بنجاح (Hybrid Flow)');
         return profile;
       }
 
@@ -409,5 +441,25 @@ class AuthRepository {
       print('❌ خطأ غير متوقع في إنشاء المستخدم: $e');
       throw Exception('حدث خطأ غير متوقع: ${e.toString()}');
     }
+  }
+}
+
+// Simple In-Memory Storage for Temp Client
+class MemoryStorage extends GotrueAsyncStorage {
+  final Map<String, String> _storage = {};
+
+  @override
+  Future<String?> getItem({required String key}) async {
+    return _storage[key];
+  }
+
+  @override
+  Future<void> setItem({required String key, required String value}) async {
+    _storage[key] = value;
+  }
+
+  @override
+  Future<void> removeItem({required String key}) async {
+    _storage.remove(key);
   }
 }

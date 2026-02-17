@@ -14,6 +14,8 @@ class ClientCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      shadowColor: Colors.black,
+      color: Color.fromARGB(160, 250, 247, 247),
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Dimensions.radiusL),
@@ -74,21 +76,8 @@ class ClientCard extends StatelessWidget {
 
               // Status Chip
               _buildStatusChip(client.kycStatus),
-              
+
               const Spacer(),
-              
-              // Action Button (View Details)
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => _showClientDetails(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
-                  ),
-                  child: const Text('عرض التفاصيل'),
-                ),
-              ),
             ],
           ),
         ),

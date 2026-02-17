@@ -7,7 +7,7 @@ class OpenProjectLocationUseCase {
   OpenProjectLocationUseCase(this._repository);
 
   /// Opens Google Maps with directions to project location
-  /// 
+  ///
   /// Returns true if successful, throws exception otherwise
   Future<bool> call({
     required double latitude,
@@ -21,8 +21,6 @@ class OpenProjectLocationUseCase {
     if (longitude < -180 || longitude > 180) {
       throw Exception('خط الطول غير صحيح. يجب أن يكون بين -180 و 180');
     }
-
-    print('📍 Opening location: $latitude, $longitude');
 
     return await _repository.openGoogleMapsDirections(
       latitude: latitude,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
@@ -429,67 +430,76 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: BlocConsumer<AuthCubit, AuthState>(
-          listener: (context, state) {
-            if (state is Authenticated) {
-              // ✅ Always go to dashboard - let dashboard show approval dialog
-              final dashboardRoute = DashboardRouter.getDashboardRoute(state.role);
-              Navigator.pushReplacementNamed(context, dashboardRoute);
-            }
-            if (state is AuthError) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      Icon(Icons.error_outline, color: AppColors.white),
-                      const SizedBox(width: Dimensions.spaceS),
-                      Expanded(child: Text(state.message)),
-                    ],
+      body: PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) async {
+          if (didPop) return;
+          await SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+        },
+        child: SafeArea(
+          child: BlocConsumer<AuthCubit, AuthState>(
+            listener: (context, state) {
+              if (state is Authenticated) {
+                // ✅ Always go to dashboard - let dashboard show approval dialog
+                final dashboardRoute = DashboardRouter.getDashboardRoute(
+                  state.role,
+                );
+                Navigator.pushReplacementNamed(context, dashboardRoute);
+              }
+              if (state is AuthError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: AppColors.white),
+                        const SizedBox(width: Dimensions.spaceS),
+                        Expanded(child: Text(state.message)),
+                      ],
+                    ),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                    ),
                   ),
-                  backgroundColor: Colors.red,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                );
+              }
+            },
+            builder: (context, state) {
+              final isLoading = state is AuthLoading;
+
+              return GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.all(Dimensions.spaceXXL),
+                    children: [
+                      const SizedBox(height: Dimensions.space3XL),
+                      _buildLogoSection(),
+                      const SizedBox(height: Dimensions.space4XL),
+                      _buildLoginForm(),
+                      _buildForgotPassword(),
+                      const SizedBox(height: Dimensions.space3XL),
+                      PrimaryButton(
+                        text: 'تسجيل الدخول',
+                        onPressed: _handleLogin,
+                        isLoading: isLoading,
+                        elevation: 4,
+                        borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                        height: 56,
+                      ),
+                      _buildSocialLogin(),
+                      const SizedBox(height: 10),
+                      _buildSignUpLink(),
+                      const SizedBox(height: 10),
+                    ],
                   ),
                 ),
               );
-            }
-          },
-          builder: (context, state) {
-            final isLoading = state is AuthLoading;
-
-            return GestureDetector(
-              onTap: () => FocusScope.of(context).unfocus(),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.all(Dimensions.spaceXXL),
-                  children: [
-                    const SizedBox(height: Dimensions.space3XL),
-                    _buildLogoSection(),
-                    const SizedBox(height: Dimensions.space4XL),
-                    _buildLoginForm(),
-                    _buildForgotPassword(),
-                    const SizedBox(height: Dimensions.space3XL),
-                    PrimaryButton(
-                      text: 'تسجيل الدخول',
-                      onPressed: _handleLogin,
-                      isLoading: isLoading,
-                      elevation: 4,
-                      borderRadius: BorderRadius.circular(Dimensions.radiusL),
-                      height: 56,
-                    ),
-                    _buildSocialLogin(),
-                    const SizedBox(height: 10),
-                    _buildSignUpLink(),
-                    const SizedBox(height: 10),
-                  ],
-                ),
-              ),
-            );
-          },
+            },
+          ),
         ),
       ),
     );

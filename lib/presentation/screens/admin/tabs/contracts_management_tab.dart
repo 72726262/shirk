@@ -43,8 +43,15 @@ class _ContractsManagementTabState extends State<ContractsManagementTab> {
             context.read<ContractsManagementCubit>().loadContracts();
           }
         },
-        label: const Text('إنشاء عقد'),
-        icon: const Icon(Icons.add),
+        label: const Text(
+          'إنشاء عقد',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        icon: const Icon(Icons.add, color: Colors.white, size: 24),
         backgroundColor: AppColors.primary,
       ),
       body: Padding(
@@ -81,7 +88,9 @@ class _ContractsManagementTabState extends State<ContractsManagementTab> {
                             backgroundColor: AppColors.success,
                           ),
                         );
-                        context.read<ContractsManagementCubit>().loadContracts();
+                        context
+                            .read<ContractsManagementCubit>()
+                            .loadContracts();
                       } else if (state is ContractDeletedSuccessfully) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -89,7 +98,9 @@ class _ContractsManagementTabState extends State<ContractsManagementTab> {
                             backgroundColor: AppColors.success,
                           ),
                         );
-                        context.read<ContractsManagementCubit>().loadContracts();
+                        context
+                            .read<ContractsManagementCubit>()
+                            .loadContracts();
                       }
                     },
                     builder: (context, state) {
@@ -195,26 +206,6 @@ class _ContractsManagementTabState extends State<ContractsManagementTab> {
           ),
         ),
         const SizedBox(width: Dimensions.spaceL),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Show create contract dialog
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('قيد التطوير')));
-            },
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('إنشاء عقد'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(120, 40),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: Dimensions.spaceM,
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -494,27 +485,30 @@ class _ContractCard extends StatelessWidget {
                               // In this case, _ContractCard assumes a provider above it.
                               // If using specific context:
                               Navigator.pop(context); // Close dialog first
-                              
+
                               // We need to use valid context, but here 'context' is from builder
                               // ContractCard's context is safe if used outside builder or via closure
                               // Let's rely on the fact that ContractsManagementTab provides it.
-                              
+
                               // Use the outer context (from build method) via closure or just assume standard lookup
                               // But standard lookup from dialog context might fail if provider is not above MaterialApp (it usually is for global, but here unlikely)
                               // A safer way:
-                              // context.read<ContractsManagementCubit>().deleteContract(contract.id); 
-                              // This 'context' is the Dialog's context. 
+                              // context.read<ContractsManagementCubit>().deleteContract(contract.id);
+                              // This 'context' is the Dialog's context.
                               // If BlocProvider is in the Tab, and Dialog is pushed, it is NOT in the tree of Dialog.
                               // So we must access the Cubit via the wrapper logic or pass it.
-                              
+
                               // BETTER:
                               // Pass the function as callback or access parent context.
                               // Here we can use 'context' of build method if we capture it?
-                              // Actually, StatelessWidget build context is fine. 
+                              // Actually, StatelessWidget build context is fine.
                               // But inside showDialog, the context is new.
-                              
+
                               // FIX: Use read from the parent context (captured in closure).
-                              final cubit = BlocProvider.of<ContractsManagementCubit>(context);
+                              final cubit =
+                                  BlocProvider.of<ContractsManagementCubit>(
+                                    context,
+                                  );
                               cubit.deleteContract(contract.id);
                             },
                             style: TextButton.styleFrom(

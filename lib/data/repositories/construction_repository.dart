@@ -4,9 +4,9 @@ import 'package:mmm/data/services/supabase_service.dart';
 
 class ConstructionRepository {
   final SupabaseService _supabaseService;
-  
+
   ConstructionRepository({SupabaseService? supabaseService})
-      : _supabaseService = supabaseService ?? SupabaseService();
+    : _supabaseService = supabaseService ?? SupabaseService();
 
   SupabaseClient get _client => _supabaseService.client;
 
@@ -48,16 +48,22 @@ class ConstructionRepository {
   }
 
   // Subscribe to real-time construction updates
-  Stream<List<ConstructionUpdateModel>> watchConstructionUpdates(String projectId) {
+  Stream<List<ConstructionUpdateModel>> watchConstructionUpdates(
+    String projectId,
+  ) {
     return _client
         .from('construction_updates')
         .stream(primaryKey: ['id'])
         .eq('project_id', projectId) // Filter by project
         .order('update_date', ascending: false)
-        .map((data) => (data)
-            .where((json) => json['is_public'] == true) // Filter public client-side if stream doesn't support multiple filters
-            .map((json) => ConstructionUpdateModel.fromJson(json))
-            .toList());
+        .map(
+          (data) => (data)
+              .where(
+                (json) => json['is_public'] == true,
+              ) // Filter public client-side if stream doesn't support multiple filters
+              .map((json) => ConstructionUpdateModel.fromJson(json))
+              .toList(),
+        );
   }
 
   // Create construction update (Admin only)
@@ -137,8 +143,9 @@ class ConstructionRepository {
       for (var i = 0; i < filePaths.length; i++) {
         // Use StorageService constant or correct string 'construction-media'
         final url = await _supabaseService.uploadFile(
-          bucketName: 'construction-media', 
-          path: 'projects/$projectId/updates/$updateId/${mediaType}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg',
+          bucketName: 'construction-media',
+          path:
+              'projects/$projectId/updates/$updateId/${mediaType}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg',
           filePath: filePaths[i],
         );
         urls.add(url);
@@ -180,7 +187,8 @@ class ConstructionRepository {
       // Use correct bucket name 'reports'
       final url = await _supabaseService.uploadFile(
         bucketName: 'reports',
-        path: 'updates/$updateId/${reportType}_report_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        path:
+            'updates/$updateId/${reportType}_report_${DateTime.now().millisecondsSinceEpoch}.pdf',
         filePath: filePath,
       );
 
@@ -239,6 +247,88 @@ class ConstructionRepository {
           .toList();
     } catch (e) {
       throw Exception('خطأ في تحميل تحديثات الأسبوع: ${e.toString()}');
+    }
+  }
+
+  // Get construction updates for all projects a user is subscribed to
+  Future<List<ConstructionUpdateModel>> getUserConstructionUpdates(
+    String userId,
+  ) async {
+    try {
+      // 1. Get project IDs from subscriptions
+      final subscriptionsResponse = await _client
+          .from('subscriptions')
+          .select('project_id')
+          .eq('user_id', userId);
+
+      final projectIds = (subscriptionsResponse as List)
+          .map((s) => s['project_id'] as String)
+          .toSet() // Remove duplicates
+          .toList();
+
+      if (projectIds.isEmpty) {
+        return [];
+      }
+
+      // 2. Fetch updates for these projects
+      final response = await _client
+          .from('construction_updates')
+          .select('*, projects(name)')
+          .filter('project_id', 'in', projectIds)
+          .eq('is_public', true)
+          .order('update_date', ascending: false);
+
+      return (response as List).map((json) {
+        return ConstructionUpdateModel.fromJson(json);
+      }).toList();
+    } catch (e) {
+      throw Exception('خطأ في تحميل تحديثات مشاريعك: ${e.toString()}');
+    }
+  }
+
+  // Notify subscribers about a new update
+  Future<void> notifySubscribers(
+    String projectId,
+    String updateTitle,
+    String updateId,
+  ) async {
+    try {
+      // 1. Get all user IDs subscribed to this project
+      final subscriptions = await _client
+          .from('subscriptions')
+          .select('user_id')
+          .eq('project_id', projectId);
+
+      final userIds = (subscriptions as List)
+          .map((s) => s['user_id'] as String)
+          .toSet()
+          .toList();
+
+      if (userIds.isEmpty) return;
+
+      // 2. Create notifications for each user
+      final notifications = userIds
+          .map(
+            (userId) => {
+              'user_id': userId,
+              'title': 'تحديث جديد للمشروع',
+              'title_ar': 'تحديث جديد للمشروع',
+              'body': 'تم إضافة تحديث جديد لمشروعك: $updateTitle',
+              'body_ar': 'تم إضافة تحديث جديد لمشروعك: $updateTitle',
+              'type': 'update', // Match NotificationType enum
+              'project_id': projectId,
+              'action_url':
+                  '/construction-updates/$updateId', // Deep link example
+              'is_read': false,
+              'created_at': DateTime.now().toIso8601String(),
+            },
+          )
+          .toList();
+
+      await _client.from('notifications').insert(notifications);
+    } catch (e) {
+      print('Failed to notify subscribers: $e');
+      // Don't throw, as the update was created successfully
     }
   }
 }
