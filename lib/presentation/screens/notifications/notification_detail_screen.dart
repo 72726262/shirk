@@ -4,27 +4,54 @@ import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/data/models/notification_model.dart';
 import 'package:mmm/presentation/cubits/notifications/notifications_cubit.dart';
+import 'package:mmm/presentation/cubits/notifications/notification_detail_cubit.dart'; // Import new cubit
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
 import 'package:intl/intl.dart';
 
-class NotificationDetailScreen extends StatefulWidget {
+class NotificationDetailScreen extends StatelessWidget {
   final String notificationId;
 
   const NotificationDetailScreen({super.key, required this.notificationId});
 
   @override
-  State<NotificationDetailScreen> createState() => _NotificationDetailScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => NotificationDetailCubit()..loadNotificationDetail(notificationId),
+      child: const NotificationDetailView(),
+    );
+  }
 }
 
-class _NotificationDetailScreenState extends State<NotificationDetailScreen> {
+class NotificationDetailView extends StatefulWidget {
+  const NotificationDetailView({super.key});
+
+  @override
+  State<NotificationDetailView> createState() => _NotificationDetailViewState();
+}
+
+class _NotificationDetailViewState extends State<NotificationDetailView> {
   @override
   void initState() {
     super.initState();
+    // Mark as read without affecting the detail view state
+    // We access the PARENT NotificationsCubit to mark as read in the list
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
-      context.read<NotificationsCubit>().markAsRead(authState.user.id, widget.notificationId);
+      // Find the NotificationsCubit from the context (it should be provided above in the widget tree)
+      // If not found, we might need to handle it gracefully or rely on the list refresh.
+      // Assuming NotificationsCubit is provided gloablly or in the parent route.
+      try {
+        // We get the notification ID from the cubit's initial load or passed down?
+        // Actually we need the ID here. Let's look at how to get it.
+        // The parent NotificationDetailScreen passed it to the Cubit.
+        // We can't easily access it here without passing it down or getting it from the Cubit state after load.
+        //
+        // Better approach: Do the marking as read in the parent screen or passed as a parameter.
+        // But since we are here, let's wait for the detail to load.
+      } catch (e) {
+        print('NotificationsCubit not found in context: $e');
+      }
     }
-    context.read<NotificationsCubit>().loadNotificationDetail(widget.notificationId);
   }
 
   @override
@@ -35,9 +62,18 @@ class _NotificationDetailScreenState extends State<NotificationDetailScreen> {
         title: const Text('تفاصيل الإشعار'),
         backgroundColor: AppColors.primary,
       ),
-      body: BlocBuilder<NotificationsCubit, NotificationsState>(
+      body: BlocConsumer<NotificationDetailCubit, NotificationDetailState>(
+        listener: (context, state) {
+           if (state is NotificationDetailLoaded) {
+             // Once loaded, we can mark it as read in the background using the global NotificationsCubit
+             final authState = context.read<AuthCubit>().state;
+             if (authState is Authenticated) {
+               context.read<NotificationsCubit>().markAsRead(authState.user.id, state.notification.id);
+             }
+           }
+        },
         builder: (context, state) {
-          if (state is NotificationsLoading) {
+          if (state is NotificationDetailLoading) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -49,6 +85,7 @@ class _NotificationDetailScreenState extends State<NotificationDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                   // ... existing UI code ...
                   // Icon and Title
                   Center(
                     child: Container(
@@ -123,6 +160,10 @@ class _NotificationDetailScreenState extends State<NotificationDetailScreen> {
                 ],
               ),
             );
+          }
+
+          if (state is NotificationDetailError) {
+             return Center(child: Text(state.message));
           }
 
           return const SizedBox.shrink();

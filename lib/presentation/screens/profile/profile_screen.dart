@@ -9,6 +9,7 @@ import 'package:mmm/presentation/widgets/buttons/primary_button.dart';
 import 'package:mmm/data/services/storage_service.dart';
 import 'package:mmm/data/repositories/auth_repository.dart';
 import 'package:mmm/data/models/user_model.dart';
+import 'package:mmm/presentation/widgets/dialogs/logout_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -20,11 +21,11 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final StorageService _storageService = StorageService();
   final AuthRepository _authRepository = AuthRepository();
-  
+
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  
+
   String? _selectedAvatarPath;
   bool _isLoading = false;
   bool _isEditMode = false;
@@ -161,9 +162,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     _buildInfoRow('نوع الحساب', _getRoleLabel(state.user.role)),
                     const Divider(),
-                    _buildInfoRow('حالة التحقق', state.user.kycStatus == KYCStatus.approved ? 'موثق ✓' : 'غير موثق'),
+                    _buildInfoRow(
+                      'حالة التحقق',
+                      state.user.kycStatus == KYCStatus.approved
+                          ? 'موثق ✓'
+                          : 'غير موثق',
+                    ),
                     const Divider(),
-                    _buildInfoRow('تاريخ التسجيل', _formatDate(state.user.createdAt)),
+                    _buildInfoRow(
+                      'تاريخ التسجيل',
+                      _formatDate(state.user.createdAt),
+                    ),
                   ],
                 ),
                 const SizedBox(height: Dimensions.spaceXL),
@@ -179,19 +188,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 // Logout Button
                 OutlinedButton.icon(
-                  onPressed: () {
-                    context.read<AuthCubit>().signOut();
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => const LogoutDialog(),
+                    );
+
+                    if (confirm == true && context.mounted) {
+                      context.read<AuthCubit>().signOut();
+                    }
                   },
-                  icon: const Icon(Icons.logout, color: AppColors.error),
+                  icon: const Icon(Icons.logout, color: AppColors.white),
                   label: const Text(
                     'تسجيل الخروج',
-                    style: TextStyle(color: AppColors.error),
+                    style: TextStyle(color: AppColors.white),
                   ),
                   style: OutlinedButton.styleFrom(
+                    backgroundColor: AppColors.error,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                    ),
                     side: const BorderSide(color: AppColors.error),
                     minimumSize: const Size(double.infinity, 50),
                   ),
                 ),
+                const SizedBox(height: 25),
               ],
             ),
           );
@@ -203,11 +224,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildDefaultAvatar() {
     return Container(
       color: AppColors.primary.withOpacity(0.1),
-      child: const Icon(
-        Icons.person,
-        size: 60,
-        color: AppColors.primary,
-      ),
+      child: const Icon(Icons.person, size: 60, color: AppColors.primary),
     );
   }
 
@@ -227,10 +244,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: Dimensions.spaceM),
           ...children,
@@ -254,10 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           Text(
             value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
           ),
         ],
       ),
@@ -275,10 +286,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               const Text(
                 'تحديث الصورة الشخصية',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: Dimensions.spaceL),
               ImagePickerWidget(
@@ -343,10 +351,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ: $e'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: AppColors.error),
         );
       }
     } finally {

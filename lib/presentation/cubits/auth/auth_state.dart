@@ -27,6 +27,22 @@ class PhoneVerified extends AuthState {}
 
 class CodeResent extends AuthState {}
 
+class PasswordResetEmailSent extends AuthState {}
+
+class AuthPasswordUpdated extends AuthState {}
+
+class AuthPasswordRecovery extends AuthState {}
+
+class AuthEmailNotConfirmed extends AuthState {
+  final String email;
+  AuthEmailNotConfirmed({required this.email});
+}
+
+class AuthRateLimitExceeded extends AuthState {
+  final int retryAfterSeconds;
+  AuthRateLimitExceeded({required this.retryAfterSeconds});
+}
+
 class AuthError extends AuthState {
   final String message;
 

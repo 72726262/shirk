@@ -33,25 +33,6 @@ class UnitDetailBookingScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Project Header Image (Placeholder or Actual)
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                image: project.imageUrl != null
-                    ? DecorationImage(
-                        image: NetworkImage(project.imageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-              ),
-              child: project.imageUrl == null
-                  ? const Center(
-                      child: Icon(Icons.apartment, size: 64, color: AppColors.primary),
-                    )
-                  : null,
-            ),
-
             Padding(
               padding: const EdgeInsets.all(Dimensions.spaceL),
               child: Column(
@@ -69,7 +50,11 @@ class UnitDetailBookingScreen extends StatelessWidget {
                   const SizedBox(height: Dimensions.spaceS),
                   Row(
                     children: [
-                      const Icon(Icons.business, size: 16, color: AppColors.textSecondary),
+                      const Icon(
+                        Icons.business,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         'المطور: ${project.developer}',
@@ -93,7 +78,7 @@ class UnitDetailBookingScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: Dimensions.spaceM),
                   _buildDetailsGrid(),
-                  
+
                   const Divider(height: Dimensions.spaceXL),
 
                   // Location & Visit
@@ -123,19 +108,25 @@ class UnitDetailBookingScreen extends StatelessWidget {
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: () {
-                        if (project.locationLat != null && project.locationLng != null) {
+                        if (project.locationLat != null &&
+                            project.locationLng != null) {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => ProjectLocationMapScreen(
                                 projectName: project.nameAr,
-                                projectLocation: LatLng(project.locationLat!, project.locationLng!),
+                                projectLocation: LatLng(
+                                  project.locationLat!,
+                                  project.locationLng!,
+                                ),
                               ),
                             ),
                           );
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('إحداثيات الموقع غير متوفرة')),
+                            const SnackBar(
+                              content: Text('إحداثيات الموقع غير متوفرة'),
+                            ),
                           );
                         }
                       },
@@ -160,7 +151,10 @@ class UnitDetailBookingScreen extends StatelessWidget {
                     '• يجب دفع مبلغ جدية الحجز خلال 24 ساعة.\n'
                     '• المبلغ غير مسترد في حالة الإلغاء بعد توقيع العقد.\n'
                     '• يرجى مراجعة تفاصيل العقد بدقة قبل الدفع.',
-                    style: TextStyle(height: 1.5, color: AppColors.textSecondary),
+                    style: TextStyle(
+                      height: 1.5,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
 
                   const SizedBox(height: Dimensions.spaceXXL),
@@ -170,8 +164,11 @@ class UnitDetailBookingScreen extends StatelessWidget {
                     text: 'متابعة الحجز',
                     onPressed: () {
                       // Update Cubit with Project ID and Unit
-                      context.read<JoinFlowCubit>().initBooking(project.id, unit);
-                      
+                      context.read<JoinFlowCubit>().initBooking(
+                        project.id,
+                        unit,
+                      );
+
                       // Navigate to Contract Summary
                       Navigator.pushNamed(
                         context,
@@ -198,12 +195,24 @@ class UnitDetailBookingScreen extends StatelessWidget {
       mainAxisSpacing: Dimensions.spaceM,
       crossAxisSpacing: Dimensions.spaceM,
       children: [
-        _buildInfoCard(Icons.confirmation_number, 'رقم الوحدة', unit.unitNumber),
+        _buildInfoCard(
+          Icons.confirmation_number,
+          'رقم الوحدة',
+          unit.unitNumber,
+        ),
         _buildInfoCard(Icons.layers, 'الدور', unit.floor?.toString() ?? '-'),
         _buildInfoCard(Icons.aspect_ratio, 'المساحة', '${unit.areaSqm} م²'),
         _buildInfoCard(Icons.attach_money, 'السعر', '${unit.price} ر.س'),
-        _buildInfoCard(Icons.bed, 'غرف النوم', unit.bedrooms?.toString() ?? '-'),
-        _buildInfoCard(Icons.bathtub, 'دورات المياه', unit.bathrooms?.toString() ?? '-'),
+        _buildInfoCard(
+          Icons.bed,
+          'غرف النوم',
+          unit.bedrooms?.toString() ?? '-',
+        ),
+        _buildInfoCard(
+          Icons.bathtub,
+          'دورات المياه',
+          unit.bathrooms?.toString() ?? '-',
+        ),
       ],
     );
   }

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:mmm/data/models/message_model.dart';
 import 'package:mmm/data/services/chat_storage_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -100,14 +100,16 @@ class MessageRepository {
   Future<MessageModel> sendImageMessage({
     required String chatId,
     required String senderId,
-    required File imageFile,
+    required Uint8List imageBytes,
+    required String fileName,
     String? caption,
     Function(double)? onProgress,
   }) async {
     try {
       // Upload image
-      final uploadData = await _storageService.uploadImage(
-        imageFile: imageFile,
+      final uploadData = await _storageService.uploadImageBytes(
+        imageBytes: imageBytes,
+        fileName: fileName,
         chatId: chatId,
         userId: senderId,
         onProgress: onProgress,
@@ -122,35 +124,40 @@ class MessageRepository {
             'content': caption,
             'message_type': 'image',
             'media_url': uploadData['media_url'],
+            'media_type': 'image',
             'file_name': uploadData['file_name'],
             'file_size': uploadData['file_size'],
-            'media_metadata': uploadData['media_metadata'],
           })
           .select()
           .single();
 
+      // Update chat timestamp
+      await _updateChatLastMessage(chatId);
+
       return MessageModel.fromJson(response);
     } catch (e) {
-      throw Exception('Failed to send image: $e');
+      throw Exception('فشل إرسال الصورة: $e');
     }
   }
 
-  /// Send video message
+  /// Send video message (bytes-based, web-compatible)
   Future<MessageModel> sendVideoMessage({
     required String chatId,
     required String senderId,
-    required File videoFile,
-    File? thumbnailFile,
+    required Uint8List videoBytes,
+    required String fileName,
+    Uint8List? thumbnailBytes,
+    String? thumbnailFileName,
     String? caption,
     Function(double)? onProgress,
   }) async {
     try {
       // Upload video
-      final uploadData = await _storageService.uploadVideo(
-        videoFile: videoFile,
+      final uploadData = await _storageService.uploadFileBytes(
+        fileBytes: videoBytes,
+        fileName: fileName,
         chatId: chatId,
         userId: senderId,
-        thumbnailFile: thumbnailFile,
         onProgress: onProgress,
       );
 
@@ -163,38 +170,38 @@ class MessageRepository {
             'content': caption,
             'message_type': 'video',
             'media_url': uploadData['media_url'],
+            'media_type': 'video',
             'file_name': uploadData['file_name'],
             'file_size': uploadData['file_size'],
-            'thumbnail_url': uploadData['thumbnail_url'],
-            'media_metadata': uploadData['media_metadata'],
           })
           .select()
           .single();
 
+      await _updateChatLastMessage(chatId);
       return MessageModel.fromJson(response);
     } catch (e) {
-      throw Exception('Failed to send video: $e');
+      throw Exception('فشل إرسال الفيديو: $e');
     }
   }
 
-  /// Send file message
+  /// Send file message (bytes-based, web-compatible)
   Future<MessageModel> sendFileMessage({
     required String chatId,
     required String senderId,
-    required File file,
+    required Uint8List fileBytes,
+    required String fileName,
     String? caption,
     Function(double)? onProgress,
   }) async {
     try {
-      // Upload file
-      final uploadData = await _storageService.uploadFile(
-        file: file,
+      final uploadData = await _storageService.uploadFileBytes(
+        fileBytes: fileBytes,
+        fileName: fileName,
         chatId: chatId,
         userId: senderId,
         onProgress: onProgress,
       );
 
-      // Create message
       final response = await _client
           .from('messages')
           .insert({
@@ -203,19 +210,17 @@ class MessageRepository {
             'content': caption,
             'message_type': 'file',
             'media_url': uploadData['media_url'],
+            'media_type': 'file',
             'file_name': uploadData['file_name'],
             'file_size': uploadData['file_size'],
-            'media_metadata': uploadData['media_metadata'],
           })
           .select()
           .single();
 
-      // Update chat timestamp
       await _updateChatLastMessage(chatId);
-
       return MessageModel.fromJson(response);
     } catch (e) {
-      throw Exception('Failed to send file: $e');
+      throw Exception('فشل إرسال الملف: $e');
     }
   }
 

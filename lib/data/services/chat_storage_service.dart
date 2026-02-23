@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path/path.dart' as path;
 
@@ -8,27 +8,27 @@ class ChatStorageService {
   ChatStorageService({SupabaseClient? client})
     : _client = client ?? Supabase.instance.client;
 
-  /// Upload image to chat-images bucket
-  Future<Map<String, dynamic>> uploadImage({
-    required File imageFile,
+  /// Upload image bytes to chat-images bucket (cross-platform / web-compatible)
+  Future<Map<String, dynamic>> uploadImageBytes({
+    required Uint8List imageBytes,
+    required String fileName,
     required String chatId,
     required String userId,
     Function(double)? onProgress,
   }) async {
     try {
-      final ext = path.extension(imageFile.path);
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}$ext';
-      final storagePath = '$userId/$chatId/$fileName';
-
-      // 1. Upload file
-      final bytes = await imageFile.readAsBytes();
-      final mimeType = _getMimeType(imageFile.path);
+      final ext = path.extension(fileName).isEmpty
+          ? '.jpg'
+          : path.extension(fileName);
+      final uniqueName = '${DateTime.now().millisecondsSinceEpoch}$ext';
+      final storagePath = '$userId/$chatId/$uniqueName';
+      final mimeType = _getMimeType(fileName);
 
       await _client.storage
           .from('chat-images')
           .uploadBinary(
             storagePath,
-            bytes,
+            imageBytes,
             fileOptions: FileOptions(
               cacheControl: '3600',
               upsert: false,
@@ -36,51 +36,43 @@ class ChatStorageService {
             ),
           );
 
-      // 2. Get public URL
-      final publicUrl = _client.storage
+      // Get signed URL (private bucket, valid for 1 year)
+      final signedUrl = await _client.storage
           .from('chat-images')
-          .getPublicUrl(storagePath);
-
-      // 3. Get file metadata
-      final fileSize = await imageFile.length();
+          .createSignedUrl(storagePath, 31536000);
 
       return {
-        'media_url': publicUrl,
-
-        'file_name': fileName,
-        'file_size': fileSize,
+        'media_url': signedUrl,
+        'file_name': uniqueName,
+        'file_size': imageBytes.length,
         'storage_path': storagePath,
-        'media_metadata': {
-          'width': 0, // ideally get image dimensions
-          'height': 0,
-          'bucket': 'chat-images',
-        },
       };
     } catch (e) {
-      throw Exception('Failed to upload image: $e');
+      throw Exception('فشل رفع الصورة: $e');
     }
   }
 
-  /// Upload file to chat-files bucket
-  Future<Map<String, dynamic>> uploadFile({
-    required File file,
+  /// Upload file bytes to chat-files bucket (cross-platform / web-compatible)
+  Future<Map<String, dynamic>> uploadFileBytes({
+    required Uint8List fileBytes,
+    required String fileName,
     required String chatId,
     required String userId,
     Function(double)? onProgress,
   }) async {
     try {
-      final ext = path.extension(file.path);
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}$ext';
-      final storagePath = '$userId/$chatId/$fileName';
-
-      final bytes = await file.readAsBytes();
-      final mimeType = _getMimeType(file.path);
+      final ext = path.extension(fileName).isEmpty
+          ? '.bin'
+          : path.extension(fileName);
+      final uniqueName = '${DateTime.now().millisecondsSinceEpoch}$ext';
+      final storagePath = '$userId/$chatId/$uniqueName';
+      final mimeType = _getMimeType(fileName);
 
       await _client.storage
           .from('chat-files')
           .uploadBinary(
             storagePath,
-            bytes,
+            fileBytes,
             fileOptions: FileOptions(
               cacheControl: '3600',
               upsert: false,
@@ -88,70 +80,19 @@ class ChatStorageService {
             ),
           );
 
-      final publicUrl = _client.storage
+      // Get signed URL (private bucket, valid for 1 year)
+      final signedUrl = await _client.storage
           .from('chat-files')
-          .getPublicUrl(storagePath);
-      final fileSize = await file.length();
+          .createSignedUrl(storagePath, 31536000);
 
       return {
-        'media_url': publicUrl,
-        'media_url': publicUrl,
-        'file_name': fileName,
-        'file_size': fileSize,
+        'media_url': signedUrl,
+        'file_name': uniqueName,
+        'file_size': fileBytes.length,
         'storage_path': storagePath,
-        'media_metadata': {
-          'bucket': 'chat-files',
-          'extension': path.extension(file.path),
-        },
       };
     } catch (e) {
-      throw Exception('Failed to upload file: $e');
-    }
-  }
-
-  /// Upload video (uses chat-files or chat-images depending on size/pref, but typically chat-files or separate bucket)
-  /// For now we'll use chat-files for videos or chat-images if small.
-  /// Let's use chat-images for consistency if it allows video mimes, otherwise chat-files.
-  /// Our migration said chat-images allows 'image/*', and chat-files allows documents.
-  /// We should probably update bucket config if we want videos in chat-images, or put them in chat-files.
-  /// Let's put videos in chat-files for now.
-  Future<Map<String, dynamic>> uploadVideo({
-    required File videoFile,
-    required String chatId,
-    required String userId,
-    File? thumbnailFile,
-    Function(double)? onProgress,
-  }) async {
-    try {
-      // Upload video
-      final videoData = await uploadFile(
-        file: videoFile,
-        chatId: chatId,
-        userId: userId,
-        onProgress: onProgress,
-      );
-
-      String? thumbnailUrl;
-      if (thumbnailFile != null) {
-        final thumbData = await uploadImage(
-          imageFile: thumbnailFile,
-          chatId: chatId,
-          userId: userId,
-        );
-        thumbnailUrl = thumbData['media_url'];
-      }
-
-      return {
-        ...videoData,
-        'thumbnail_url': thumbnailUrl,
-        'media_metadata': {
-          ...videoData['media_metadata'] as Map<String, dynamic>,
-          'type': 'video',
-          'duration': 0, // ideally get duration
-        },
-      };
-    } catch (e) {
-      throw Exception('Failed to upload video: $e');
+      throw Exception('فشل رفع الملف: $e');
     }
   }
 

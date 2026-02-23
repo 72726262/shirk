@@ -20,6 +20,8 @@ import 'package:mmm/data/models/unit_model.dart';
 import 'package:mmm/presentation/screens/auth/login_screen.dart';
 import 'package:mmm/presentation/screens/auth/register_screen.dart';
 import 'package:mmm/presentation/screens/auth/verify_phone_screen.dart';
+import 'package:mmm/presentation/screens/auth/forgot_password_screen.dart'; // Added
+import 'package:mmm/presentation/screens/auth/reset_password_screen.dart'; // Added
 import 'package:mmm/presentation/screens/kyc/kyc_verification_screen.dart'; // ✅ المسار الصحيح
 
 // Dashboard
@@ -90,6 +92,7 @@ import 'package:mmm/presentation/screens/admin/subscriptions_management_screen.d
 class RouteGenerator {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     final args = settings.arguments;
+    print('🔄 RouteGenerator: Navigating to ${settings.name}'); // Debug print
 
     switch (settings.name) {
       // Auth Routes
@@ -102,6 +105,12 @@ class RouteGenerator {
       case RouteNames.register:
         return _fadeRoute(const RegisterScreen());
 
+      case RouteNames.forgotPassword:
+        return _slideRoute(const ForgotPasswordScreen());
+
+      case RouteNames.resetPassword:
+        return _slideRoute(const ResetPasswordScreen());
+
       case RouteNames.verifyPhone:
         if (args is String) {
           return _slideRoute(VerifyPhoneScreen(phoneNumber: args));
@@ -110,6 +119,14 @@ class RouteGenerator {
 
       case RouteNames.kycVerification:
         return _slideRoute(const KycVerificationScreen()); // ✅ الاسم الصحيح
+
+      case RouteNames.loginCallback:
+        // Show loading while Supabase processes the link and AuthCubit triggers navigation
+        return _fadeRoute(
+          const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          ),
+        );
 
       // Dashboard
       case RouteNames.dashboard:

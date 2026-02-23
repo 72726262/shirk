@@ -2,10 +2,13 @@ class RouteNames {
   // Auth Routes
 
   // Auth Routes
+  static const String loginCallback = '/login-callback'; // Handle Deep Link
   static const String splash = '/splash';
   static const String login = '/login';
   static const String register = '/register';
   static const String verifyPhone = '/verify-phone';
+  static const String forgotPassword = '/forgot-password'; // Added
+  static const String resetPassword = '/reset-password'; // Added
   static const String kycVerification = '/kyc-verification';
 
   // Dashboard

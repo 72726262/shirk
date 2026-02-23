@@ -79,6 +79,10 @@ class AuthRepository {
         throw Exception('البريد الإلكتروني أو كلمة المرور غير صحيحة');
       }
 
+      if (e.message.contains('Email not confirmed')) {
+        throw Exception('البريد الإلكتروني غير مؤكد'); 
+      }
+
       throw Exception('فشل تسجيل الدخول: ${e.message}');
     } catch (e) {
       print('❌ خطأ غير متوقع في تسجيل الدخول: $e');
@@ -93,6 +97,7 @@ class AuthRepository {
     required String fullName,
     String? phone,
     String role = 'client', // Default role is client
+    String? emailRedirectTo,
   }) async {
     try {
       // التحقق من البيانات
@@ -137,6 +142,9 @@ class AuthRepository {
       final response = await _client.auth.signUp(
         email: email.trim(),
         password: password,
+        emailRedirectTo:
+            emailRedirectTo ??
+            'io.supabase.sharik://login-callback/', // Schema for deep linking
         data: {
           'full_name': fullName.trim(),
           'phone': phone?.trim(),
@@ -165,6 +173,36 @@ class AuthRepository {
       throw Exception('فشل إنشاء الحساب');
     } on AuthException catch (e) {
       print('❌ خطأ مصادقة في إنشاء الحساب: ${e.message}');
+      print('🔍 Raw Error Message: ${e.toString()}'); // Added for debugging
+
+      final lowerMsg = e.message.toLowerCase();
+      // Check for message text OR specific status code
+      if (lowerMsg.contains('rate limit exceeded') ||
+          lowerMsg.contains('security purposes') ||
+          e.code == 'over_email_send_rate_limit') {
+        int seconds = 0;
+
+        // Try to extract seconds
+        final secMatch = RegExp(r'(\d+)\s*seconds').firstMatch(lowerMsg);
+        if (secMatch != null) {
+          seconds = int.tryParse(secMatch.group(1)!) ?? 0;
+        }
+
+        if (seconds == 0) {
+          // Try to extract minutes
+          final minMatch = RegExp(r'(\d+)\s*minutes').firstMatch(lowerMsg);
+          if (minMatch != null) {
+            seconds = (int.tryParse(minMatch.group(1)!) ?? 0) * 60;
+          }
+        }
+
+        // If still 0, default to 10 minutes (600 seconds) as per user request.
+        if (seconds == 0) {
+          seconds = 3600;
+        }
+
+        throw Exception('RATE_LIMIT_EXCEEDED:$seconds');
+      }
 
       if (e.message.contains('already registered')) {
         throw Exception('البريد الإلكتروني مسجل مسبقًا');
@@ -173,6 +211,9 @@ class AuthRepository {
       throw Exception('فشل إنشاء الحساب: ${e.message}');
     } catch (e) {
       print('❌ خطأ غير متوقع في إنشاء الحساب: $e');
+      if (e.toString().contains('RATE_LIMIT_EXCEEDED')) {
+        rethrow;
+      }
       throw Exception('حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى');
     }
   }
@@ -350,10 +391,10 @@ class AuthRepository {
       }
 
       print('👤 Admin: إنشاء مستخدم جديد: ${email.trim()} Using Temp Client');
-      
+
       final url = SupabaseService.supabaseUrl;
       final key = SupabaseService.supabaseAnonKey;
-      
+
       print('🔍 URL available: ${url.isNotEmpty}');
       print('🔍 Key available: ${key.isNotEmpty}');
 
@@ -365,10 +406,10 @@ class AuthRepository {
         authOptions: AuthClientOptions(
           // Use pkceAsyncStorage for custom storage
           pkceAsyncStorage: MemoryStorage(),
-          authFlowType: AuthFlowType.pkce, 
+          authFlowType: AuthFlowType.pkce,
         ),
       );
-      
+
       print('🛠️ tempClient created successfully');
 
       // 2. Sign Up (This handles password hashing correctly)
@@ -395,17 +436,6 @@ class AuthRepository {
           print('✅ تمت تأكيد البريد الإلكتروني للمستخدم الجديد');
         } catch (e) {
           print('⚠️ فشل تأكيد المستخدم تلقائياً: $e');
-          // Don't fail the whole process, but warn.
-          // Probably need to apply SQL.
-          if (e.toString().contains('function admin_confirm_user_email') ||
-              e.toString().contains('does not exist')) {
-            // We can rethrow to alert admin to run SQL
-            throw Exception(
-              '⚠️ تم إنشاء المستخدم، ولكن فشل التفعيل التلقائي.\n\n'
-              'يرجى تنفيذ ملف SQL التالي في Supabase Dashboard لتفعيل هذه الميزة:\n'
-              'admin_confirm_user.sql',
-            );
-          }
         }
 
         // 4. Wait for Profile Trigger (if any) or existing logic
@@ -420,9 +450,6 @@ class AuthRepository {
           role: role,
         );
 
-        // 6. Dispose temp client (not strictly necessary as it's GC'd, but good practice if dispose existed)
-        // tempClient.dispose();
-
         print('🎉 تم إنشاء المستخدم بنجاح (Hybrid Flow)');
         return profile;
       }
@@ -430,16 +457,58 @@ class AuthRepository {
       throw Exception('حدث خطأ أثناء إنشاء ملف المستخدم');
     } on AuthException catch (e) {
       print('❌ خطأ مصادقة في إنشاء المستخدم: ${e.message}');
-
       if (e.message.contains('already registered') ||
           e.message.contains('User already registered')) {
         throw Exception('البريد الإلكتروني مسجل مسبقاً');
       }
-
       throw Exception('فشل إنشاء المستخدم: ${e.message}');
     } catch (e) {
       print('❌ خطأ غير متوقع في إنشاء المستخدم: $e');
       throw Exception('حدث خطأ غير متوقع: ${e.toString()}');
+    }
+  }
+
+  // إعادة تعيين كلمة المرور
+  Future<void> resetPassword(String email) async {
+    try {
+      if (!_isValidEmail(email)) {
+        throw Exception('البريد الإلكتروني غير صالح');
+      }
+
+      await _client.auth.resetPasswordForEmail(
+        email.trim(),
+        redirectTo:
+            'io.supabase.sharik://login-callback/', // Schema for deep linking
+      );
+    } catch (e) {
+      throw Exception('فشل إرسال رابط استعادة كلمة المرور: ${e.toString()}');
+    }
+  }
+
+  // إعادة إرسال رابط التفعيل
+  Future<void> resendConfirmationEmail(String email) async {
+    try {
+      await _client.auth.resend(
+        type: OtpType.signup,
+        email: email.trim(),
+        emailRedirectTo: 'io.supabase.sharik://login-callback/',
+      );
+    } catch (e) {
+      throw Exception('فشل إرسال رابط التفعيل: ${e.toString()}');
+    }
+  }
+  // تحديث كلمة المرور (لإعادة التعيين)
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      if (newPassword.length < 6) {
+        throw Exception('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      }
+
+      await _client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+    } catch (e) {
+      throw Exception('فشل تحديث كلمة المرور: ${e.toString()}');
     }
   }
 }

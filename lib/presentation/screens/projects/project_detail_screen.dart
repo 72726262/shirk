@@ -5,7 +5,7 @@ import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/core/constants/dimensions.dart';
 import 'package:mmm/data/models/project_model.dart';
 import 'package:mmm/presentation/cubits/projects/projects_cubit.dart';
-import 'package:mmm/routes/route_names.dart';
+
 import 'package:mmm/data/models/unit_model.dart';
 import 'package:mmm/data/repositories/project_repository.dart'; // Added import
 
@@ -17,7 +17,6 @@ import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
 import 'package:mmm/presentation/widgets/common/location_button.dart';
 import 'package:mmm/presentation/cubits/projects/payments_cubit.dart';
 import 'package:mmm/data/repositories/payments_repository.dart';
-import 'package:mmm/data/models/installment_model.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final String projectId;
@@ -58,12 +57,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => PaymentsCubit(context.read<PaymentsRepository>())
-            ..loadProjectPayments(widget.projectId),
+          create: (context) =>
+              PaymentsCubit(context.read<PaymentsRepository>())
+                ..loadProjectPayments(widget.projectId),
         ),
-        BlocProvider.value(
-          value: _localProjectsCubit,
-        ),
+        BlocProvider.value(value: _localProjectsCubit),
       ],
       child: Scaffold(
         backgroundColor: AppColors.background,
@@ -83,16 +81,23 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                       slivers: [
                         // App Bar with Image
                         SliverAppBar(
-                          expandedHeight: 250,
+                          expandedHeight: 150,
                           pinned: true,
                           backgroundColor: AppColors.primary,
                           flexibleSpace: FlexibleSpaceBar(
-                            title: Text(project.name),
-                            background: (project.imageUrl != null &&
-                                    project.imageUrl!.isNotEmpty &&
+                            title: Text(
+                              project.name,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            background:
+                                (project.imageUrl != null &&
+                                    project.imageUrl.isNotEmpty &&
                                     project.imageUrl != 'file:///')
                                 ? Image.network(
-                                    project.imageUrl!,
+                                    project.imageUrl,
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
@@ -140,6 +145,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                           delegate: _SliverAppBarDelegate(
                             TabBar(
                               controller: _tabController,
+
                               tabs: const [
                                 Tab(text: 'نظرة عامة'),
                                 Tab(text: 'التقدم'),
@@ -198,13 +204,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     ).then((_) {
       // Refresh project to get updated stats (triggered by DB)
       if (mounted) {
-        _localProjectsCubit.loadProjectDetail(widget.projectId); // Use local cubit
+        _localProjectsCubit.loadProjectDetail(
+          widget.projectId,
+        ); // Use local cubit
       }
     });
   }
 
   void _showDeleteConfirmation(
-      BuildContext context, String projectId, String projectName) {
+    BuildContext context,
+    String projectId,
+    String projectName,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -242,62 +253,52 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   }
 
   Widget _buildBottomAction(BuildContext context, dynamic project) {
-    return Container(
-      padding: const EdgeInsets.all(Dimensions.spaceL),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-      child: SafeArea(
-        child: BlocBuilder<AuthCubit, AuthState>(
-          builder: (context, state) {
-            final isAdmin = state is Authenticated &&
-                (state.user.role == 'admin' ||
-                    state.user.role == 'super_admin');
+    return BlocBuilder<AuthCubit, AuthState>(
+      builder: (context, state) {
+        final isAdmin =
+            state is Authenticated &&
+            (state.user.role == 'admin' || state.user.role == 'super_admin');
 
-            return Row(
+        if (!isAdmin) return const SizedBox.shrink();
+
+        return Container(
+          padding: const EdgeInsets.only(bottom: 15),
+          decoration: BoxDecoration(color: Colors.white),
+          child: SafeArea(
+            child: Row(
               children: [
-                // Remove Invest Now button as requested by user
-                if (isAdmin)
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        if (project is ProjectModel) {
-                          _showAddUnitDialog(project);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: Dimensions.spaceM,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(Dimensions.radiusL),
-                        ),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      if (project is ProjectModel) {
+                        _showAddUnitDialog(project);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: Dimensions.spaceM,
                       ),
-                      icon: const Icon(Icons.add, size: 24),
-                      label: const Text(
-                        'إضافة وحدة',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(Dimensions.radiusL),
+                      ),
+                    ),
+                    icon: const Icon(Icons.add, size: 24),
+                    label: const Text(
+                      'إضافة وحدة',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
+                ),
               ],
-            );
-          },
-        ),
-      ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -343,14 +344,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
           // Location Button - Updated: Use lat/lng if available
           if (project.locationLat != null && project.locationLng != null)
             LocationButton(
-              locationName: project.locationName ?? project.location ?? 'موقع المشروع',
+              locationName:
+                  project.locationName ?? project.location ?? 'موقع المشروع',
               latitude: project.locationLat,
               longitude: project.locationLng,
               projectName: project.name,
             ),
-            
+
           const SizedBox(height: Dimensions.spaceL),
-          
+
           BlocBuilder<AuthCubit, AuthState>(
             builder: (context, state) {
               if (state is Authenticated &&
@@ -364,7 +366,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                         onPressed: () {
                           showDialog(
                             context: context,
-                            builder: (context) => EditProjectDialog(project: project),
+                            builder: (context) =>
+                                EditProjectDialog(project: project),
                           );
                         },
                         icon: const Icon(Icons.edit),
@@ -376,8 +379,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                             vertical: Dimensions.spaceM,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(Dimensions.radiusM),
+                            borderRadius: BorderRadius.circular(
+                              Dimensions.radiusM,
+                            ),
                           ),
                         ),
                       ),
@@ -387,7 +391,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: () {
-                           _showDeleteConfirmation(context, project.id, project.name);
+                          _showDeleteConfirmation(
+                            context,
+                            project.id,
+                            project.name,
+                          );
                         },
                         icon: const Icon(Icons.delete),
                         label: const Text('حذف المشروع'),
@@ -398,8 +406,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                             vertical: Dimensions.spaceM,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(Dimensions.radiusM),
+                            borderRadius: BorderRadius.circular(
+                              Dimensions.radiusM,
+                            ),
                           ),
                         ),
                       ),
@@ -477,7 +486,10 @@ Widget _buildPaymentsTab(dynamic project, NumberFormat currency) {
               children: [
                 Icon(Icons.payments_outlined, size: 64, color: Colors.grey),
                 SizedBox(height: 16),
-                Text('لا توجد مدفوعات مسجلة لهذا المشروع', style: TextStyle(color: Colors.grey)),
+                Text(
+                  'لا توجد مدفوعات مسجلة لهذا المشروع',
+                  style: TextStyle(color: Colors.grey),
+                ),
               ],
             ),
           );
@@ -491,12 +503,14 @@ Widget _buildPaymentsTab(dynamic project, NumberFormat currency) {
               margin: const EdgeInsets.only(bottom: Dimensions.spaceM),
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: payment.isPaid 
-                      ? AppColors.success.withOpacity(0.1) 
+                  backgroundColor: payment.isPaid
+                      ? AppColors.success.withOpacity(0.1)
                       : AppColors.warning.withOpacity(0.1),
                   child: Icon(
                     payment.isPaid ? Icons.check : Icons.timer,
-                    color: payment.isPaid ? AppColors.success : AppColors.warning,
+                    color: payment.isPaid
+                        ? AppColors.success
+                        : AppColors.warning,
                   ),
                 ),
                 title: Text('دفعة رقم ${payment.installmentNumber}'),
@@ -505,13 +519,21 @@ Widget _buildPaymentsTab(dynamic project, NumberFormat currency) {
                   children: [
                     Text(DateFormat('dd/MM/yyyy').format(payment.dueDate)),
                     if (payment.clientName != null)
-                      Text('العميل: ${payment.clientName}', 
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      Text(
+                        'العميل: ${payment.clientName}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
                   ],
                 ),
                 trailing: Text(
                   currency.format(payment.amount),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             );

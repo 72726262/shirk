@@ -183,7 +183,7 @@ class ProjectCard extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: Dimensions.spaceS), // Reduced from M
+                  const SizedBox(height: Dimensions.spaceXS), // Reduced from S
 
                   // Progress Bar
                   Column(
@@ -222,7 +222,7 @@ class ProjectCard extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: Dimensions.spaceS), // Reduced from M
+                  const SizedBox(height: Dimensions.spaceXS), // Reduced from S
 
                   // Price and Units
                   Row(
@@ -286,7 +286,7 @@ class ProjectCard extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: Dimensions.spaceS), // Reduced from M
+                  const SizedBox(height: Dimensions.spaceXS), // Reduced from S
 
                   // View Details Button
                   SizedBox(

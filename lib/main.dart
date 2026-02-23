@@ -1,5 +1,5 @@
 // lib/main.dart
-import 'package:device_preview/device_preview.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -80,8 +80,7 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(DevicePreview(enabled: true, builder: (context) => const SharikApp()));
-  // runApp(const SharikApp());
+  runApp(const SharikApp());
 }
 
 class SharikApp extends StatelessWidget {
@@ -107,7 +106,8 @@ class SharikApp extends StatelessWidget {
         providers: [
           BlocProvider(
             create: (context) =>
-                AuthCubit(authRepository: context.read<AuthRepository>()),
+                AuthCubit(authRepository: context.read<AuthRepository>())
+                  ..initialize(),
           ),
           BlocProvider(
             create: (context) =>
@@ -201,6 +201,12 @@ class SharikApp extends StatelessWidget {
                     navigatorKey.currentState?.pushNamedAndRemoveUntil(
                       RouteNames.login,
                       (route) => false,
+                    );
+                  });
+                } else if (state is AuthPasswordRecovery) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    navigatorKey.currentState?.pushNamed(
+                      RouteNames.resetPassword,
                     );
                   });
                 }

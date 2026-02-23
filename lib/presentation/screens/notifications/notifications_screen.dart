@@ -201,24 +201,31 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 
   Widget _buildNotificationTile(NotificationModel notification) {
+    final typeColor = notification.type.displayColor;
+
     return Container(
       decoration: BoxDecoration(
         color: notification.isRead
             ? AppColors.white
-            : AppColors.primary.withValues(alpha: 0.05),
+            : typeColor.withOpacity(0.05),
         borderRadius: BorderRadius.circular(Dimensions.radiusL),
         border: Border.all(
           color: notification.isRead
               ? AppColors.border
-              : AppColors.primary.withValues(alpha: 0.2),
+              : typeColor.withOpacity(0.2),
         ),
       ),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: typeColor.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
           child: Icon(
-            _getNotificationIcon(notification.type),
-            color: AppColors.primary,
+            notification.type.displayIcon,
+            color: typeColor,
+            size: 24,
           ),
         ),
         title: Text(
@@ -248,19 +255,20 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             : Container(
                 width: 8,
                 height: 8,
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
+                decoration: BoxDecoration(
+                  color: typeColor,
                   shape: BoxShape.circle,
                 ),
               ),
         onTap: () {
           if (!notification.isRead) {
-            context.read<NotificationsCubit>().markAsRead(
-              context.read<AuthCubit>().state is Authenticated 
-                ? (context.read<AuthCubit>().state as Authenticated).user.id 
-                : '', 
-              notification.id
-            );
+            final authState = context.read<AuthCubit>().state;
+            if (authState is Authenticated) {
+               context.read<NotificationsCubit>().markAsRead(
+                authState.user.id, 
+                notification.id
+              );
+            }
           }
           Navigator.pushNamed(
             context,
@@ -270,23 +278,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         },
       ),
     );
-  }
-
-  IconData _getNotificationIcon(NotificationType type) {
-    switch (type) {
-      case NotificationType.payment:
-        return Icons.payment;
-      case NotificationType.update: // Assuming Project maps to update or project specific enum if exists
-        return Icons.construction;
-      case NotificationType.kyc:
-        return Icons.verified_user;
-      case NotificationType.handover:
-        return Icons.home;
-      case NotificationType.document:
-        return Icons.description;
-      default:
-        return Icons.notifications;
-    }
   }
 
   String _formatDate(DateTime date) {

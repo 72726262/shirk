@@ -194,7 +194,7 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
                                   crossAxisCount: 2,
                                   crossAxisSpacing: Dimensions.spaceL,
                                   mainAxisSpacing: Dimensions.spaceL,
-                                  childAspectRatio: 0.6,
+                                  childAspectRatio: 0.55,
                                 ),
                             itemCount: state.projects.length,
                             itemBuilder: (context, index) {

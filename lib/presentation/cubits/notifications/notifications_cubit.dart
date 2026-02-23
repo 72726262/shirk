@@ -25,14 +25,7 @@ class NotificationsLoaded extends NotificationsState {
   List<Object?> get props => [notifications, unreadCount];
 }
 
-class NotificationDetailLoaded extends NotificationsState {
-  final NotificationModel notification;
 
-  const NotificationDetailLoaded(this.notification);
-
-  @override
-  List<Object?> get props => [notification];
-}
 
 class NotificationMarkedAsRead extends NotificationsState {
   final String notificationId;
@@ -80,15 +73,7 @@ class NotificationsCubit extends Cubit<NotificationsState> {
     await loadNotifications(userId, isRead: isRead);
   }
 
-  Future<void> loadNotificationDetail(String notificationId) async {
-    emit(NotificationsLoading());
-    try {
-      final notification = await _notificationRepository.getNotificationById(notificationId);
-      emit(NotificationDetailLoaded(notification));
-    } catch (e) {
-      emit(NotificationsError(e.toString()));
-    }
-  }
+
 
   Future<void> markAsRead(String userId, String notificationId) async {
     try {

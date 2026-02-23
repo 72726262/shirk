@@ -1,37 +1,111 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/presentation/cubits/admin/admin_dashboard_cubit.dart';
-import 'package:mmm/presentation/cubits/super_admin/users_management_cubit.dart';
+import 'package:mmm/presentation/cubits/admin/client_management_cubit.dart';
+import 'package:mmm/presentation/cubits/admin/payments_management_cubit.dart';
 import 'package:mmm/presentation/cubits/admin/admin_notifications_cubit.dart';
-import 'package:mmm/presentation/screens/admin/tabs/overview_tab.dart'; // Reusing overview
+import 'package:mmm/presentation/cubits/admin/contracts_management_cubit.dart';
+import 'package:mmm/presentation/cubits/admin/documents_management_cubit.dart';
+import 'package:mmm/presentation/cubits/admin/handovers_management_cubit.dart';
+import 'package:mmm/presentation/cubits/admin/subscriptions_management_cubit.dart';
+import 'package:mmm/presentation/cubits/super_admin/users_management_cubit.dart';
+import 'package:mmm/data/repositories/subscription_repository.dart';
+
+import 'package:mmm/presentation/cubits/projects/projects_cubit.dart';
+import 'package:mmm/presentation/screens/admin/tabs/projects_tab.dart';
+import 'package:mmm/presentation/screens/admin/tabs/clients_management_tab.dart';
+import 'package:mmm/presentation/screens/admin/tabs/payments_management_tab.dart';
+import 'package:mmm/presentation/screens/admin/tabs/construction_updates_tab.dart';
+import 'package:mmm/presentation/screens/admin/tabs/notifications_composer_tab.dart';
+import 'package:mmm/presentation/screens/admin/tabs/overview_tab.dart';
+import 'package:mmm/presentation/screens/admin/tabs/contracts_management_tab.dart';
+import 'package:mmm/presentation/screens/admin/tabs/documents_management_tab.dart';
+import 'package:mmm/presentation/screens/admin/tabs/handovers_management_tab.dart';
 import 'package:mmm/presentation/screens/super_admin/tabs/users_management_tab.dart';
 import 'package:mmm/presentation/screens/super_admin/tabs/system_settings_tab.dart';
 import 'package:mmm/presentation/screens/super_admin/tabs/audit_logs_tab.dart';
 import 'package:mmm/presentation/screens/super_admin/tabs/analytics_tab.dart';
 
+import 'package:mmm/presentation/screens/admin/create_user_screen.dart';
+import 'package:mmm/presentation/screens/admin/subscriptions_management_screen.dart';
+import 'package:mmm/presentation/screens/chat/chat_list_screen.dart';
+import 'package:mmm/presentation/screens/super_admin/widgets/super_admin_drawer.dart';
+
 class SuperAdminDashboardScreen extends StatefulWidget {
   const SuperAdminDashboardScreen({super.key});
 
   @override
-  State<SuperAdminDashboardScreen> createState() => _SuperAdminDashboardScreenState();
+  State<SuperAdminDashboardScreen> createState() =>
+      _SuperAdminDashboardScreenState();
 }
 
-class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
+  int _selectedIndex = 0;
+
+  final List<String> _pageTitles = const [
+    'الرئيسية',
+    'المشاريع',
+    'العملاء',
+    'المدفوعات',
+    'التنفيذ',
+    'العقود',
+    'المستندات',
+    'التسليم',
+    'الإشعارات',
+    'الحجوزات',
+    'الرسائل',
+    'إدارة المستخدمين',
+    'إعدادات النظام',
+    'سجلات النظام',
+    'التحليلات',
+  ];
+
+  final List<Widget> _pages = const [
+    OverviewTab(),
+    ProjectsTab(),
+    ClientsManagementTab(),
+    PaymentsManagementTab(),
+    ConstructionUpdatesTab(),
+    ContractsManagementTab(),
+    DocumentsManagementTab(),
+    HandoversManagementTab(),
+    NotificationsComposerTab(),
+    SubscriptionsManagementScreen(),
+    ChatListScreen(showAppBar: false),
+    UsersManagementTab(),
+    SystemSettingsTab(),
+    AuditLogsTab(),
+    AnalyticsTab(),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
     context.read<AdminDashboardCubit>().loadDashboard();
   }
 
   @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args != null &&
+        args is Map<String, dynamic> &&
+        args.containsKey('tab')) {
+      final tabIndex = args['tab'] as int;
+      if (tabIndex >= 0 && tabIndex < _pages.length) {
+        setState(() {
+          _selectedIndex = tabIndex;
+        });
+      }
+    }
+  }
+
+  void _navigateToPage(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   @override
@@ -39,46 +113,75 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen>
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => UsersManagementCubit(),
+          create: (context) => AdminDashboardCubit()..loadDashboard(),
         ),
+        BlocProvider(create: (context) => ProjectsCubit()..loadProjects()),
         BlocProvider(
-          create: (context) => AdminNotificationsCubit(),
+          create: (context) => ClientManagementCubit()..loadClients(),
         ),
-        // Add specific SuperAdmin cubits here if needed
+        BlocProvider(create: (context) => PaymentsManagementCubit()),
+        BlocProvider(create: (context) => AdminNotificationsCubit()),
+        BlocProvider(create: (context) => ContractsManagementCubit()),
+        BlocProvider(create: (context) => DocumentsManagementCubit()),
+        BlocProvider(create: (context) => HandoversManagementCubit()),
+        BlocProvider(create: (context) => UsersManagementCubit()),
+        BlocProvider(
+          create: (context) => SubscriptionsManagementCubit(
+            subscriptionRepository: SubscriptionRepository(),
+          )..loadSubscriptions(),
+        ),
       ],
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('لوحة التحكم العليا (Super Admin)'),
-          backgroundColor: Colors.indigo.shade900, // Distinctive color
-          bottom: TabBar(
-            controller: _tabController,
-            isScrollable: true,
-            tabs: const [
-              Tab(icon: Icon(Icons.dashboard), text: 'الرئيسية'),
-              Tab(icon: Icon(Icons.manage_accounts), text: 'إدارة المستخدمين'),
-              Tab(icon: Icon(Icons.settings_applications), text: 'إعدادات النظام'),
-              Tab(icon: Icon(Icons.security), text: 'سجلات النظام'),
-              Tab(icon: Icon(Icons.analytics), text: 'التحليلات'),
+      child: PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) async {
+          if (didPop) return;
+          await SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            title: Text(_pageTitles[_selectedIndex]),
+            backgroundColor: Colors.indigo.shade900,
+            elevation: 0,
+            iconTheme: const IconThemeData(color: Colors.white),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.person_add),
+                tooltip: 'إنشاء مستخدم',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CreateUserScreen()),
+                  );
+                },
+              ),
             ],
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () {
-                // Logout logic
-              },
+          drawer: SuperAdminDrawer(
+            selectedIndex: _selectedIndex,
+            onItemSelected: _navigateToPage,
+          ),
+          body: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.02, 0),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: KeyedSubtree(
+              key: ValueKey<int>(_selectedIndex),
+              child: _pages[_selectedIndex],
             ),
-          ],
-        ),
-        body: TabBarView(
-          controller: _tabController,
-          children: const [
-            OverviewTab(), // Reusing admin overview for now
-            UsersManagementTab(),
-            SystemSettingsTab(),
-            AuditLogsTab(),
-            AnalyticsTab(),
-          ],
+          ),
         ),
       ),
     );

@@ -1,8 +1,10 @@
-import 'dart:io';
+import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart' show XFile;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:mmm/core/constants/colors.dart';
 import 'package:mmm/data/models/message_model.dart';
 import 'package:mmm/data/models/user_model.dart';
@@ -13,6 +15,9 @@ import 'package:mmm/routes/route_names.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mmm/presentation/widgets/skeleton_loaders.dart';
 import 'package:skeletonizer/skeletonizer.dart';
+import 'full_screen_image_viewer.dart';
+import 'admin_info_sheet.dart';
+import 'package:mmm/presentation/screens/admin/client_details_screen.dart';
 
 class ChatRoomScreen extends StatefulWidget {
   final String chatId;
@@ -33,7 +38,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   Map<String, dynamic>? _otherUserProfile;
   bool _isLoadingProfile = false;
-  File? _selectedImage; // Added state for selected image
+  XFile? _selectedImage;
+  Uint8List? _selectedImageBytes;
 
   @override
   void initState() {
@@ -93,9 +99,61 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
 
     if (image != null && mounted) {
+      final bytes = await image.readAsBytes();
       setState(() {
-        _selectedImage = File(image.path);
+        _selectedImage = image;
+        _selectedImageBytes = bytes;
       });
+    }
+  }
+
+  Future<void> _pickCamera() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 70,
+      );
+      if (image != null && mounted) {
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _selectedImage = image;
+          _selectedImageBytes = bytes;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تعذّر فتح الكاميرا: $e'),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        withData: true, // required for web
+      );
+      if (result == null || result.files.isEmpty) return;
+      final picked = result.files.first;
+      if (picked.bytes == null) return;
+
+      if (!mounted) return;
+      final cubit = context.read<ChatRoomCubit>();
+      await cubit.sendFileMessage(picked.bytes!, fileName: picked.name);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تعذّر اختيار الملف: $e'),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+      }
     }
   }
 
@@ -278,13 +336,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   else
                     GestureDetector(
                       onTap: () {
-                        if (_otherUserProfile != null) {
+                        if (_otherUserProfile == null) return;
+                        final role =
+                            _otherUserProfile!['role'] as String? ?? '';
+                        // Admin taps → show client full details
+                        // Client taps → show admin basic info sheet
+                        if (role == 'admin' || role == 'super_admin') {
+                          // Currently viewing admin → current user is a client
+                          AdminInfoSheet.show(context, _otherUserProfile!);
+                        } else {
+                          // Currently viewing client → current user is admin/super_admin
                           try {
                             final user = UserModel.fromJson(_otherUserProfile!);
-                            Navigator.pushNamed(
+                            Navigator.push(
                               context,
-                              '${RouteNames.manageClients}/client-details',
-                              arguments: user,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    ClientDetailsScreen(client: user),
+                              ),
                             );
                           } catch (e) {
                             debugPrint('Error navigating to profile: $e');
@@ -567,62 +636,107 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                                 padding: const EdgeInsets.only(
                                                   bottom: 8,
                                                 ),
-                                                child: ClipRRect(
-                                                  borderRadius:
-                                                      BorderRadius.circular(16),
-                                                  child: Stack(
-                                                    children: [
-                                                      Image.network(
-                                                        message.mediaUrl!,
-                                                        fit: BoxFit.cover,
-                                                        width: double.infinity,
-                                                        loadingBuilder:
-                                                            (
-                                                              context,
-                                                              child,
-                                                              loadingProgress,
-                                                            ) {
-                                                              if (loadingProgress ==
-                                                                  null)
-                                                                return child;
-                                                              return Container(
-                                                                height: 200,
-                                                                width: double
-                                                                    .infinity,
-                                                                color: Colors
-                                                                    .grey[100],
-                                                                child: Center(
-                                                                  child: CircularProgressIndicator(
-                                                                    value:
-                                                                        loadingProgress.expectedTotalBytes !=
-                                                                            null
-                                                                        ? loadingProgress.cumulativeBytesLoaded /
-                                                                              loadingProgress.expectedTotalBytes!
-                                                                        : null,
-                                                                  ),
-                                                                ),
-                                                              );
-                                                            },
-                                                        errorBuilder:
-                                                            (
-                                                              ctx,
-                                                              err,
-                                                              _,
-                                                            ) => Container(
-                                                              height: 150,
-                                                              color: Colors
-                                                                  .grey[200],
-                                                              child: const Center(
-                                                                child: Icon(
-                                                                  Icons
-                                                                      .broken_image,
-                                                                  color: Colors
-                                                                      .grey,
-                                                                ),
-                                                              ),
+                                                child: GestureDetector(
+                                                  onTap: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (_) =>
+                                                            FullScreenImageViewer(
+                                                              imageUrl: message
+                                                                  .mediaUrl!,
+                                                              fileName: message
+                                                                  .fileName,
                                                             ),
                                                       ),
-                                                    ],
+                                                    );
+                                                  },
+                                                  child: ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          16,
+                                                        ),
+                                                    child: Stack(
+                                                      children: [
+                                                        Image.network(
+                                                          message.mediaUrl!,
+                                                          fit: BoxFit.cover,
+                                                          width:
+                                                              double.infinity,
+                                                          loadingBuilder:
+                                                              (
+                                                                context,
+                                                                child,
+                                                                loadingProgress,
+                                                              ) {
+                                                                if (loadingProgress ==
+                                                                    null)
+                                                                  return child;
+                                                                return Container(
+                                                                  height: 200,
+                                                                  width: double
+                                                                      .infinity,
+                                                                  color: Colors
+                                                                      .grey[100],
+                                                                  child: Center(
+                                                                    child: CircularProgressIndicator(
+                                                                      value:
+                                                                          loadingProgress.expectedTotalBytes !=
+                                                                              null
+                                                                          ? loadingProgress.cumulativeBytesLoaded /
+                                                                                loadingProgress.expectedTotalBytes!
+                                                                          : null,
+                                                                    ),
+                                                                  ),
+                                                                );
+                                                              },
+                                                          errorBuilder:
+                                                              (
+                                                                ctx,
+                                                                err,
+                                                                _,
+                                                              ) => Container(
+                                                                height: 150,
+                                                                color: Colors
+                                                                    .grey[200],
+                                                                child: const Center(
+                                                                  child: Icon(
+                                                                    Icons
+                                                                        .broken_image,
+                                                                    color: Colors
+                                                                        .grey,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                        ),
+                                                        // Tap overlay hint
+                                                        Positioned(
+                                                          bottom: 6,
+                                                          right: 6,
+                                                          child: Container(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  4,
+                                                                ),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                                  color: Colors
+                                                                      .black45,
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
+                                                                      ),
+                                                                ),
+                                                            child: const Icon(
+                                                              Icons.fullscreen,
+                                                              color: Colors
+                                                                  .white70,
+                                                              size: 18,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
                                                 ),
                                               ),
@@ -744,12 +858,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
-                                  child: Image.file(
-                                    _selectedImage!,
-                                    height: 60,
-                                    width: 60,
-                                    fit: BoxFit.cover,
-                                  ),
+                                  child: _selectedImageBytes != null
+                                      ? Image.memory(
+                                          _selectedImageBytes!,
+                                          height: 60,
+                                          width: 60,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Container(
+                                          height: 60,
+                                          width: 60,
+                                          color: Colors.grey[200],
+                                          child: const Icon(
+                                            Icons.image,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -762,8 +886,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                   ),
                                 ),
                                 IconButton(
-                                  onPressed: () => setState(() => _selectedImage = null),
-                                  icon: const Icon(Icons.close, color: Colors.red),
+                                  onPressed: () =>
+                                      setState(() => _selectedImage = null),
+                                  icon: const Icon(
+                                    Icons.close,
+                                    color: Colors.red,
+                                  ),
                                 ),
                               ],
                             ),
@@ -771,180 +899,175 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            icon: Icon(Icons.add, color: AppColors.primary),
-                            onPressed: () {
-                              final cubit = context.read<ChatRoomCubit>();
-                              showModalBottomSheet(
-                                context: context,
-                                backgroundColor: Colors.transparent,
-                                builder: (cntx) => Container(
-                                  margin: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(20),
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                shape: BoxShape.circle,
+                              ),
+                              child: IconButton(
+                                icon: Icon(Icons.add, color: AppColors.primary),
+                                onPressed: () {
+                                  final cubit = context.read<ChatRoomCubit>();
+                                  showModalBottomSheet(
+                                    context: context,
+                                    backgroundColor: Colors.transparent,
+                                    builder: (cntx) => Container(
+                                      margin: const EdgeInsets.only(
+                                        bottom: 80,
+                                        left: 20,
+                                        right: 20,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Wrap(
+                                        children: [
+                                          ListTile(
+                                            leading: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.purple
+                                                    .withOpacity(0.1),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.image,
+                                                color: Colors.purple,
+                                              ),
+                                            ),
+                                            title: const Text('معرض الصور'),
+                                            onTap: () {
+                                              Navigator.pop(cntx);
+                                              _pickImage();
+                                            },
+                                          ),
+                                          ListTile(
+                                            leading: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.orange
+                                                    .withOpacity(0.1),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.camera_alt,
+                                                color: Colors.orange,
+                                              ),
+                                            ),
+                                            title: const Text('الكاميرا'),
+                                            onTap: () {
+                                              Navigator.pop(cntx);
+                                              _pickCamera();
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: Colors.grey),
+                                ),
+                                child: TextField(
+                                  controller: _messageController,
+                                  decoration: const InputDecoration(
+                                    hintText: 'اكتب رسالتك...',
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                    isDense: true,
                                   ),
-                                  child: Wrap(
-                                    children: [
-                                      ListTile(
-                                        leading: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: Colors.purple.withOpacity(
-                                              0.1,
-                                            ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                            Icons.image,
-                                            color: Colors.purple,
-                                          ),
+                                  minLines: 1,
+                                  maxLines: 4,
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            BlocBuilder<ChatRoomCubit, ChatRoomState>(
+                              builder: (context, state) {
+                                bool isSending = false;
+                                if (state is ChatRoomLoaded) {
+                                  isSending = state.isSending;
+                                }
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.primary.withOpacity(
+                                          0.4,
                                         ),
-                                        title: const Text('معرض الصور'),
-                                        onTap: () {
-                                          Navigator.pop(cntx);
-                                          _pickImage();
-                                        },
-                                      ),
-                                      ListTile(
-                                        leading: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: Colors.orange.withOpacity(
-                                              0.1,
-                                            ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                            Icons.camera_alt,
-                                            color: Colors.orange,
-                                          ),
-                                        ),
-                                        title: const Text('الكايمرا'),
-                                        onTap: () {
-                                          Navigator.pop(cntx);
-                                          // TODO: Implement camera logic
-                                        },
-                                      ),
-                                      ListTile(
-                                        leading: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue.withOpacity(0.1),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                            Icons.insert_drive_file,
-                                            color: Colors.blue,
-                                          ),
-                                        ),
-                                        title: const Text('مستند'),
-                                        onTap: () {
-                                          Navigator.pop(cntx);
-                                          // TODO: Implement file picker
-                                        },
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 4),
                                       ),
                                     ],
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[100],
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: Colors.grey),
-                            ),
-                            child: TextField(
-                              controller: _messageController,
-                              decoration: const InputDecoration(
-                                hintText: 'اكتب رسالتك...',
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                                isDense: true,
-                              ),
-                              minLines: 1,
-                              maxLines: 4,
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        BlocBuilder<ChatRoomCubit, ChatRoomState>(
-                          builder: (context, state) {
-                            bool isSending = false;
-                            if (state is ChatRoomLoaded) {
-                              isSending = state.isSending;
-                            }
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withOpacity(0.4),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: IconButton(
-                                icon: isSending
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                Colors.white,
-                                              ),
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.send_rounded,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                onPressed: isSending
-                                    ? null
-                                    : () {
-                                        final content = _messageController.text;
-                                        final cubit = context.read<ChatRoomCubit>();
+                                  child: IconButton(
+                                    icon: isSending
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    Colors.white,
+                                                  ),
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.send_rounded,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
+                                    onPressed: isSending
+                                        ? null
+                                        : () {
+                                            final content =
+                                                _messageController.text;
+                                            final cubit = context
+                                                .read<ChatRoomCubit>();
 
-                                        if (_selectedImage != null) {
-                                          cubit.sendImageMessage(
-                                            _selectedImage!,
-                                            caption: content.trim().isEmpty ? null : content,
-                                          );
-                                          setState(() {
-                                            _selectedImage = null;
-                                            _messageController.clear();
-                                          });
-                                        } else if (content.trim().isNotEmpty) {
-                                          cubit.sendTextMessage(content);
-                                          _messageController.clear();
-                                        }
-                                      },
-                              ),
-                            );
-                          },
-                        ),
-                      ],
+                                            if (_selectedImage != null &&
+                                                _selectedImageBytes != null) {
+                                              cubit.sendImageMessage(
+                                                _selectedImageBytes!,
+                                                fileName: _selectedImage!.name,
+                                                caption: content.trim().isEmpty
+                                                    ? null
+                                                    : content,
+                                              );
+                                              setState(() {
+                                                _selectedImage = null;
+                                                _selectedImageBytes = null;
+                                                _messageController.clear();
+                                              });
+                                            } else if (content
+                                                .trim()
+                                                .isNotEmpty) {
+                                              cubit.sendTextMessage(content);
+                                              _messageController.clear();
+                                            }
+                                          },
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       ],
                     ),

@@ -298,7 +298,7 @@ class AdminRepository {
       // particular logic for avatar upload
       if (avatarPath != null) {
         final extension = avatarPath.split('.').last;
-        final path = 'avatars/$userId/avatar_${DateTime.now().millisecondsSinceEpoch}.$extension';
+        final path = '$userId/avatar_${DateTime.now().millisecondsSinceEpoch}.$extension';
         
         // Upload image
         await _client.storage.from('avatars').upload(

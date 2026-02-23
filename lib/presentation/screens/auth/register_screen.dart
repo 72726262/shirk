@@ -7,6 +7,8 @@ import 'package:mmm/presentation/widgets/common/primary_button.dart';
 import 'package:mmm/presentation/cubits/auth/auth_cubit.dart';
 import 'package:mmm/routes/route_names.dart';
 
+import 'dart:async';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -25,9 +27,62 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscureConfirmPassword = true;
   bool _acceptTerms = false;
   UserRole _selectedRole = UserRole.client; // Default to client
+  Timer? _timer;
+  int _remainingSeconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSavedRateLimit();
+  }
+
+  Future<void> _checkSavedRateLimit() async {
+    final cubit = context.read<AuthCubit>();
+    await cubit.checkSavedRateLimit();
+    _checkRateLimit();
+  }
+
+  void _checkRateLimit() {
+    final cubit = context.read<AuthCubit>();
+    if (cubit.rateLimitExpiry != null) {
+      final now = DateTime.now();
+      if (cubit.rateLimitExpiry!.isAfter(now)) {
+        final remaining = cubit.rateLimitExpiry!.difference(now).inSeconds;
+        _startTimer(remaining);
+      }
+    }
+  }
+
+  void _startTimer(int seconds) {
+    setState(() {
+      _remainingSeconds = seconds;
+    });
+
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds <= 0) {
+        timer.cancel();
+        setState(() {
+          _remainingSeconds = 0;
+        });
+      } else {
+        setState(() {
+          _remainingSeconds--;
+        });
+      }
+    });
+  }
+
+  String _formatDuration(int totalSeconds) {
+    final duration = Duration(seconds: totalSeconds);
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds.remainder(60);
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -42,7 +97,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is Authenticated) {
-            // توجيه مباشر إلى التحقق من الهوية بعد التسجيل
             Navigator.pushReplacementNamed(context, RouteNames.kycVerification);
           }
           if (state is AuthError) {
@@ -53,6 +107,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             );
           }
+          if (state is AuthRateLimitExceeded) {
+             _startTimer(state.retryAfterSeconds);
+          }
         },
         builder: (context, state) {
           final isLoading = state is AuthLoading;
@@ -62,7 +119,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 // Header
                 Container(
-                  height: 200,
+                  height: 250,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [AppColors.primaryDark, AppColors.primary],
@@ -126,6 +183,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           label: 'الاسم الكامل',
                           hint: 'أدخل اسمك الثلاثي',
                           icon: Icons.person,
+                          enabled: _remainingSeconds == 0,
                         ),
 
                         const SizedBox(height: Dimensions.spaceL),
@@ -137,6 +195,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           hint: 'example@email.com',
                           icon: Icons.email,
                           keyboardType: TextInputType.emailAddress,
+                          enabled: _remainingSeconds == 0,
                         ),
 
                         const SizedBox(height: Dimensions.spaceL),
@@ -148,11 +207,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           hint: '01XXXXXXXXX',
                           icon: Icons.phone,
                           keyboardType: TextInputType.number,
+                          enabled: _remainingSeconds == 0,
                         ),
 
                         const SizedBox(height: Dimensions.spaceL),
-
-
 
                         const SizedBox(height: Dimensions.spaceL),
 
@@ -162,6 +220,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           label: 'كلمة المرور',
                           hint: 'أدخل كلمة المرور',
                           obscureText: _obscurePassword,
+                          enabled: _remainingSeconds == 0,
                           onToggleVisibility: () {
                             setState(() {
                               _obscurePassword = !_obscurePassword;
@@ -182,6 +241,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           label: 'تأكيد كلمة المرور',
                           hint: 'أعد إدخال كلمة المرور',
                           obscureText: _obscureConfirmPassword,
+                          enabled: _remainingSeconds == 0,
                           onToggleVisibility: () {
                             setState(() {
                               _obscureConfirmPassword =
@@ -272,73 +332,56 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         const SizedBox(height: Dimensions.spaceXL),
 
-                        // Register Button
-                        PrimaryButton(
-                          onPressed: _acceptTerms && !isLoading
-                              ? _register
-                              : null,
-                          text: 'إنشاء حساب',
-                          isLoading: isLoading,
-                        ),
-
-                        const SizedBox(height: Dimensions.spaceL),
-
-                        // Divider
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Divider(
-                                color: AppColors.border,
-                                thickness: 1,
-                              ),
+                        // Register Button OR Timer
+                        if (_remainingSeconds > 0)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: Dimensions.spaceM),
+                            decoration: BoxDecoration(
+                              color: AppColors.gray200,
+                              borderRadius:
+                                  BorderRadius.circular(Dimensions.radiusL),
+                              border: Border.all(color: AppColors.gray300),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: Dimensions.spaceL,
-                              ),
-                              child: Text(
-                                'أو',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
+                            child: Column(
+                              children: [
+                                const Text(
+                                  'الرجاء الانتظار قبل المحاولة مرة أخرى',
+                                  style: TextStyle(color: AppColors.textSecondary),
                                 ),
-                              ),
+                                const SizedBox(height: Dimensions.spaceS),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.timer_outlined,
+                                        color: AppColors.primary),
+                                    const SizedBox(width: Dimensions.spaceS),
+                                    Text(
+                                      _formatDuration(_remainingSeconds),
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                        fontFamily: 'Courier',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                            Expanded(
-                              child: Divider(
-                                color: AppColors.border,
-                                thickness: 1,
-                              ),
-                            ),
-                          ],
-                        ),
+                          )
+                        else
+                          PrimaryButton(
+                            onPressed: _acceptTerms && !isLoading
+                                ? _register
+                                : null,
+                            text: 'إنشاء حساب',
+                            isLoading: isLoading,
+                          ),
+
 
                         const SizedBox(height: Dimensions.spaceL),
-
-                        // Social Login
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _buildSocialButton(
-                              icon: Icons.g_mobiledata,
-                              color: const Color(0xFFEA4335),
-                              onPressed: () {},
-                            ),
-                            const SizedBox(width: Dimensions.spaceL),
-                            _buildSocialButton(
-                              icon: Icons.facebook,
-                              color: const Color(0xFF1877F2),
-                              onPressed: () {},
-                            ),
-                            const SizedBox(width: Dimensions.spaceL),
-                            _buildSocialButton(
-                              icon: Icons.apple,
-                              color: AppColors.black,
-                              onPressed: () {},
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: Dimensions.spaceXL),
 
                         // Login Link
                         Row(
@@ -366,6 +409,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 30),
                       ],
                     ),
                   ),
@@ -385,6 +429,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required IconData icon,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    bool enabled = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,25 +438,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: Dimensions.spaceXS),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: enabled ? AppColors.white : AppColors.gray100,
             borderRadius: BorderRadius.circular(Dimensions.radiusM),
             border: Border.all(color: AppColors.border),
             boxShadow: [
-              BoxShadow(
-                color: AppColors.shadow,
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
+              if (enabled)
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
             ],
           ),
           child: TextFormField(
             controller: controller,
             keyboardType: keyboardType,
             validator: validator,
+            enabled: enabled,
             decoration: InputDecoration(
               hintText: hint,
               border: InputBorder.none,
-              prefixIcon: Icon(icon, color: AppColors.primary),
+              prefixIcon: Icon(icon, color: enabled ? AppColors.primary : AppColors.gray500),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: Dimensions.spaceL,
                 vertical: Dimensions.spaceM,
@@ -430,6 +477,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required bool obscureText,
     required VoidCallback onToggleVisibility,
     String? Function(String?)? validator,
+    bool enabled = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -438,31 +486,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: Dimensions.spaceXS),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: enabled ? AppColors.white : AppColors.gray100,
             borderRadius: BorderRadius.circular(Dimensions.radiusM),
             border: Border.all(color: AppColors.border),
             boxShadow: [
-              BoxShadow(
-                color: AppColors.shadow,
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
+              if (enabled)
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
             ],
           ),
           child: TextFormField(
             controller: controller,
             obscureText: obscureText,
             validator: validator,
+            enabled: enabled,
             decoration: InputDecoration(
               hintText: hint,
               border: InputBorder.none,
-              prefixIcon: const Icon(Icons.lock, color: AppColors.primary),
+              prefixIcon: Icon(Icons.lock, color: enabled ? AppColors.primary : AppColors.gray500),
               suffixIcon: IconButton(
                 icon: Icon(
                   obscureText ? Icons.visibility_off : Icons.visibility,
                   color: AppColors.textHint,
                 ),
-                onPressed: onToggleVisibility,
+                onPressed: enabled ? onToggleVisibility : null,
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: Dimensions.spaceL,
@@ -592,7 +642,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-        // Call AuthCubit for registration
+      // Call AuthCubit for registration
       context.read<AuthCubit>().signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,

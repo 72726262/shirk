@@ -43,52 +43,20 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       children: [
         Container(
-          width: 120,
-          height: 120,
+          width: 200,
+          height: 200,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AppColors.primary.withOpacity(0.9),
-                AppColors.primary.withOpacity(0.7),
-              ],
-            ),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.3),
+                color: Colors.black.withOpacity(0.2),
                 blurRadius: 20,
-                spreadRadius: 5,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: Stack(
-            children: [
-              Center(
-                child: Icon(
-                  Icons.lock_outline,
-                  size: 50,
-                  color: AppColors.white,
-                ),
-              ),
-              Positioned(
-                bottom: 10,
-                right: 10,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.verified,
-                    size: 16,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
+          child: ClipOval(
+            child: Image.asset('assets/images/WhatsAp.jpeg', fit: BoxFit.fill),
           ),
         ),
         const SizedBox(height: Dimensions.spaceXXL),
@@ -262,7 +230,7 @@ class _LoginScreenState extends State<LoginScreen> {
         borderRadius: BorderRadius.circular(Dimensions.radiusM),
         child: InkWell(
           onTap: () {
-            // TODO: Navigate to forgot password
+            Navigator.pushNamed(context, RouteNames.forgotPassword);
           },
           borderRadius: BorderRadius.circular(Dimensions.radiusM),
           child: Container(
@@ -316,28 +284,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
         const SizedBox(height: Dimensions.spaceXL),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildSocialButton(
-              icon: Icons.g_mobiledata,
-              color: Colors.red,
-              onTap: () {},
-            ),
-            const SizedBox(width: Dimensions.spaceXL),
-            _buildSocialButton(
-              icon: Icons.facebook,
-              color: Colors.blue,
-              onTap: () {},
-            ),
-            const SizedBox(width: Dimensions.spaceXL),
-            _buildSocialButton(
-              icon: Icons.apple,
-              color: Colors.black,
-              onTap: () {},
-            ),
-          ],
-        ),
       ],
     );
   }
@@ -446,6 +392,45 @@ class _LoginScreenState extends State<LoginScreen> {
                 );
                 Navigator.pushReplacementNamed(context, dashboardRoute);
               }
+
+              if (state is AuthEmailNotConfirmed) {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('تأكيد البريد الإلكتروني'),
+                    content: const Text(
+                      'لم يتم تأكيد بريدك الإلكتروني بعد. الرجاء التحقق من صندوق الوارد لتفعيل حسابك.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('إلغاء'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          context.read<AuthCubit>().resendConfirmationEmail(
+                            state.email,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('إعادة إرسال'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              if (state is CodeResent) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('تم إعادة إرسال رابط التفعيل بنجاح'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              }
               if (state is AuthError) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -490,8 +475,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(Dimensions.radiusL),
                         height: 56,
                       ),
-                      _buildSocialLogin(),
-                      const SizedBox(height: 10),
+
                       _buildSignUpLink(),
                       const SizedBox(height: 10),
                     ],

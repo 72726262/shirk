@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart'; // Add this for debugPrint
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -170,7 +170,11 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     }
   }
 
-  Future<void> sendImageMessage(File imageFile, {String? caption}) async {
+  Future<void> sendImageMessage(
+    Uint8List bytes, {
+    required String fileName,
+    String? caption,
+  }) async {
     if (state is ChatRoomLoaded) {
       final currentState = state as ChatRoomLoaded;
       emit(currentState.copyWith(isSending: true, uploadProgress: 0.0));
@@ -179,7 +183,8 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
         await _messageRepository.sendImageMessage(
           chatId: chatId,
           senderId: _currentUserId,
-          imageFile: imageFile,
+          imageBytes: bytes,
+          fileName: fileName,
           caption: caption,
           onProgress: (progress) {
             if (state is ChatRoomLoaded && !isClosed) {
@@ -195,7 +200,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       } catch (e) {
         print(e.toString());
         if (!isClosed) {
-          emit(ChatRoomError('Failed to send image: $e'));
+          emit(ChatRoomError('فشل إرسال الصورة: $e'));
           loadMessages();
         }
       }
@@ -203,8 +208,8 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
   }
 
   Future<void> sendVideoMessage(
-    File videoFile, {
-    File? thumbnailFile,
+    Uint8List videoBytes, {
+    required String fileName,
     String? caption,
   }) async {
     if (state is ChatRoomLoaded) {
@@ -215,8 +220,8 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
         await _messageRepository.sendVideoMessage(
           chatId: chatId,
           senderId: _currentUserId,
-          videoFile: videoFile,
-          thumbnailFile: thumbnailFile,
+          videoBytes: videoBytes,
+          fileName: fileName,
           caption: caption,
           onProgress: (progress) {
             if (state is ChatRoomLoaded && !isClosed) {
@@ -231,7 +236,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
         }
       } catch (e) {
         if (!isClosed) {
-          emit(ChatRoomError('Failed to send video: $e'));
+          emit(ChatRoomError('فشل إرسال الفيديو: $e'));
           loadMessages();
         }
       }
@@ -267,7 +272,11 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     }
   }
 
-  Future<void> sendFileMessage(File file, {String? caption}) async {
+  Future<void> sendFileMessage(
+    Uint8List fileBytes, {
+    required String fileName,
+    String? caption,
+  }) async {
     if (state is ChatRoomLoaded) {
       final currentState = state as ChatRoomLoaded;
       emit(currentState.copyWith(isSending: true, uploadProgress: 0.0));
@@ -276,7 +285,8 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
         await _messageRepository.sendFileMessage(
           chatId: chatId,
           senderId: _currentUserId,
-          file: file,
+          fileBytes: fileBytes,
+          fileName: fileName,
           caption: caption,
           onProgress: (progress) {
             if (state is ChatRoomLoaded && !isClosed) {
@@ -291,7 +301,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
         }
       } catch (e) {
         if (!isClosed) {
-          emit(ChatRoomError('Failed to send file: $e'));
+          emit(ChatRoomError('فشل إرسال الملف: $e'));
           loadMessages();
         }
       }

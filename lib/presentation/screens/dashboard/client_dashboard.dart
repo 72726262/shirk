@@ -64,11 +64,11 @@ class _ClientDashboardState extends State<ClientDashboard> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-        canPop: false,
-        onPopInvoked: (didPop) async {
-          if (didPop) return;
-          await SystemChannels.platform.invokeMethod('SystemNavigator.pop');
-        },
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        await SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+      },
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
@@ -322,7 +322,15 @@ class _ClientDashboardState extends State<ClientDashboard> {
           if ((state.latestUpdates ?? []).isNotEmpty) ...[
             const SizedBox(height: Dimensions.spaceXXL),
             _buildSectionHeader('آخر تحديثات البناء', () {
-              Navigator.pushNamed(context, RouteNames.constructionUpdates);
+              if (state.mySubscriptions.length == 1) {
+                 Navigator.pushNamed(
+                  context,
+                  RouteNames.constructionUpdates,
+                  arguments: state.mySubscriptions.first.project?.id,
+                );
+              } else {
+                 Navigator.pushNamed(context, RouteNames.subscriptions);
+              }
             }),
             const SizedBox(height: Dimensions.spaceM),
             _buildConstructionUpdates(state.latestUpdates ?? []),
@@ -340,24 +348,14 @@ class _ClientDashboardState extends State<ClientDashboard> {
           // Quick Access to New Sections
           _buildSectionHeader('الأقسام', () {}),
           const SizedBox(height: Dimensions.spaceL),
-          _buildQuickAccessGrid(),
+          _buildQuickAccessGrid(state.mySubscriptions),
           const SizedBox(height: Dimensions.spaceXXL),
-
-          // Recent Notifications
-          _buildSectionHeader('الإشعارات', () {
-            Navigator.pushNamed(context, RouteNames.notifications);
-          }),
-          const SizedBox(height: Dimensions.spaceL),
-          _buildRecentNotifications(
-            state.recentNotifications,
-            state.unreadNotificationCount,
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickAccessGrid() {
+  Widget _buildQuickAccessGrid(List<SubscriptionModel> subscriptions) {
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -387,7 +385,22 @@ class _ClientDashboardState extends State<ClientDashboard> {
           title: 'تحديثات البناء',
           color: AppColors.success,
           onTap: () {
-            Navigator.pushNamed(context, RouteNames.constructionUpdates);
+            if (subscriptions.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('ليس لديك مشاريع نشطة حالياً')),
+              );
+            } else if (subscriptions.length == 1) {
+              final project = subscriptions.first.project;
+              if (project != null) {
+                Navigator.pushNamed(
+                  context,
+                  RouteNames.constructionUpdates,
+                  arguments: project.id,
+                );
+              }
+            } else {
+              Navigator.pushNamed(context, RouteNames.subscriptions);
+            }
           },
         ),
         _buildQuickAccessCard(
@@ -449,8 +462,6 @@ class _ClientDashboardState extends State<ClientDashboard> {
           title,
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        if (onViewAll != null)
-          TextButton(onPressed: onViewAll, child: const Text('عرض الكل')),
       ],
     );
   }
@@ -825,25 +836,32 @@ class _ClientDashboardState extends State<ClientDashboard> {
   }
 
   Widget _buildNotificationTile(NotificationModel notification) {
+    final typeColor = notification.type.displayColor;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: Dimensions.spaceM),
       decoration: BoxDecoration(
         color: notification.isRead
             ? AppColors.white
-            : AppColors.primary.withOpacity(0.05),
+            : typeColor.withOpacity(0.05),
         borderRadius: BorderRadius.circular(Dimensions.radiusL),
         border: Border.all(
           color: notification.isRead
               ? AppColors.border
-              : AppColors.primary.withOpacity(0.2),
+              : typeColor.withOpacity(0.2),
         ),
       ),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: AppColors.primary.withOpacity(0.1),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: typeColor.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
           child: Icon(
-            _getNotificationIcon(notification.type.name),
-            color: AppColors.primary,
+            notification.type.displayIcon,
+            color: typeColor,
+            size: 24,
           ),
         ),
         title: Text(
@@ -852,43 +870,53 @@ class _ClientDashboardState extends State<ClientDashboard> {
             fontWeight: notification.isRead
                 ? FontWeight.normal
                 : FontWeight.bold,
+            fontSize: 14,
           ),
         ),
-        subtitle: Text(
-          notification.body,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              notification.body,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+          ],
         ),
-        trailing: Text(
-          _formatDate(notification.createdAt),
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _formatDate(notification.createdAt),
+              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+            if (!notification.isRead) ...[
+              const SizedBox(height: 6),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: typeColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ],
         ),
         onTap: () {
           Navigator.pushNamed(
             context,
             RouteNames.notificationDetail,
-            arguments: notification.id,
+            arguments: {'notificationId': notification.id},
           );
         },
       ),
     );
-  }
-
-  IconData _getNotificationIcon(String type) {
-    switch (type) {
-      case 'payment':
-        return Icons.payment;
-      case 'project':
-        return Icons.construction;
-      case 'kyc':
-        return Icons.verified_user;
-      case 'handover':
-        return Icons.home;
-      case 'document':
-        return Icons.description;
-      default:
-        return Icons.notifications;
-    }
   }
 
   String _formatDate(DateTime date) {

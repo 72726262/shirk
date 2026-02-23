@@ -6,11 +6,11 @@ import 'package:mmm/presentation/cubits/chat/chat_list_cubit.dart';
 import 'package:mmm/presentation/screens/profile/profile_screen.dart';
 import 'package:mmm/presentation/widgets/dialogs/logout_dialog.dart';
 
-class AdminDrawer extends StatelessWidget {
+class SuperAdminDrawer extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onItemSelected;
 
-  const AdminDrawer({
+  const SuperAdminDrawer({
     super.key,
     required this.selectedIndex,
     required this.onItemSelected,
@@ -19,7 +19,6 @@ class AdminDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      // Modern shape with rounded corners on the right side
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
@@ -27,7 +26,7 @@ class AdminDrawer extends StatelessWidget {
         ),
       ),
       child: Material(
-        color: const Color(0xFF1A1A2E), // Deep clean background
+        color: const Color(0xFF0D0D1A), // Slightly darker than Admin to distinguish
         child: Column(
           children: [
             _buildDrawerHeader(context),
@@ -64,28 +63,25 @@ class AdminDrawer extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.1),
+          color: Colors.indigo.shade900.withOpacity(0.4),
           border: Border(
-            bottom: BorderSide(
-              color: Colors.white.withOpacity(0.05),
-            ),
+            bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
           ),
         ),
         child: Row(
           children: [
-            // User Avatar
             Container(
               width: 56,
               height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppColors.primary.withOpacity(0.5),
+                  color: Colors.indigo.shade300.withOpacity(0.5),
                   width: 2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.2),
+                    color: Colors.indigo.withOpacity(0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -106,15 +102,14 @@ class AdminDrawer extends StatelessWidget {
                     );
                   }
                   return const Icon(
-                    Icons.admin_panel_settings,
-                    color: AppColors.primary,
+                    Icons.shield,
+                    color: Colors.indigo,
                     size: 30,
                   );
                 },
               ),
             ),
             const SizedBox(width: 16),
-            // User Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,9 +117,9 @@ class AdminDrawer extends StatelessWidget {
                 children: [
                   BlocBuilder<AuthCubit, AuthState>(
                     builder: (context, state) {
-                      String name = 'لوحة التحكم';
+                      String name = 'Super Admin';
                       if (state is Authenticated) {
-                        name = state.user.fullName ?? 'المسؤول';
+                        name = state.user.fullName ?? 'Super Admin';
                       }
                       return Text(
                         name,
@@ -142,19 +137,18 @@ class AdminDrawer extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.success,
-                          shape: BoxShape.circle,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.shade700,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'نشط الآن',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withOpacity(0.6),
+                        child: const Text(
+                          'Super Admin',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
@@ -174,7 +168,7 @@ class AdminDrawer extends StatelessWidget {
   }
 
   List<Widget> _buildNavigationItems(BuildContext context, int unreadCount) {
-    final items = [
+    final adminItems = [
       _DrawerItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'الرئيسية', index: 0),
       _DrawerItem(icon: Icons.business_outlined, activeIcon: Icons.business, label: 'المشاريع', index: 1),
       _DrawerItem(icon: Icons.people_outline, activeIcon: Icons.people, label: 'العملاء', index: 2),
@@ -194,11 +188,39 @@ class AdminDrawer extends StatelessWidget {
       ),
     ];
 
-    return items.map((item) => _buildDrawerItem(context, item)).toList();
+    // Super Admin exclusive items
+    final superAdminItems = [
+      _DrawerItem(icon: Icons.manage_accounts_outlined, activeIcon: Icons.manage_accounts, label: 'إدارة المستخدمين', index: 11),
+      _DrawerItem(icon: Icons.settings_applications_outlined, activeIcon: Icons.settings_applications, label: 'إعدادات النظام', index: 12),
+      _DrawerItem(icon: Icons.security_outlined, activeIcon: Icons.security, label: 'سجلات النظام', index: 13),
+      _DrawerItem(icon: Icons.analytics_outlined, activeIcon: Icons.analytics, label: 'التحليلات', index: 14),
+    ];
+
+    return [
+      ...adminItems.map((item) => _buildDrawerItem(context, item)),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Divider(color: Colors.white12),
+      ),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Text(
+          'صلاحيات Super Admin',
+          style: TextStyle(
+            color: Colors.indigo,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
+      ...superAdminItems.map((item) => _buildDrawerItem(context, item, isSuperAdminSection: true)),
+    ];
   }
 
-  Widget _buildDrawerItem(BuildContext context, _DrawerItem item) {
+  Widget _buildDrawerItem(BuildContext context, _DrawerItem item, {bool isSuperAdminSection = false}) {
     final isSelected = selectedIndex == item.index;
+    final Color activeColor = isSuperAdminSection ? Colors.indigo.shade300 : AppColors.primary;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -211,17 +233,17 @@ class AdminDrawer extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary.withOpacity(0.15) : Colors.transparent,
+            color: isSelected ? activeColor.withOpacity(0.15) : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             border: isSelected
-                ? Border.all(color: AppColors.primary.withOpacity(0.3))
+                ? Border.all(color: activeColor.withOpacity(0.3))
                 : null,
           ),
           child: Row(
             children: [
               Icon(
                 isSelected ? item.activeIcon : item.icon,
-                color: isSelected ? AppColors.primary : Colors.white70,
+                color: isSelected ? activeColor : Colors.white70,
                 size: 24,
               ),
               const SizedBox(width: 16),
@@ -241,13 +263,6 @@ class AdminDrawer extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.4),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
                   child: Text(
                     item.badge.toString(),
@@ -268,24 +283,18 @@ class AdminDrawer extends StatelessWidget {
   Widget _buildFooter(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
-      // decoration: BoxDecoration(
-      //   border: Border(
-      //     top: BorderSide(color: Colors.white.withOpacity(0.05)),
-      //   ),
-      // ),
       child: Column(
         children: [
           InkWell(
-              onTap: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => const LogoutDialog(),
-                );
-                
-                if (confirm == true && context.mounted) {
-                  context.read<AuthCubit>().signOut();
-                }
-              },
+            onTap: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => const LogoutDialog(),
+              );
+              if (confirm == true && context.mounted) {
+                context.read<AuthCubit>().signOut();
+              }
+            },
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12),

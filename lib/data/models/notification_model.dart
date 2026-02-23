@@ -1,16 +1,20 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/material.dart';
 
 enum NotificationType {
   general,
   info,
   success,
-  warning,
+  warning, // Use for alerts/errors
   error,
-  update,
-  payment,
-  kyc,
-  document,
-  handover;
+  update, // General updates
+  payment, // Payment reminders/confirmations
+  kyc, // KYC status changes
+  document, // Document requests/signatures
+  handover, // Handover milestones
+  message, // New chat messages
+  request_approved, // Specific approval notifications
+  construction_update; // Specific construction progress
 
   String toJson() => name;
   
@@ -20,8 +24,90 @@ enum NotificationType {
       orElse: () => NotificationType.info,
     );
   }
-}
 
+  String get displayName {
+    switch (this) {
+      case NotificationType.general:
+        return 'عام';
+      case NotificationType.info:
+        return 'تنبيه';
+      case NotificationType.success:
+        return 'نجاح';
+      case NotificationType.warning:
+        return 'تحذير';
+      case NotificationType.error:
+        return 'خطأ';
+      case NotificationType.update:
+        return 'تحديث';
+      case NotificationType.payment:
+        return 'المدفوعات';
+      case NotificationType.kyc:
+        return 'التحقق من الهوية';
+      case NotificationType.document:
+        return 'المستندات';
+      case NotificationType.handover:
+        return 'التسليم';
+      case NotificationType.message:
+        return 'رسالة جديدة';
+      case NotificationType.request_approved:
+        return 'تمت الموافقة';
+      case NotificationType.construction_update:
+        return 'تطورات البناء';
+    }
+  }
+
+  IconData get displayIcon {
+    switch (this) {
+      case NotificationType.general:
+        return Icons.notifications;
+      case NotificationType.info:
+        return Icons.info_outline;
+      case NotificationType.success:
+        return Icons.check_circle_outline;
+      case NotificationType.warning:
+        return Icons.warning_amber_rounded;
+      case NotificationType.error:
+        return Icons.error_outline;
+      case NotificationType.update:
+        return Icons.update;
+      case NotificationType.payment:
+        return Icons.payment;
+      case NotificationType.kyc:
+        return Icons.verified_user;
+      case NotificationType.document:
+        return Icons.description;
+      case NotificationType.handover:
+        return Icons.key;
+      case NotificationType.message:
+        return Icons.chat_bubble_outline;
+      case NotificationType.request_approved:
+        return Icons.check_circle;
+      case NotificationType.construction_update:
+        return Icons.construction;
+    }
+  }
+
+  Color get displayColor {
+    switch (this) {
+      case NotificationType.success:
+      case NotificationType.request_approved:
+        return Colors.green;
+      case NotificationType.warning:
+        return Colors.orange;
+      case NotificationType.error:
+        return Colors.red;
+      case NotificationType.info:
+      case NotificationType.message:
+        return Colors.blue;
+      case NotificationType.construction_update:
+        return Colors.orangeAccent;
+      case NotificationType.payment:
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+}
 enum NotificationPriority {
   low,
   normal,
